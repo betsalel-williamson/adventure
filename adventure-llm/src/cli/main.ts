@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * CLI: if GEMINI_API_KEY is set, the Fortran opening runs (you answer the instructions question), then
- * the first `> ` line is mapped with Gemini; further `> ` lines are classic GETIN input until .quit/:q or
+ * each `> ` line is mapped through help-intent shortcuts and Gemini into GETIN tokens until .quit/:q or
  * game exit. Otherwise the original Fortran binary runs in full TTY.
  * Pass --classic to force Fortran even when a key is present. Pass --debug to enable JSONL interaction
  * logging (see ADVENTURE_LLM_DEBUG* and ADVENTURE_LLM_CACHE_DIR in .env.example).
@@ -115,7 +115,7 @@ async function main(): Promise<void> {
 
   process.stderr.write("adventure-llm: LLM-assisted input enabled.\n");
   process.stderr.write(
-    "adventure-llm: after the first move, type classic commands at > ; .quit ends the session.\n",
+    "adventure-llm: type naturally at > ; input is translated to game vocabulary. .quit or :q ends the session.\n",
   );
   const logPath = resolveDebugLogPath();
   if (logPath) {
@@ -127,6 +127,23 @@ async function main(): Promise<void> {
   }
 
   const rl = readline.createInterface({ input, output: process.stderr });
+
+  const interpretPlayerLineToGetin = async (user: string): Promise<string> => {
+    const fromIntent = instructionIntentToHelpCommand(user);
+    if (fromIntent) {
+      await appendInteractionLog({
+        event: "intent_resolution",
+        userText: user,
+        parsed: fromIntent,
+      });
+      return interpretedToGetinLine(fromIntent);
+    }
+    const interpreted = await interpretWithGemini(user, db, {
+      apiKey: process.env.GEMINI_API_KEY!,
+    });
+    return interpretedToGetinLine(interpreted);
+  };
+
   try {
     await runFortranOpenThenFirstCommand({
       cwd: repoRoot,
@@ -134,27 +151,22 @@ async function main(): Promise<void> {
         rl.question("Would you like instructions? (y/n) "),
       getFirstCommandLine: async () => {
         const user = await rl.question("> ");
-        const fromIntent = instructionIntentToHelpCommand(user);
-        if (fromIntent) {
-          await appendInteractionLog({
-            event: "intent_resolution",
-            userText: user,
-            parsed: fromIntent,
-          });
-          return interpretedToGetinLine(fromIntent);
-        }
-        const interpreted = await interpretWithGemini(user, db, {
-          apiKey: process.env.GEMINI_API_KEY!,
-        });
-        return interpretedToGetinLine(interpreted);
+        return interpretPlayerLineToGetin(user);
       },
       getContinueLine: async () => {
         const line = await rl.question("> ");
         const t = line.trim();
         if (t === ".quit" || t === ":q") {
+          await appendInteractionLog({
+            event: "session_end",
+            userText: line,
+          });
           return null;
         }
-        return line;
+        if (t.length === 0) {
+          return line;
+        }
+        return interpretPlayerLineToGetin(line);
       },
     });
   } finally {

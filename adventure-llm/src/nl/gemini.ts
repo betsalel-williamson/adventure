@@ -62,6 +62,8 @@ export async function interpretWithGemini(
     }
   }
 
+  process.stderr.write("adventure-llm: translating with Gemini…\n");
+
   const gen = new GoogleGenerativeAI(options.apiKey);
   const model = gen.getGenerativeModel({
     model: modelId,
@@ -101,7 +103,9 @@ Reply ONLY with JSON matching the schema. Use words from the list when possible.
     ...(isDebugVerbose() ? { prompt } : {}),
   });
 
+  const startedMs = Date.now();
   const res = await model.generateContent(prompt);
+  const durationMs = Date.now() - startedMs;
   const text = res.response.text();
   const parsed = JSON.parse(text) as unknown;
   const cmd = InterpretedCommandSchema.parse(parsed);
@@ -111,6 +115,7 @@ Reply ONLY with JSON matching the schema. Use words from the list when possible.
     userText,
     model: modelId,
     cached: false,
+    durationMs,
     rawJson: text,
     parsed: cmd,
   });
