@@ -71,6 +71,11 @@ export type ContinueLineContext = {
   gameOutputSinceLastCommand: string;
 };
 
+/** Full transcript so far (stdout+stderr) immediately before the first GETIN line. */
+export type FirstCommandContext = {
+  transcriptSoFar: string;
+};
+
 function normalizeScriptedGetin(scripted: ScriptedGetinLine): {
   line: string;
   retryIfRejected?: string;
@@ -183,7 +188,9 @@ export function normalizeInstructionsAnswer(line: string): string {
 export async function runFortranOpenThenFirstCommand(
   options: SubprocessEngineOptions & {
     getInstructionsAnswer: () => Promise<string>;
-    getFirstCommandLine: () => Promise<ScriptedGetinLine>;
+    getFirstCommandLine: (
+      ctx: FirstCommandContext,
+    ) => Promise<ScriptedGetinLine>;
     /** Further moves: return a line to send, or `null` to end the session (SIGTERM). */
     getContinueLine?: (
       ctx: ContinueLineContext,
@@ -220,7 +227,12 @@ export async function runFortranOpenThenFirstCommand(
 
     await waitForOutputIdle(child, 380);
 
-    const firstScripted = await options.getFirstCommandLine();
+    const transcriptSoFar = Buffer.concat(allChunks)
+      .toString("utf8")
+      .replace(/\r\n/g, "\n");
+    const firstScripted = await options.getFirstCommandLine({
+      transcriptSoFar,
+    });
     await writeScriptedGetinLine(child, allChunks, firstScripted, 500);
 
     let outputMark = transcriptByteLength(allChunks);

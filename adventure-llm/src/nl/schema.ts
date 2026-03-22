@@ -16,6 +16,16 @@ export const InterpretedCommandSchema = z.object({
 
 export type InterpretedCommand = z.infer<typeof InterpretedCommandSchema>;
 
+/** Autoplay planner: same tokens plus optional stop signal. */
+export const AutoplayPlannerResponseSchema = InterpretedCommandSchema.extend({
+  /** When false, the session ends after this response (no further GETIN). */
+  continuePlaying: z.boolean().optional(),
+});
+
+export type AutoplayPlannerResponse = z.infer<
+  typeof AutoplayPlannerResponseSchema
+>;
+
 /** Build a single GETIN line from interpreted tokens (two words in first ten columns). */
 export function interpretedToGetinLine(cmd: InterpretedCommand): string {
   const a = cmd.primaryToken.toUpperCase().slice(0, 5).padEnd(5, " ");

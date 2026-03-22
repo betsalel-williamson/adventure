@@ -56,16 +56,19 @@ dependency-check --nvdApiKey "$NVD_API_KEY" --project adventure-llm --scan . --o
 
 ## Environment
 
-| Variable                      | Purpose                                                                                                              |
-| ----------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `GEMINI_API_KEY`              | Enables natural-language first line; omit or use `--classic` for Fortran-only                                        |
-| `GEMINI_TEXT_MODEL`           | Optional; defaults to `gemini-2.5-flash` for NL JSON mapping                                                         |
-| `GEMINI_IMAGE_MODEL`          | Optional; defaults to `gemini-3.1-flash-image-preview` for future location imagery                                   |
-| `ADVENTURE_LLM_DEBUG`         | Set to `1` to append JSONL interaction logs to `.cache/llm-interactions.jsonl` (under cwd, usually `adventure-llm/`) |
-| `ADVENTURE_LLM_DEBUG_LOG`     | Optional explicit path for that JSONL file (overrides default path when set)                                         |
-| `ADVENTURE_LLM_DEBUG_VERBOSE` | Set to `1` to include full Gemini prompt text in logs (large)                                                        |
-| `ADVENTURE_LLM_CACHE_DIR`     | If set, cache each `InterpretedCommand` by hash of model + user line (JSON files); avoids repeat API calls           |
-| `NVD_API_KEY`                 | Optional; Dependency-Check reads it when set in the environment (see below)                                          |
+| Variable                               | Purpose                                                                                                                                                    |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GEMINI_API_KEY`                       | Enables natural-language first line; omit or use `--classic` for Fortran-only                                                                              |
+| `GEMINI_TEXT_MODEL`                    | Optional; defaults to `gemini-2.5-flash` for NL JSON mapping                                                                                               |
+| `GEMINI_IMAGE_MODEL`                   | Optional; defaults to `gemini-3.1-flash-image-preview` for future location imagery                                                                         |
+| `ADVENTURE_LLM_DEBUG`                  | Set to `1` to append JSONL interaction logs to `.cache/llm-interactions.jsonl` (under cwd, usually `adventure-llm/`); includes full Gemini request prompts |
+| `ADVENTURE_LLM_DEBUG_LOG`              | Optional explicit path for that JSONL file (overrides default path when set)                                                                               |
+| `ADVENTURE_LLM_CACHE_DIR`              | If set, cache each `InterpretedCommand` by hash of model + user line (JSON files); avoids repeat API calls                                                 |
+| `ADVENTURE_LLM_INSTRUCTIONS`           | `y` or `n` for autoplay only: answer to “instructions?” without a prompt (default `n`)                                                                     |
+| `ADVENTURE_LLM_AUTOPLAY_PACE_MS`       | Autoplay: delay in ms after each screen before the next Gemini call (default `2000`; `0` disables)                                                         |
+| `ADVENTURE_LLM_AUTOPLAY_MAX_MOVES`     | Autoplay: stop after this many GETIN lines (default `300`)                                                                                                 |
+| `ADVENTURE_LLM_AUTOPLAY_CONTEXT_CHARS` | Autoplay: approximate max size of the planner user prompt (default `12000`)                                                                                |
+| `NVD_API_KEY`                          | Optional; Dependency-Check reads it when set in the environment (see below)                                                                                |
 
 Logs and cache live under `adventure-llm/.cache/` by default; that directory is gitignored.
 
@@ -106,5 +109,7 @@ Use **`npm start -- --debug`** (or set `ADVENTURE_LLM_DEBUG=1`) to append struct
 After the first NL-mapped move, further lines are sent as **classic typed commands** (GETIN). Type **`.quit`** or **`:q`** to end the session.
 
 **Without the key**, or when you pass **`--classic`**, the CLI runs the original Fortran `./adventure` in full TTY (same idea as `make run` from repo root). A short notice is printed when the key is missing.
+
+**Self-acting mode:** with `GEMINI_API_KEY` set, run **`npm start -- --autoplay`**. Gemini plans each move from session memory (event log, heuristic inventory/location hints) plus recent game output and vocabulary; the process streams like normal play, with a configurable pause between moves so you can read the screen. Use **`ADVENTURE_LLM_INSTRUCTIONS`**, **`ADVENTURE_LLM_AUTOPLAY_*`** in `.env` as needed (see table above). Not compatible with **`--classic`**.
 
 You can still run `./adventure` directly from the repository root if you prefer.

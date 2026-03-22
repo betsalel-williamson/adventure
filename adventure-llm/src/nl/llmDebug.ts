@@ -20,11 +20,6 @@ export function resolveCacheDir(): string | null {
   return d ? path.resolve(d) : null;
 }
 
-export function isDebugVerbose(): boolean {
-  const v = process.env.ADVENTURE_LLM_DEBUG_VERBOSE?.trim();
-  return v === "1" || v?.toLowerCase() === "true";
-}
-
 export function cacheKeyFor(userText: string, model: string): string {
   return createHash("sha256")
     .update(`${model}\n${userText}`, "utf8")

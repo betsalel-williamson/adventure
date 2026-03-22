@@ -5,6 +5,7 @@
  * game exit. Otherwise the original Fortran binary runs in full TTY.
  * Pass --classic to force Fortran even when a key is present. Pass --debug to enable JSONL interaction
  * logging (see ADVENTURE_LLM_DEBUG* and ADVENTURE_LLM_CACHE_DIR in .env.example).
+ * Pass --autoplay for self-acting mode (Gemini drives every move; see ADVENTURE_LLM_AUTOPLAY_* in .env.example).
  */
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -18,7 +19,10 @@ import {
   runFortranOpenThenFirstCommand,
   type ScriptedGetinLine,
 } from "../engine/subprocessEngine.js";
+import { AutoplaySessionMemory } from "../nl/autoplaySessionMemory.js";
+import { chooseNextMoveWithGemini } from "../nl/geminiAutoplay.js";
 import {
+  buildVocabHint,
   interpretWithGemini,
   shouldFallbackToClassicForGeminiError,
 } from "../nl/gemini.js";
@@ -28,7 +32,11 @@ import {
   resolveDebugLogPath,
 } from "../nl/llmDebug.js";
 import { instructionIntentToHelpCommand } from "../nl/intent.js";
-import { interpretedToGetinLine, swapInterpretedTokens } from "../nl/schema.js";
+import {
+  interpretedToGetinLine,
+  swapInterpretedTokens,
+  type AutoplayPlannerResponse,
+} from "../nl/schema.js";
 
 /** dist/cli -> adventure-llm */
 const packageRoot = path.join(
@@ -73,6 +81,66 @@ function printClassicBanner(
   process.stderr.write("\n");
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function resolveAutoplayPaceMs(): number {
+  const v = process.env.ADVENTURE_LLM_AUTOPLAY_PACE_MS?.trim();
+  if (v === undefined || v === "") return 2000;
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 0 ? n : 2000;
+}
+
+function resolveAutoplayMaxMoves(): number {
+  const v = process.env.ADVENTURE_LLM_AUTOPLAY_MAX_MOVES?.trim();
+  if (v === undefined || v === "") return 300;
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 300;
+}
+
+function resolveAutoplayContextChars(): number {
+  const v = process.env.ADVENTURE_LLM_AUTOPLAY_CONTEXT_CHARS?.trim();
+  if (v === undefined || v === "") return 12_000;
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 2000 ? Math.floor(n) : 12_000;
+}
+
+/** Instructions screen: `ADVENTURE_LLM_INSTRUCTIONS=y` or `n` (default `n`). */
+function resolveAutoplayInstructionsAnswer(): string {
+  const v = process.env.ADVENTURE_LLM_INSTRUCTIONS?.trim().toLowerCase();
+  if (v?.startsWith("y")) return "y";
+  return "n";
+}
+
+function scriptedGetinLineString(scripted: ScriptedGetinLine): string {
+  if (typeof scripted === "string") return scripted;
+  return scripted.line;
+}
+
+function toInterpreted(r: AutoplayPlannerResponse): {
+  primaryToken: string;
+  secondaryToken?: string;
+  confidence?: number;
+} {
+  return {
+    primaryToken: r.primaryToken,
+    secondaryToken: r.secondaryToken,
+    confidence: r.confidence,
+  };
+}
+
+function plannerToScriptedGetin(r: AutoplayPlannerResponse): ScriptedGetinLine {
+  const cmd = toInterpreted(r);
+  const firstLine = interpretedToGetinLine(cmd);
+  const swapped = swapInterpretedTokens(cmd);
+  const retryLine = swapped ? interpretedToGetinLine(swapped) : undefined;
+  if (retryLine !== undefined && retryLine.trimEnd() !== firstLine.trimEnd()) {
+    return { line: firstLine, retryIfRejected: retryLine };
+  }
+  return firstLine;
+}
+
 function runClassicInteractive(): void {
   if (!existsSync(adventureBin)) {
     process.stderr.write(
@@ -102,13 +170,143 @@ function runClassicInteractive(): void {
   });
 }
 
+async function runAutoplaySession(): Promise<void> {
+  const db = loadDatFile(datPath);
+  const memory = new AutoplaySessionMemory();
+  const maxMoves = resolveAutoplayMaxMoves();
+  const paceMs = resolveAutoplayPaceMs();
+  const contextChars = resolveAutoplayContextChars();
+  const apiKey = process.env.GEMINI_API_KEY!;
+
+  let movesSent = 0;
+  let lastGetinLine = "";
+
+  const callPlanner = async (recentForRepair: string) => {
+    const vocabHint = buildVocabHint(db, 120);
+    const plannerUserPrompt = memory.buildPlannerUserPrompt(
+      contextChars,
+      vocabHint,
+    );
+    return chooseNextMoveWithGemini(db, {
+      apiKey,
+      plannerUserPrompt,
+      recentGameTextForRepair: recentForRepair.slice(-2500),
+    });
+  };
+
+  const logPath = resolveDebugLogPath();
+  if (logPath) {
+    process.stderr.write(`adventure-llm: interaction log → ${logPath}\n`);
+  }
+
+  process.stderr.write("adventure-llm: self-acting (autoplay) mode.\n");
+  process.stderr.write(
+    `adventure-llm: pace ${paceMs}ms; max moves ${maxMoves}; context ~${contextChars} chars.\n`,
+  );
+
+  await runFortranOpenThenFirstCommand({
+    cwd: repoRoot,
+    getInstructionsAnswer: async () => resolveAutoplayInstructionsAnswer(),
+    getFirstCommandLine: async (ctx) => {
+      memory.seedOpening(ctx.transcriptSoFar);
+      if (paceMs > 0) await sleep(paceMs);
+      const plan = await callPlanner(ctx.transcriptSoFar.slice(-2500));
+      if (plan.continuePlaying === false) {
+        await appendInteractionLog({
+          event: "autoplay_stop_before_first_command",
+        });
+        const quitLine: ScriptedGetinLine = interpretedToGetinLine({
+          primaryToken: "QUIT",
+        });
+        movesSent = 1;
+        lastGetinLine = scriptedGetinLineString(quitLine);
+        return quitLine;
+      }
+      const scripted = plannerToScriptedGetin(plan);
+      movesSent = 1;
+      lastGetinLine = scriptedGetinLineString(scripted);
+      return scripted;
+    },
+    getContinueLine: async (ctx) => {
+      memory.recordCommandOutcome(
+        lastGetinLine,
+        ctx.gameOutputSinceLastCommand,
+      );
+      if (movesSent >= maxMoves) {
+        await appendInteractionLog({
+          event: "autoplay_max_moves",
+          movesSent,
+        });
+        return null;
+      }
+      if (paceMs > 0) await sleep(paceMs);
+      const plan = await callPlanner(
+        ctx.gameOutputSinceLastCommand.slice(-2500),
+      );
+      if (plan.continuePlaying === false) {
+        await appendInteractionLog({
+          event: "autoplay_stop",
+          reason: "continuePlaying",
+        });
+        return null;
+      }
+      const scripted = plannerToScriptedGetin(plan);
+      movesSent += 1;
+      lastGetinLine = scriptedGetinLineString(scripted);
+      return scripted;
+    },
+  });
+
+  await appendInteractionLog({ event: "autoplay_session_end" });
+}
+
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
   if (args.includes("--debug")) {
     process.env.ADVENTURE_LLM_DEBUG ??= "1";
   }
   const forceClassic = args.includes("--classic");
+  const autoplay = args.includes("--autoplay");
   const hasGeminiKey = Boolean(process.env.GEMINI_API_KEY?.trim());
+
+  if (autoplay && !hasGeminiKey) {
+    process.stderr.write(
+      "adventure-llm: --autoplay requires GEMINI_API_KEY.\n",
+    );
+    process.exitCode = 1;
+    return;
+  }
+  if (autoplay && forceClassic) {
+    process.stderr.write(
+      "adventure-llm: --autoplay cannot be used with --classic.\n",
+    );
+    process.exitCode = 1;
+    return;
+  }
+
+  if (autoplay && hasGeminiKey) {
+    if (!existsSync(adventureBin)) {
+      process.stderr.write(
+        "Cannot find ./adventure next to adventure.dat. From the repository root run: make\n",
+      );
+      process.exitCode = 1;
+      return;
+    }
+    try {
+      await runAutoplaySession();
+    } catch (err) {
+      if (shouldFallbackToClassicForGeminiError(err)) {
+        process.stderr.write(
+          "\nadventure-llm: Gemini unavailable (quota, rate limit, or service error). Autoplay stopped.\n",
+        );
+        process.exitCode = 1;
+        return;
+      }
+      throw err;
+    }
+    return;
+  }
+
   const useNaturalLanguage = hasGeminiKey && !forceClassic;
 
   if (!useNaturalLanguage) {
@@ -168,9 +366,9 @@ async function main(): Promise<void> {
       cwd: repoRoot,
       getInstructionsAnswer: async () =>
         rl.question("Would you like instructions? (y/n) "),
-      getFirstCommandLine: async () => {
+      getFirstCommandLine: async (ctx) => {
         const user = await rl.question("> ");
-        return interpretPlayerLineToGetin(user);
+        return interpretPlayerLineToGetin(user, ctx.transcriptSoFar);
       },
       getContinueLine: async (ctx) => {
         const line = await rl.question("> ");
@@ -203,7 +401,20 @@ async function main(): Promise<void> {
   }
 }
 
+function isReadlineUserAbort(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "code" in err &&
+    (err as { code: unknown }).code === "ABORT_ERR"
+  );
+}
+
 main().catch((e) => {
+  if (isReadlineUserAbort(e)) {
+    process.exit(0);
+    return;
+  }
   console.error(e);
   process.exitCode = 1;
 });

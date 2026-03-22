@@ -72,7 +72,11 @@ describe.runIf(existsSync(adventureBin))(
         cwd: repoRoot,
         adventureBinary: adventureBin,
         getInstructionsAnswer: async () => "n",
-        getFirstCommandLine: async () => "east    ",
+        getFirstCommandLine: async (ctx) => {
+          expect(ctx.transcriptSoFar.length).toBeGreaterThan(50);
+          expect(ctx.transcriptSoFar.toUpperCase()).toContain("INSTRUCTIONS");
+          return "east    ";
+        },
       });
       const out = normalizeTranscript(raw);
       expect(raw).toContain("WOULD YOU LIKE INSTRUCTIONS");

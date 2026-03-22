@@ -10,7 +10,6 @@ import { resolvedGeminiTextModel } from "./geminiModels.js";
 import {
   appendInteractionLog,
   cacheKeyFor,
-  isDebugVerbose,
   readCachedInterpreted,
   resolveCacheDir,
   writeCachedInterpreted,
@@ -46,7 +45,11 @@ export function shouldFallbackToClassicForGeminiError(err: unknown): boolean {
   return false;
 }
 
-function buildVocabHint(db: AdventureDatabase, maxWords: number): string {
+/** Words from adventure.dat ATAB for NL / autoplay prompts (cap list length for context size). */
+export function buildVocabHint(
+  db: AdventureDatabase,
+  maxWords: number,
+): string {
   const words: string[] = [];
   for (let i = 1; i < 1000 && words.length < maxWords; i++) {
     if (db.ktab[i] === 0 && db.atab[i].trim() === "") break;
@@ -136,7 +139,7 @@ Rules: (1) For taking or carrying something, use primaryToken TAKE or GET and pu
     userText,
     model: modelId,
     promptLength: prompt.length,
-    ...(isDebugVerbose() ? { prompt } : {}),
+    prompt,
   });
 
   const startedMs = Date.now();

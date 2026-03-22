@@ -7,6 +7,7 @@ import {
   shouldFallbackToClassicForGeminiError,
   validateAgainstVocab,
 } from "./gemini.js";
+import { AutoplayPlannerResponseSchema } from "./schema.js";
 
 const datPath = path.join(
   fileURLToPath(new URL(".", import.meta.url)),
@@ -63,5 +64,13 @@ describe("nl schema", () => {
   it("validateAgainstVocab accepts EAST", () => {
     const db = loadDatFile(datPath);
     expect(validateAgainstVocab(db, { primaryToken: "EAST" })).toBe(true);
+  });
+
+  it("AutoplayPlannerResponseSchema accepts continuePlaying", () => {
+    const p = AutoplayPlannerResponseSchema.parse({
+      primaryToken: "EAST",
+      continuePlaying: false,
+    });
+    expect(p.continuePlaying).toBe(false);
   });
 });
