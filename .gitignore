@@ -1,3 +1,6 @@
 /adventure
 /adventure-llm/node_modules/
 /adventure-llm/dist/
+/adventure-llm/reports/
+/adventure-llm/.env
+/adventure-llm/.env.local

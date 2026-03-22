@@ -9,7 +9,9 @@
     "build": "tsc",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "tsc --noEmit && vitest run"
+    "check": "tsc --noEmit && vitest run",
+    "dependency-check": "mkdir -p ./reports/dependency-check && dependency-check --project adventure-llm --scan . --out ./reports/dependency-check --format HTML --format JSON",
+    "dependency-check:quick": "mkdir -p ./reports/dependency-check && dependency-check --noupdate --project adventure-llm --scan . --out ./reports/dependency-check --format HTML --format JSON"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
