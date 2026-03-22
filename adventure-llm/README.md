@@ -6,7 +6,7 @@ TypeScript tooling for Colossal Cave Adventure: parses unchanged `adventure.dat`
 
 - Node 20+
 - GNU Fortran build of `../adventure` (from repo root: `make`) for oracle tests and scripted play
-- Optional: `GEMINI_API_KEY` for `--nl` CLI mode
+- Optional: `GEMINI_API_KEY` for natural-language first line before scripted play
 
 ## Commands
 
@@ -56,10 +56,18 @@ dependency-check --nvdApiKey "$NVD_API_KEY" --project adventure-llm --scan . --o
 
 ## Environment
 
-| Variable          | Purpose                                      |
-| ----------------- | -------------------------------------------- |
-| `GEMINI_API_KEY`  | Required for `interpretWithGemini` / CLI `--nl` |
-| `NVD_API_KEY`     | Optional; Dependency-Check reads it when set in the environment (see below) |
+| Variable                      | Purpose                                                                                                              |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `GEMINI_API_KEY`              | Enables natural-language first line; omit or use `--classic` for Fortran-only                                        |
+| `GEMINI_TEXT_MODEL`           | Optional; defaults to `gemini-2.5-flash` for NL JSON mapping                                                         |
+| `GEMINI_IMAGE_MODEL`          | Optional; defaults to `gemini-3.1-flash-image-preview` for future location imagery                                   |
+| `ADVENTURE_LLM_DEBUG`         | Set to `1` to append JSONL interaction logs to `.cache/llm-interactions.jsonl` (under cwd, usually `adventure-llm/`) |
+| `ADVENTURE_LLM_DEBUG_LOG`     | Optional explicit path for that JSONL file (overrides default path when set)                                         |
+| `ADVENTURE_LLM_DEBUG_VERBOSE` | Set to `1` to include full Gemini prompt text in logs (large)                                                        |
+| `ADVENTURE_LLM_CACHE_DIR`     | If set, cache each `InterpretedCommand` by hash of model + user line (JSON files); avoids repeat API calls           |
+| `NVD_API_KEY`                 | Optional; Dependency-Check reads it when set in the environment (see below)                                          |
+
+Logs and cache live under `adventure-llm/.cache/` by default; that directory is gitignored.
 
 ### NVD API key (Dependency-Check)
 
@@ -73,19 +81,30 @@ Then run `make dependency-check` from the repository root; the Makefile passes `
 
 ## Layout
 
-| Path                 | Role                                                |
-| -------------------- | --------------------------------------------------- |
+| Path                 | Role                                               |
+| -------------------- | -------------------------------------------------- |
 | `src/dat/loadDat.ts` | Loader for `adventure.dat` (Fortran section order) |
-| `src/engine/`        | Fortran subprocess oracle + helpers                 |
-| `src/cli/getin.ts`   | GETIN-compatible tokenizer                          |
-| `src/nl/`            | Zod schema + Gemini JSON client                     |
-| `src/images/`        | Cache keys + optional image file helpers            |
+| `src/engine/`        | Fortran subprocess oracle + helpers                |
+| `src/cli/getin.ts`   | GETIN-compatible tokenizer                         |
+| `src/nl/`            | Zod schema + Gemini JSON client                    |
+| `src/images/`        | Cache keys + optional image file helpers           |
 
 ## CLI
 
+From `adventure-llm/` after `npm run build`:
+
 ```sh
-node dist/cli/main.js          # demo script (non-interactive sample)
-node dist/cli/main.js --nl       # requires GEMINI_API_KEY; one NL turn demo
+npm start
 ```
 
-For full interactive play with the original parser, run `./adventure` from the repository root.
+Or: `node dist/cli/main.js`
+
+**With `GEMINI_API_KEY` set** (for example in `adventure-llm/.env`), `npm start` streams the opening through **“WOULD YOU LIKE INSTRUCTIONS?”**; on **stderr** you answer `y`/`n`, then **`> `** for the **first** line in natural language (Gemini maps it to parser tokens). After that, **`> `** accepts **classic game input** until you type **`.quit`** / **`:q`**, the game ends, or you interrupt. The wrapper only sends **SIGTERM** when ending the session so stdin is not closed mid-game (which would trigger a Fortran EOF error).
+
+Use **`npm start -- --debug`** (or set `ADVENTURE_LLM_DEBUG=1`) to append structured JSON lines (requests, responses, intent shortcuts, cache hits) to the log file under `.cache/`. Set `ADVENTURE_LLM_CACHE_DIR` to reuse stored interpretations for the same line and model.
+
+After the first NL-mapped move, further lines are sent as **classic typed commands** (GETIN). Type **`.quit`** or **`:q`** to end the session.
+
+**Without the key**, or when you pass **`--classic`**, the CLI runs the original Fortran `./adventure` in full TTY (same idea as `make run` from repo root). A short notice is printed when the key is missing.
+
+You can still run `./adventure` directly from the repository root if you prefer.

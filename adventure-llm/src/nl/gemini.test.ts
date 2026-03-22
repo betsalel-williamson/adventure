@@ -5,11 +5,17 @@ import { loadDatFile } from "../dat/loadDat.js";
 import { interpretedToGetinLine } from "./schema.js";
 import { validateAgainstVocab } from "./gemini.js";
 
-const datPath = path.join(fileURLToPath(new URL(".", import.meta.url)), "../../../adventure.dat");
+const datPath = path.join(
+  fileURLToPath(new URL(".", import.meta.url)),
+  "../../../adventure.dat",
+);
 
 describe("nl schema", () => {
   it("interpretedToGetinLine packs ten columns", () => {
-    const line = interpretedToGetinLine({ primaryToken: "EAST", secondaryToken: "LAMP" });
+    const line = interpretedToGetinLine({
+      primaryToken: "EAST",
+      secondaryToken: "LAMP",
+    });
     expect(line.slice(0, 5).trim()).toBe("EAST");
     expect(line.slice(5, 10).trim()).toBe("LAMP");
   });

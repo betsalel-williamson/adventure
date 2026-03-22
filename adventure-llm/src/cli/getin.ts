@@ -42,5 +42,10 @@ export function getin(line: string): GetinResult {
       twowds = true;
     }
   }
-  return { twowds, a: b.slice(0, 5).padEnd(5, " "), wd2: d.slice(0, 5).padEnd(5, " "), b: c.slice(0, 5).padEnd(5, " ") };
+  return {
+    twowds,
+    a: b.slice(0, 5).padEnd(5, " "),
+    wd2: d.slice(0, 5).padEnd(5, " "),
+    b: c.slice(0, 5).padEnd(5, " "),
+  };
 }

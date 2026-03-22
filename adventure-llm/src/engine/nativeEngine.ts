@@ -1,4 +1,7 @@
-import { runFortranScript, type SubprocessEngineOptions } from "./subprocessEngine.js";
+import {
+  runFortranScript,
+  type SubprocessEngineOptions,
+} from "./subprocessEngine.js";
 
 /**
  * Gameplay engine: the reference implementation runs the Fortran binary for full behavioral parity.
@@ -13,6 +16,9 @@ export class FortranOracleEngine {
   }
 }
 
-export function createOracleEngine(cwd: string, adventureBinary?: string): FortranOracleEngine {
+export function createOracleEngine(
+  cwd: string,
+  adventureBinary?: string,
+): FortranOracleEngine {
   return new FortranOracleEngine({ cwd, adventureBinary });
 }

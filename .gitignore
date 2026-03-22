@@ -4,3 +4,4 @@
 /adventure-llm/reports/
 /adventure-llm/.env
 /adventure-llm/.env.local
+/adventure-llm/.cache/

@@ -3,7 +3,10 @@ import { loadDatFile } from "./loadDat.js";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
-const datPath = path.join(fileURLToPath(new URL(".", import.meta.url)), "../../../adventure.dat");
+const datPath = path.join(
+  fileURLToPath(new URL(".", import.meta.url)),
+  "../../../adventure.dat",
+);
 
 describe("loadDatFile", () => {
   it("loads adventure.dat without throwing", () => {

@@ -37,7 +37,7 @@ Optional: key = `(LOC, hash of major PROP flags)`; prompt from long description 
 
 ### API contracts
 
-- **CLI**: `adventure-llm run [--nl] [--images]` reading stdin / writing stdout.  
+- **CLI**: `adventure-llm run` reading stdin / writing stdout; natural language when `GEMINI_API_KEY` is set, else Fortran; optional `[--classic]` to force Fortran.  
 - **Programmatic**: `createEngine(datPath)`, `engine.applyLine(line)`, transcript array.
 
 ### Data models

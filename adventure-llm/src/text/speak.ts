@@ -7,7 +7,10 @@ export function formatLLineRow(row: LLineRow): string {
 }
 
 /** Walk LLINE chain starting at head (1-based index). */
-export function* walkLLineChain(db: AdventureDatabase, head: number): Generator<string> {
+export function* walkLLineChain(
+  db: AdventureDatabase,
+  head: number,
+): Generator<string> {
   let kk = head;
   while (kk !== 0) {
     const row = db.llineRows[kk];
@@ -15,4 +18,29 @@ export function* walkLLineChain(db: AdventureDatabase, head: number): Generator<
     yield formatLLineRow(row);
     kk = row.next;
   }
+}
+
+/**
+ * RTEXT message id for the long HELP response (what the game prints for HELP / ? / WHAT).
+ * Matches `adventure.dat` section 6 rows keyed by 51.
+ */
+export const HELP_RTEXT_MESSAGE_ID = 51;
+
+/**
+ * Full HELP text from the database (RTEXT 51). Joins all 20 A4 fields per LLINE row and trims trailing
+ * spaces so the string matches the adventure.dat source lines (avoids losing the end of a row when
+ * {@link formatLLineRow} truncates using inferred maxCol).
+ */
+export function getHelpInstructionText(db: AdventureDatabase): string {
+  const head = db.rtext.get(HELP_RTEXT_MESSAGE_ID);
+  if (head === undefined || head === 0) return "";
+  const lines: string[] = [];
+  let kk = head;
+  while (kk !== 0) {
+    const row = db.llineRows[kk];
+    if (!row) break;
+    lines.push(row.chunks.join("").replace(/\s+$/g, ""));
+    kk = row.next;
+  }
+  return lines.join("\n").trim();
 }

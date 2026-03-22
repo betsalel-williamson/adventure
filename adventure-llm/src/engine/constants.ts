@@ -4,7 +4,9 @@ export const IPLT = [
 ];
 
 /** IFIXT (1..20). Index 0 unused. */
-export const IFIXT = [0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0];
+export const IFIXT = [
+  0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0,
+];
 
 export const KEYS = 1;
 export const LAMP = 2;
@@ -18,4 +20,6 @@ export const WATER = 20;
 export const AXE = 21;
 
 /** JSPKT(JVERB) for JVERB 1..16 */
-export const JSPKT = [24, 29, 0, 31, 0, 31, 38, 38, 42, 42, 43, 46, 77, 71, 73, 75];
+export const JSPKT = [
+  24, 29, 0, 31, 0, 31, 38, 38, 42, 42, 43, 46, 77, 71, 73, 75,
+];

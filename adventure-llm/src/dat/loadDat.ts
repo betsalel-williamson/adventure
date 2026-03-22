@@ -18,7 +18,10 @@ function readA4Chunks(line: string): string[] {
   return chunks;
 }
 
-function buildLLineRow(rowIndex: number, chunks: string[]): Omit<LLineRow, "rowIndex"> & { rowIndex: number } {
+function buildLLineRow(
+  rowIndex: number,
+  chunks: string[],
+): Omit<LLineRow, "rowIndex"> & { rowIndex: number } {
   let kk = 0;
   for (let k = 1; k <= 20; k++) {
     if (chunks[20 - k] !== BLNK) {
@@ -55,7 +58,9 @@ export function loadDatFromString(source: string): AdventureDatabase {
   let p = 0;
 
   const rows: LLineRow[] = [];
-  const pushRow = (r: Omit<LLineRow, "rowIndex"> & { rowIndex: number }): number => {
+  const pushRow = (
+    r: Omit<LLineRow, "rowIndex"> & { rowIndex: number },
+  ): number => {
     rows.push(r);
     return r.rowIndex;
   };

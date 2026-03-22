@@ -6,20 +6,40 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
+    "start": "node dist/cli/main.js",
     "build": "tsc",
     "test": "vitest run",
     "test:watch": "vitest",
     "check": "tsc --noEmit && vitest run",
+    "lint": "eslint --max-warnings=0 .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "dependency-check": "mkdir -p ./reports/dependency-check && dependency-check --project adventure-llm --scan . --out ./reports/dependency-check --format HTML --format JSON",
-    "dependency-check:quick": "mkdir -p ./reports/dependency-check && dependency-check --noupdate --project adventure-llm --scan . --out ./reports/dependency-check --format HTML --format JSON"
+    "dependency-check:quick": "mkdir -p ./reports/dependency-check && dependency-check --noupdate --project adventure-llm --scan . --out ./reports/dependency-check --format HTML --format JSON",
+    "prepare": "cd .. && husky adventure-llm/.husky"
+  },
+  "lint-staged": {
+    "*.{ts,mts,cts,js,mjs,cjs}": [
+      "eslint --fix --max-warnings=0",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml}": "prettier --write"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "^22.10.0",
+    "eslint": "^10.1.0",
+    "eslint-config-prettier": "^10.1.8",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.8.1",
     "typescript": "^5.7.0",
+    "typescript-eslint": "^8.57.1",
     "vitest": "^3.0.0"
   },
   "dependencies": {
     "@google/generative-ai": "^0.21.0",
+    "dotenv": "^17.3.1",
     "zod": "^3.24.0"
   }
 }

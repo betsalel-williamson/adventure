@@ -2,8 +2,15 @@ import { z } from "zod";
 
 /** Gemini / NL layer output before GETIN normalization. */
 export const InterpretedCommandSchema = z.object({
-  primaryToken: z.string().max(5).describe("First five-letter verb or motion word"),
-  secondaryToken: z.string().max(5).optional().describe("Optional object or second word"),
+  primaryToken: z
+    .string()
+    .max(5)
+    .describe("First five-letter verb or motion word"),
+  secondaryToken: z
+    .string()
+    .max(5)
+    .optional()
+    .describe("Optional object or second word"),
   confidence: z.number().min(0).max(1).optional(),
 });
 

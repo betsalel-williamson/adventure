@@ -4,7 +4,10 @@ import path from "node:path";
 import { loadDatFile } from "../dat/loadDat.js";
 import { findVocabIndex, ktabK, toA5 } from "./vocab.js";
 
-const datPath = path.join(fileURLToPath(new URL(".", import.meta.url)), "../../../adventure.dat");
+const datPath = path.join(
+  fileURLToPath(new URL(".", import.meta.url)),
+  "../../../adventure.dat",
+);
 
 describe("vocabulary", () => {
   const db = loadDatFile(datPath);
