@@ -7,7 +7,10 @@ export {
   runFortranOpenThenFirstCommand,
   normalizeInstructionsAnswer,
   normalizeTranscript,
+  transcriptSuggestsCommandRejected,
   type SubprocessEngineOptions,
+  type ScriptedGetinLine,
+  type ContinueLineContext,
 } from "./engine/subprocessEngine.js";
 export {
   FortranOracleEngine,
@@ -23,10 +26,12 @@ export {
 export {
   InterpretedCommandSchema,
   interpretedToGetinLine,
+  swapInterpretedTokens,
   type InterpretedCommand,
 } from "./nl/schema.js";
 export {
   interpretWithGemini,
+  shouldFallbackToClassicForGeminiError,
   validateAgainstVocab,
   type GeminiInterpreterOptions,
 } from "./nl/gemini.js";

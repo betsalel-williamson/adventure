@@ -14,15 +14,21 @@ import { config as loadEnv } from "dotenv";
 import * as readline from "node:readline/promises";
 import { stdin as input } from "node:process";
 import { loadDatFile } from "../dat/loadDat.js";
-import { runFortranOpenThenFirstCommand } from "../engine/subprocessEngine.js";
-import { interpretWithGemini } from "../nl/gemini.js";
+import {
+  runFortranOpenThenFirstCommand,
+  type ScriptedGetinLine,
+} from "../engine/subprocessEngine.js";
+import {
+  interpretWithGemini,
+  shouldFallbackToClassicForGeminiError,
+} from "../nl/gemini.js";
 import {
   appendInteractionLog,
   resolveCacheDir,
   resolveDebugLogPath,
 } from "../nl/llmDebug.js";
 import { instructionIntentToHelpCommand } from "../nl/intent.js";
-import { interpretedToGetinLine } from "../nl/schema.js";
+import { interpretedToGetinLine, swapInterpretedTokens } from "../nl/schema.js";
 
 /** dist/cli -> adventure-llm */
 const packageRoot = path.join(
@@ -128,7 +134,10 @@ async function main(): Promise<void> {
 
   const rl = readline.createInterface({ input, output: process.stderr });
 
-  const interpretPlayerLineToGetin = async (user: string): Promise<string> => {
+  const interpretPlayerLineToGetin = async (
+    user: string,
+    recentGameText?: string,
+  ): Promise<ScriptedGetinLine> => {
     const fromIntent = instructionIntentToHelpCommand(user);
     if (fromIntent) {
       await appendInteractionLog({
@@ -140,8 +149,18 @@ async function main(): Promise<void> {
     }
     const interpreted = await interpretWithGemini(user, db, {
       apiKey: process.env.GEMINI_API_KEY!,
+      recentGameText,
     });
-    return interpretedToGetinLine(interpreted);
+    const firstLine = interpretedToGetinLine(interpreted);
+    const swapped = swapInterpretedTokens(interpreted);
+    const retryLine = swapped ? interpretedToGetinLine(swapped) : undefined;
+    if (
+      retryLine !== undefined &&
+      retryLine.trimEnd() !== firstLine.trimEnd()
+    ) {
+      return { line: firstLine, retryIfRejected: retryLine };
+    }
+    return firstLine;
   };
 
   try {
@@ -153,7 +172,7 @@ async function main(): Promise<void> {
         const user = await rl.question("> ");
         return interpretPlayerLineToGetin(user);
       },
-      getContinueLine: async () => {
+      getContinueLine: async (ctx) => {
         const line = await rl.question("> ");
         const t = line.trim();
         if (t === ".quit" || t === ":q") {
@@ -166,9 +185,19 @@ async function main(): Promise<void> {
         if (t.length === 0) {
           return line;
         }
-        return interpretPlayerLineToGetin(line);
+        return interpretPlayerLineToGetin(line, ctx.gameOutputSinceLastCommand);
       },
     });
+  } catch (err) {
+    if (shouldFallbackToClassicForGeminiError(err)) {
+      process.stderr.write(
+        "\nadventure-llm: Gemini is unavailable (quota, rate limit, or service error). Switching to classic mode: type parser words directly (e.g. EAST, TAKE LAMP).\n\n",
+      );
+      printClassicBanner(hasGeminiKey, forceClassic);
+      runClassicInteractive();
+      return;
+    }
+    throw err;
   } finally {
     rl.close();
   }

@@ -15,12 +15,36 @@ import {
   resolveCacheDir,
   writeCachedInterpreted,
 } from "./llmDebug.js";
+import { repairInterpretedCommand } from "./repairInterpreted.js";
 
 export type GeminiInterpreterOptions = {
   apiKey: string;
   /** Defaults to `resolvedGeminiTextModel()` (gemini-2.5-flash). */
   model?: string;
+  /** Last game transcript since the previous command; improves "them"/"it" and TAKE disambiguation. */
+  recentGameText?: string;
 };
+
+/** True when the CLI should stop using Gemini and run the Fortran binary in classic (TTY) mode. */
+export function shouldFallbackToClassicForGeminiError(err: unknown): boolean {
+  if (err === null || err === undefined) return false;
+  if (typeof err === "object" && "status" in err) {
+    const s = (err as { status: unknown }).status;
+    if (typeof s === "number") {
+      if (s === 429 || s === 500 || s === 502 || s === 503) return true;
+      if (s === 401 || s === 403) return true;
+    }
+  }
+  const msg = err instanceof Error ? err.message : String(err);
+  if (
+    /429|quota|rate limit|too many requests|resource_exhausted|unavailable|overloaded/i.test(
+      msg,
+    )
+  ) {
+    return true;
+  }
+  return false;
+}
 
 function buildVocabHint(db: AdventureDatabase, maxWords: number): string {
   const words: string[] = [];
@@ -50,14 +74,20 @@ export async function interpretWithGemini(
     if (cached) {
       const parsed = InterpretedCommandSchema.safeParse(cached);
       if (parsed.success) {
+        const repaired = repairInterpretedCommand(
+          userText,
+          parsed.data,
+          options.recentGameText,
+        );
         await appendInteractionLog({
           event: "gemini_cache_hit",
           userText,
           model: modelId,
           cacheKey,
           parsed: parsed.data,
+          repaired,
         });
-        return parsed.data;
+        return repaired;
       }
     }
   }
@@ -90,10 +120,16 @@ export async function interpretWithGemini(
     helpFromDat.length > 0
       ? `Official in-game HELP text (from adventure.dat RTEXT ${HELP_RTEXT_MESSAGE_ID}, for when the user asks for instructions or hints):\n${helpFromDat}\n\n`
       : "";
+  const recentBlock =
+    options.recentGameText && options.recentGameText.trim().length > 0
+      ? `Recent game output (use this to resolve "it", "them", and implied objects; prefer nouns that appear here):\n---\n${options.recentGameText.trim().slice(-2500)}\n---\n\n`
+      : "";
   const prompt = `You are mapping user input to Colossal Cave Adventure parser tokens (max 5 letters each, like the original game).
-${helpBlock}Valid vocabulary words include: ${hint}
+${helpBlock}${recentBlock}Valid vocabulary words include: ${hint}
 User said: ${userText}
-Reply ONLY with JSON matching the schema. Use words from the list when possible.`;
+Reply ONLY with JSON matching the schema. Use words from the list when possible.
+Put the verb in primaryToken and the object or direction in secondaryToken when both apply.
+Rules: (1) For taking or carrying something, use primaryToken TAKE or GET and put the object in secondaryToken — never put the object alone in primaryToken. (2) The word UP in column 1 alone means GO UP (a direction), NOT the phrasal verb in "pick it up" / "pick them up"; those mean TAKE + object. (3) For picking up items, prefer TAKE or GET over TOUCH (TOUCH often yields an unhelpful game response). (4) Do not use NULL or placeholder secondaries.`;
 
   await appendInteractionLog({
     event: "gemini_request",
@@ -108,7 +144,12 @@ Reply ONLY with JSON matching the schema. Use words from the list when possible.
   const durationMs = Date.now() - startedMs;
   const text = res.response.text();
   const parsed = JSON.parse(text) as unknown;
-  const cmd = InterpretedCommandSchema.parse(parsed);
+  const rawCmd = InterpretedCommandSchema.parse(parsed);
+  const cmd = repairInterpretedCommand(
+    userText,
+    rawCmd,
+    options.recentGameText,
+  );
 
   await appendInteractionLog({
     event: "gemini_response",
@@ -117,11 +158,12 @@ Reply ONLY with JSON matching the schema. Use words from the list when possible.
     cached: false,
     durationMs,
     rawJson: text,
-    parsed: cmd,
+    parsed: rawCmd,
+    repaired: cmd,
   });
 
   if (cacheDir) {
-    await writeCachedInterpreted(cacheDir, cacheKey, cmd);
+    await writeCachedInterpreted(cacheDir, cacheKey, rawCmd);
   }
 
   return cmd;

@@ -7,6 +7,7 @@ import {
   normalizeTranscript,
   runFortranOpenThenFirstCommand,
   runFortranScript,
+  transcriptSuggestsCommandRejected,
 } from "./subprocessEngine.js";
 
 const repoRoot = path.join(
@@ -14,6 +15,22 @@ const repoRoot = path.join(
   "../../..",
 );
 const adventureBin = path.join(repoRoot, "adventure");
+
+describe("transcriptSuggestsCommandRejected", () => {
+  it("detects RTEXT-style parser rejections", () => {
+    expect(transcriptSuggestsCommandRejected("I DON'T UNDERSTAND THAT!")).toBe(
+      true,
+    );
+    expect(
+      transcriptSuggestsCommandRejected(
+        "sorry, but i am not allowed to give more detail. i will",
+      ),
+    ).toBe(true);
+    expect(transcriptSuggestsCommandRejected("YOU ARE IN A VALLEY.")).toBe(
+      false,
+    );
+  });
+});
 
 describe("normalizeInstructionsAnswer", () => {
   it("maps yes/no variants to y/n", () => {

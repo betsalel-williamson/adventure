@@ -22,3 +22,19 @@ export function interpretedToGetinLine(cmd: InterpretedCommand): string {
   const b = (cmd.secondaryToken ?? "").toUpperCase().slice(0, 5).padEnd(5, " ");
   return `${a}${b}`;
 }
+
+/**
+ * Second GETIN attempt when the first line is rejected: swap verb and object slots.
+ * Some NL maps put the object in `primaryToken` and the verb in `secondaryToken`.
+ */
+export function swapInterpretedTokens(
+  cmd: InterpretedCommand,
+): InterpretedCommand | null {
+  const s = cmd.secondaryToken?.trim();
+  if (!s) return null;
+  return {
+    primaryToken: s.toUpperCase().slice(0, 5),
+    secondaryToken: cmd.primaryToken.toUpperCase().slice(0, 5),
+    confidence: cmd.confidence,
+  };
+}

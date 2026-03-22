@@ -6,6 +6,7 @@ import {
 } from "node:child_process";
 import { once } from "node:events";
 import path from "node:path";
+import { appendInteractionLog } from "../nl/llmDebug.js";
 
 export type SubprocessEngineOptions = {
   /** Directory containing adventure.dat and ./adventure */
@@ -42,11 +43,102 @@ export function normalizeTranscript(s: string): string {
     .trim();
 }
 
+/**
+ * True if new game output looks like Colossal Cave rejected the last command
+ * (adventure.dat RTEXT lines such as 12, 13, 15, 60).
+ */
+export function transcriptSuggestsCommandRejected(output: string): boolean {
+  const u = output.toUpperCase();
+  return (
+    u.includes("I DON'T UNDERSTAND THAT!") ||
+    u.includes("I DON'T KNOW HOW TO APPLY THAT WORD HERE.") ||
+    u.includes("SORRY, BUT I AM NOT ALLOWED TO GIVE MORE DETAIL") ||
+    u.includes("I DON'T KNOW THAT WORD.")
+  );
+}
+
+/** One or two GETIN lines: optional automatic retry when the parser rejects the first. */
+export type ScriptedGetinLine =
+  | string
+  | {
+      line: string;
+      /** Sent once if output after `line` matches {@link transcriptSuggestsCommandRejected}. */
+      retryIfRejected?: string;
+    };
+
+/** Transcript printed after the last scripted command, for NL context (resolve "them", objects). */
+export type ContinueLineContext = {
+  gameOutputSinceLastCommand: string;
+};
+
+function normalizeScriptedGetin(scripted: ScriptedGetinLine): {
+  line: string;
+  retryIfRejected?: string;
+} {
+  if (typeof scripted === "string") return { line: scripted };
+  return scripted;
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /** Wait until `idleMs` passes with no stdout/stderr data (game finished printing a screen). */
+function transcriptByteLength(chunks: Buffer[]): number {
+  return Buffer.concat(chunks).length;
+}
+
+function transcriptSince(chunks: Buffer[], startByte: number): string {
+  return Buffer.concat(chunks).subarray(startByte).toString("utf8");
+}
+
+async function writeGetinLine(
+  child: ChildProcessWithoutNullStreams,
+  line: string,
+): Promise<void> {
+  const trimmed = line.trimEnd();
+  child.stdin.write(trimmed.endsWith("\n") ? trimmed : `${trimmed}\n`);
+}
+
+/**
+ * Write one GETIN line, wait for output; if the game output looks like a parser
+ * rejection and `retryIfRejected` is set, write that line once and wait again.
+ */
+async function writeScriptedGetinLine(
+  child: ChildProcessWithoutNullStreams,
+  allChunks: Buffer[],
+  scripted: ScriptedGetinLine,
+  idleMs: number,
+): Promise<void> {
+  const { line, retryIfRejected } = normalizeScriptedGetin(scripted);
+  const markBefore = transcriptByteLength(allChunks);
+  await writeGetinLine(child, line);
+  await waitForOutputIdle(child, idleMs);
+  if (!retryIfRejected?.trim()) return;
+  const newText = transcriptSince(allChunks, markBefore);
+  if (!transcriptSuggestsCommandRejected(newText)) return;
+  process.stderr.write(
+    "adventure-llm: first tokens were rejected; retrying with secondary and primary swapped.\n",
+  );
+  await appendInteractionLog({
+    event: "nl_getin_retry_after_rejection",
+    firstLine: line.trimEnd(),
+    retryLine: retryIfRejected.trimEnd(),
+    matchedOutputTail: newText.slice(-800),
+  });
+  await writeGetinLine(child, retryIfRejected);
+  await waitForOutputIdle(child, idleMs);
+}
+
+async function killChildIfRunning(
+  child: ChildProcessWithoutNullStreams,
+): Promise<void> {
+  if (child.exitCode === null && child.signalCode === null) {
+    child.kill("SIGTERM");
+    await once(child, "close");
+  }
+}
+
 async function waitForOutputIdle(
   child: ChildProcess,
   idleMs: number,
@@ -91,9 +183,11 @@ export function normalizeInstructionsAnswer(line: string): string {
 export async function runFortranOpenThenFirstCommand(
   options: SubprocessEngineOptions & {
     getInstructionsAnswer: () => Promise<string>;
-    getFirstCommandLine: () => Promise<string>;
+    getFirstCommandLine: () => Promise<ScriptedGetinLine>;
     /** Further moves: return a line to send, or `null` to end the session (SIGTERM). */
-    getContinueLine?: () => Promise<string | null>;
+    getContinueLine?: (
+      ctx: ContinueLineContext,
+    ) => Promise<ScriptedGetinLine | null>;
   },
 ): Promise<string> {
   const bin = options.adventureBinary ?? path.join(options.cwd, "adventure");
@@ -111,44 +205,52 @@ export async function runFortranOpenThenFirstCommand(
   child.stdout.on("data", tee);
   child.stderr.on("data", tee);
 
-  await Promise.race([
-    Promise.race([once(child.stdout, "data"), once(child.stderr, "data")]),
-    sleep(15_000).then(() => {
-      throw new Error("adventure produced no output while starting");
-    }),
-  ]);
-  await waitForOutputIdle(child, 320);
+  try {
+    await Promise.race([
+      Promise.race([once(child.stdout, "data"), once(child.stderr, "data")]),
+      sleep(15_000).then(() => {
+        throw new Error("adventure produced no output while starting");
+      }),
+    ]);
+    await waitForOutputIdle(child, 320);
 
-  const rawInstr = await options.getInstructionsAnswer();
-  const instrLine = normalizeInstructionsAnswer(rawInstr);
-  child.stdin.write(`${instrLine}\n`);
+    const rawInstr = await options.getInstructionsAnswer();
+    const instrLine = normalizeInstructionsAnswer(rawInstr);
+    child.stdin.write(`${instrLine}\n`);
 
-  await waitForOutputIdle(child, 380);
+    await waitForOutputIdle(child, 380);
 
-  const cmdLine = await options.getFirstCommandLine();
-  child.stdin.write(cmdLine.endsWith("\n") ? cmdLine : `${cmdLine}\n`);
+    const firstScripted = await options.getFirstCommandLine();
+    await writeScriptedGetinLine(child, allChunks, firstScripted, 500);
 
-  await waitForOutputIdle(child, 500);
+    let outputMark = transcriptByteLength(allChunks);
 
-  if (options.getContinueLine) {
-    while (child.exitCode === null && child.signalCode === null) {
-      const next = await options.getContinueLine();
-      if (next === null) {
-        break;
+    if (options.getContinueLine) {
+      while (child.exitCode === null && child.signalCode === null) {
+        const gameOutputSinceLastCommand = transcriptSince(
+          allChunks,
+          outputMark,
+        );
+        const next = await options.getContinueLine({
+          gameOutputSinceLastCommand,
+        });
+        if (next === null) {
+          break;
+        }
+        const norm = normalizeScriptedGetin(next);
+        if (norm.line.trimEnd().length === 0) {
+          continue;
+        }
+        await writeScriptedGetinLine(child, allChunks, next, 450);
+        outputMark = transcriptByteLength(allChunks);
       }
-      const trimmed = next.trimEnd();
-      if (trimmed.length === 0) {
-        continue;
-      }
-      child.stdin.write(trimmed.endsWith("\n") ? trimmed : `${trimmed}\n`);
-      await waitForOutputIdle(child, 450);
     }
-  }
 
-  if (child.exitCode === null && child.signalCode === null) {
-    child.kill("SIGTERM");
-    await once(child, "close");
-  }
+    await killChildIfRunning(child);
 
-  return Buffer.concat(allChunks).toString("utf8").replace(/\r\n/g, "\n");
+    return Buffer.concat(allChunks).toString("utf8").replace(/\r\n/g, "\n");
+  } catch (err) {
+    await killChildIfRunning(child);
+    throw err;
+  }
 }
