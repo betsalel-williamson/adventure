@@ -6,6 +6,27 @@ this program, see the
 [Wikipedia article](https://en.wikipedia.org/wiki/Colossal_Cave_Adventure)
 on it.
 
+## Build and run (macOS and other Unix-like systems)
+
+You need [GNU Fortran](https://gcc.gnu.org/fortran/) (`gfortran`). On macOS with [Homebrew](https://brew.sh/):
+
+```sh
+brew install gcc
+```
+
+That installs `gfortran` (often as `gfortran` in your `PATH`). From the repository root:
+
+```sh
+make
+./adventure
+```
+
+Or `make run`, which builds if needed and starts the game. Run the program from this directory so it can open `adventure.dat` (same folder as the executable).
+
+Optional: `-loc` prints your maze location while playing (helps with mapping), for example `./adventure -loc`.
+
+`make clean` removes the built `adventure` binary.
+
 Downloaded from Wayback Machine archive of
 
 ```
