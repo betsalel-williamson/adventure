@@ -32,14 +32,14 @@ That makes `.cursor/plans/adventure-llm-task.plan.md` point at this file. Duplic
 ## Deliverables (see plan)
 
 
-| Artifact                                | Status  |
-| --------------------------------------- | ------- |
-| `user-story.md`                         | Pending |
-| `design.md`                             | Pending |
-| `bugs.md`                               | Pending |
-| `docs/architecture/adventure-engine.md` | Pending |
-| Numbered step files (`01_*.md`, …)      | Pending |
-| `adventure-llm/` TypeScript package     | Pending |
+| Artifact                                | Status    |
+| --------------------------------------- | --------- |
+| `user-story.md`                         | Complete  |
+| `design.md`                             | Complete  |
+| `bugs.md`                               | Complete  |
+| `docs/architecture/adventure-engine.md` | Complete  |
+| Numbered step files (`01_*.md`, …)      | Complete  |
+| `adventure-llm/` TypeScript package     | Complete  |
 
 
 ## Task steps
