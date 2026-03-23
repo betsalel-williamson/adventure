@@ -31,6 +31,12 @@ describe("llmDebug", () => {
     );
   });
 
+  it("cacheKeyFor differs when providerId is included", () => {
+    expect(cacheKeyFor("go east", "m", "google")).not.toEqual(
+      cacheKeyFor("go east", "m", "http"),
+    );
+  });
+
   it("writeCachedInterpreted round-trips readCachedInterpreted", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "adv-llm-cache-"));
     try {

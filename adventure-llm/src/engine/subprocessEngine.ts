@@ -233,15 +233,15 @@ export async function runFortranOpenThenFirstCommand(
     const firstScripted = await options.getFirstCommandLine({
       transcriptSoFar,
     });
+    /** Byte offset in `allChunks` before the next GETIN line — output after this is the prior command's result. */
+    let markBeforeNextCommand = transcriptByteLength(allChunks);
     await writeScriptedGetinLine(child, allChunks, firstScripted, 500);
-
-    let outputMark = transcriptByteLength(allChunks);
 
     if (options.getContinueLine) {
       while (child.exitCode === null && child.signalCode === null) {
         const gameOutputSinceLastCommand = transcriptSince(
           allChunks,
-          outputMark,
+          markBeforeNextCommand,
         );
         const next = await options.getContinueLine({
           gameOutputSinceLastCommand,
@@ -253,8 +253,8 @@ export async function runFortranOpenThenFirstCommand(
         if (norm.line.trimEnd().length === 0) {
           continue;
         }
+        markBeforeNextCommand = transcriptByteLength(allChunks);
         await writeScriptedGetinLine(child, allChunks, next, 450);
-        outputMark = transcriptByteLength(allChunks);
       }
     }
 

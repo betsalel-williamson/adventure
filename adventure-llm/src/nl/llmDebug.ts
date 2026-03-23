@@ -20,10 +20,20 @@ export function resolveCacheDir(): string | null {
   return d ? path.resolve(d) : null;
 }
 
-export function cacheKeyFor(userText: string, model: string): string {
-  return createHash("sha256")
-    .update(`${model}\n${userText}`, "utf8")
-    .digest("hex");
+/**
+ * Cache key for NL interpretation. When `providerId` is set, it is included so
+ * the same model name on different providers does not collide.
+ */
+export function cacheKeyFor(
+  userText: string,
+  model: string,
+  providerId?: string,
+): string {
+  const material =
+    providerId !== undefined
+      ? `${providerId}\n${model}\n${userText}`
+      : `${model}\n${userText}`;
+  return createHash("sha256").update(material, "utf8").digest("hex");
 }
 
 export function cacheFilePath(cacheDir: string, key: string): string {

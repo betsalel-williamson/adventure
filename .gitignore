@@ -5,3 +5,4 @@
 /adventure-llm/.env
 /adventure-llm/.env.local
 /adventure-llm/.cache/
+/adventure-llm/.venv/

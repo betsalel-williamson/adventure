@@ -83,5 +83,23 @@ describe.runIf(existsSync(adventureBin))(
       expect(out).toContain("WELL HOUSE");
       expect(raw).not.toContain("End of file");
     });
+
+    it("passes non-empty gameOutputSinceLastCommand on first getContinueLine (feedback for prior move)", async () => {
+      const firstOutputs: string[] = [];
+      await runFortranOpenThenFirstCommand({
+        cwd: repoRoot,
+        adventureBinary: adventureBin,
+        getInstructionsAnswer: async () => "n",
+        getFirstCommandLine: async () => "east",
+        getContinueLine: async (ctx) => {
+          firstOutputs.push(ctx.gameOutputSinceLastCommand);
+          return null;
+        },
+      });
+      expect(firstOutputs).toHaveLength(1);
+      const u = firstOutputs[0].replace(/\s+/g, " ").trim();
+      expect(u.length).toBeGreaterThan(20);
+      expect(u.toUpperCase()).toContain("WELL");
+    });
   },
 );

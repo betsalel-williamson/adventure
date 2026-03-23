@@ -7,6 +7,7 @@ import {
   shouldFallbackToClassicForGeminiError,
   validateAgainstVocab,
 } from "./gemini.js";
+import { shouldFallbackToClassicForLlmError } from "./llmErrors.js";
 import { AutoplayPlannerResponseSchema } from "./schema.js";
 
 const datPath = path.join(
@@ -34,6 +35,39 @@ describe("shouldFallbackToClassicForGeminiError", () => {
     expect(
       shouldFallbackToClassicForGeminiError(new Error("parse failed")),
     ).toBe(false);
+  });
+
+  it("matches shouldFallbackToClassicForLlmError for google", () => {
+    const err = new Error("quota");
+    expect(shouldFallbackToClassicForGeminiError(err)).toBe(
+      shouldFallbackToClassicForLlmError(err, "google"),
+    );
+  });
+});
+
+describe("shouldFallbackToClassicForLlmError (http and mlx)", () => {
+  it("is true for ECONNREFUSED message", () => {
+    expect(
+      shouldFallbackToClassicForLlmError(
+        new Error("fetch failed: ECONNREFUSED"),
+        "http",
+      ),
+    ).toBe(true);
+  });
+
+  it("is false for parse errors", () => {
+    expect(
+      shouldFallbackToClassicForLlmError(new Error("Unexpected token"), "http"),
+    ).toBe(false);
+  });
+
+  it("matches http behavior for mlx subprocess errors", () => {
+    expect(
+      shouldFallbackToClassicForLlmError(
+        new Error("MLX worker exited code=1 signal=null"),
+        "mlx",
+      ),
+    ).toBe(true);
   });
 });
 

@@ -56,21 +56,33 @@ dependency-check --nvdApiKey "$NVD_API_KEY" --project adventure-llm --scan . --o
 
 ## Environment
 
-| Variable                               | Purpose                                                                                                                                                    |
-| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GEMINI_API_KEY`                       | Enables natural-language first line; omit or use `--classic` for Fortran-only                                                                              |
-| `GEMINI_TEXT_MODEL`                    | Optional; defaults to `gemini-2.5-flash` for NL JSON mapping                                                                                               |
-| `GEMINI_IMAGE_MODEL`                   | Optional; defaults to `gemini-3.1-flash-image-preview` for future location imagery                                                                         |
-| `ADVENTURE_LLM_DEBUG`                  | Set to `1` to append JSONL interaction logs to `.cache/llm-interactions.jsonl` (under cwd, usually `adventure-llm/`); includes full Gemini request prompts |
-| `ADVENTURE_LLM_DEBUG_LOG`              | Optional explicit path for that JSONL file (overrides default path when set)                                                                               |
-| `ADVENTURE_LLM_CACHE_DIR`              | If set, cache each `InterpretedCommand` by hash of model + user line (JSON files); avoids repeat API calls                                                 |
-| `ADVENTURE_LLM_INSTRUCTIONS`           | `y` or `n` for autoplay only: answer to “instructions?” without a prompt (default `n`)                                                                     |
-| `ADVENTURE_LLM_AUTOPLAY_PACE_MS`       | Autoplay: delay in ms after each screen before the next Gemini call (default `2000`; `0` disables)                                                         |
-| `ADVENTURE_LLM_AUTOPLAY_MAX_MOVES`     | Autoplay: stop after this many GETIN lines (default `300`)                                                                                                 |
-| `ADVENTURE_LLM_AUTOPLAY_CONTEXT_CHARS` | Autoplay: approximate max size of the planner user prompt (default `12000`)                                                                                |
-| `NVD_API_KEY`                          | Optional; Dependency-Check reads it when set in the environment (see below)                                                                                |
+| Variable                               | Purpose                                                                                                                                                              |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GEMINI_API_KEY`                       | Enables natural-language first line; omit or use `--classic` for Fortran-only                                                                                        |
+| `GEMINI_TEXT_MODEL`                    | Optional; defaults to `gemini-2.5-flash` for NL JSON mapping                                                                                                         |
+| `GEMINI_IMAGE_MODEL`                   | Optional; defaults to `gemini-3.1-flash-image-preview` for future location imagery                                                                                   |
+| `ADVENTURE_LLM_DEBUG`                  | Set to `1` to append JSONL interaction logs to `.cache/llm-interactions.jsonl` (under cwd, usually `adventure-llm/`); includes full Gemini request prompts           |
+| `ADVENTURE_LLM_DEBUG_LOG`              | Optional explicit path for that JSONL file (overrides default path when set)                                                                                         |
+| `ADVENTURE_LLM_CACHE_DIR`              | If set, cache each `InterpretedCommand` by hash of model + user line (JSON files); avoids repeat API calls                                                           |
+| `ADVENTURE_LLM_INSTRUCTIONS`           | `y` or `n` for autoplay only: answer to “instructions?” without a prompt (default `n`)                                                                               |
+| `ADVENTURE_LLM_AUTOPLAY_PACE_MS`       | Autoplay: delay in ms after each screen before the next Gemini call (default `2000`; `0` disables)                                                                   |
+| `ADVENTURE_LLM_AUTOPLAY_MAX_MOVES`     | Autoplay: stop after this many GETIN lines (default `300`)                                                                                                           |
+| `ADVENTURE_LLM_AUTOPLAY_CONTEXT_CHARS` | Autoplay: approximate max size of the planner user prompt (default `12000`)                                                                                          |
+| `NVD_API_KEY`                          | Optional; Dependency-Check reads it when set in the environment (see below)                                                                                          |
+| `HF_TOKEN`                             | Optional; [Hugging Face access token](https://huggingface.co/docs/hub/security-tokens) for higher Hub rate limits and more reliable model downloads (MLX / `mlx_lm`) |
 
 Logs and cache live under `adventure-llm/.cache/` by default; that directory is gitignored.
+
+### Hugging Face token (`HF_TOKEN`)
+
+Downloading MLX models (for example `mlx-community/gemma-2-2b-it`) uses the [Hugging Face Hub](https://huggingface.co/). Without authentication, downloads use anonymous limits; with a token you get **higher rate limits** and generally smoother pulls.
+
+**Do not commit the token.** Get one at [Settings → Access Tokens](https://huggingface.co/settings/tokens): create a token with at least **Read** permission (enough for public models). Set:
+
+1. **Shell** (one session): `export HF_TOKEN='hf_…'`
+2. **`adventure-llm/.env`**: add `HF_TOKEN=hf_…` next to your other secrets (see [`.env.example`](.env.example)). Load it the same way you load `NVD_API_KEY` for Dependency-Check, or use [direnv](https://direnv.net/).
+
+The [`huggingface_hub`](https://huggingface.co/docs/huggingface_hub/package_reference/environment_variables) library also accepts `HUGGING_FACE_HUB_TOKEN` if you already use that name elsewhere.
 
 ### NVD API key (Dependency-Check)
 
