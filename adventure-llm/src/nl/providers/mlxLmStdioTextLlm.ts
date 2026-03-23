@@ -21,7 +21,13 @@ import { repairInterpretedCommand } from "../repairInterpreted.js";
 import {
   buildAutoplayPlannerPrompt,
   buildInterpretSystemAndUserPrompt,
+  resolveCompactPrompts,
 } from "../adventureNlPrompts.js";
+import {
+  buildAutoplayRelevantTokensFilterPrompt,
+  buildSituationalCandidateTokens,
+  parseRelevantTokensResponse,
+} from "../situationalCandidates.js";
 import { parseJsonObjectFromLlmText } from "../jsonFromLlmText.js";
 import {
   coerceAutoplayPlannerJson,
@@ -30,7 +36,7 @@ import {
 import type { TextLlm } from "../textLlmContract.js";
 
 export type MlxLmStdioTextLlmOptions = {
-  /** Hugging Face repo id, e.g. mlx-community/gemma-2-2b-it */
+  /** Hugging Face repo id, e.g. mlx-community/gemma-2-9b-it-4bit */
   modelId: string;
   /**
    * When true (default), runs `uv run python <script>` with `cwd` at the package root (see `pyproject.toml`).
@@ -48,6 +54,11 @@ export type MlxLmStdioTextLlmOptions = {
   maxTokens?: number;
   /** Max wait for first model load (ms). */
   readyTimeoutMs?: number;
+  /**
+   * Shorter prompts + smaller vocab list for small local models.
+   * Default: {@link resolveCompactPrompts} for `mlx` (typically true unless `ADVENTURE_LLM_COMPACT_PROMPTS=0`).
+   */
+  compactPrompts?: boolean;
 };
 
 function defaultWorkerScriptPath(): string {
@@ -70,6 +81,7 @@ export class MlxLmStdioTextLlm implements TextLlm {
   private readonly resolvedScriptPath: string;
   private readonly maxTokens: number;
   private readonly readyTimeoutMs: number;
+  private readonly compactPrompts: boolean;
 
   private child: ChildProcessWithoutNullStreams | null = null;
   private rl: ReturnType<typeof createInterface> | null = null;
@@ -94,6 +106,8 @@ export class MlxLmStdioTextLlm implements TextLlm {
     this.pythonPath = options.pythonPath?.trim() || "python3";
     this.maxTokens = options.maxTokens ?? 512;
     this.readyTimeoutMs = options.readyTimeoutMs ?? 900_000;
+    this.compactPrompts =
+      options.compactPrompts ?? resolveCompactPrompts("mlx");
   }
 
   private async withMutex<T>(fn: () => Promise<T>): Promise<T> {
@@ -301,6 +315,7 @@ export class MlxLmStdioTextLlm implements TextLlm {
       db,
       userText,
       options.recentGameText,
+      { compact: this.compactPrompts },
     );
 
     await appendInteractionLog({
@@ -356,7 +371,59 @@ export class MlxLmStdioTextLlm implements TextLlm {
       "adventure-llm: autoplay — planning next move (MLX)…\n",
     );
 
-    const prompt = buildAutoplayPlannerPrompt(db, options.plannerUserPrompt);
+    let plannerBody = options.plannerUserPrompt;
+    const recent = options.recentGameTextForRepair?.trim() ?? "";
+    const twoStep = process.env.ADVENTURE_LLM_AUTOPLAY_TWO_STEP?.trim() === "1";
+    if (twoStep && recent.length > 0) {
+      const candidates = buildSituationalCandidateTokens(db, recent);
+      if (candidates.length > 0) {
+        process.stderr.write(
+          "adventure-llm: autoplay — two-step token filter (MLX)…\n",
+        );
+        const filterPrompt = buildAutoplayRelevantTokensFilterPrompt(
+          recent,
+          candidates,
+        );
+        await appendInteractionLog({
+          event: "text_llm_autoplay_filter_request",
+          provider: this.providerId,
+          model: this.modelId,
+          promptLength: filterPrompt.length,
+          prompt: filterPrompt,
+        });
+        const filterStarted = Date.now();
+        let filterRaw = "";
+        let narrowed: string[] = [];
+        try {
+          filterRaw = await this.complete(filterPrompt);
+          const parsedUnknown = parseJsonObjectFromLlmText(filterRaw);
+          narrowed = parseRelevantTokensResponse(
+            parsedUnknown,
+            new Set(candidates),
+          );
+        } catch {
+          /* fall through to single-step body */
+        }
+        await appendInteractionLog({
+          event: "text_llm_autoplay_filter_response",
+          provider: this.providerId,
+          model: this.modelId,
+          durationMs: Date.now() - filterStarted,
+          rawJson: filterRaw,
+          narrowed,
+        });
+        if (narrowed.length > 0) {
+          plannerBody = `## Two-step token filter (prefer these for primary and secondary)
+${narrowed.join(", ")}
+
+${plannerBody}`;
+        }
+      }
+    }
+
+    const prompt = buildAutoplayPlannerPrompt(db, plannerBody, {
+      compact: this.compactPrompts,
+    });
 
     await appendInteractionLog({
       event: "text_llm_autoplay_request",

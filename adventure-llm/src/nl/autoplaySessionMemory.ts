@@ -147,6 +147,11 @@ export class AutoplaySessionMemory {
   /** FIFO of GETIN keys the parser rejected; cleared after any non-rejection outcome. */
   private rejectedGetinQueue: string[] = [];
 
+  /** Raw accumulated transcript tail (for situational candidate extraction). */
+  getRecentRawTail(): string {
+    return this.recentRawTail;
+  }
+
   /** Seed from transcript before the first `> ` command. */
   seedOpening(transcript: string): void {
     const norm = transcript.replace(/\r\n/g, "\n");
@@ -288,7 +293,13 @@ ${lines.join("\n")}`;
    * Assemble full user prompt body for the planner: narrative sections + raw tail,
    * trimmed to `maxChars` (shrink raw tail first, then older turn lines).
    */
-  buildPlannerUserPrompt(maxChars: number, vocabHint: string): string {
+  buildPlannerUserPrompt(
+    maxChars: number,
+    vocabHint: string,
+    options?: { compact?: boolean; situationalSection?: string },
+  ): string {
+    const compact = options?.compact ?? false;
+    const situationalSection = options?.situationalSection?.trim();
     const stateBlock = this.buildStateBlock();
     const turnLog = this.buildTurnLogBlock(DEFAULT_TURN_LOG_LINES);
     const parserBlock = this.buildParserRejectionBlock();
@@ -297,7 +308,8 @@ ${lines.join("\n")}`;
 
     const vocabSection = vocabTrim(vocabHint, maxChars);
     const preamble = [
-      ...linesForAutoplayPlannerContextBody(vocabSection),
+      ...linesForAutoplayPlannerContextBody(vocabSection, { compact }),
+      ...(situationalSection ? ["", situationalSection] : []),
       "",
       stateBlock,
       "",

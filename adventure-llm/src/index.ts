@@ -44,14 +44,25 @@ export {
   vocabTokensForLlmEnums,
 } from "./nl/gameVocabEnums.js";
 export {
+  buildAutoplayRelevantTokensFilterPrompt,
+  buildSituationalCandidateTokens,
+  formatSituationalCandidatesSection,
+  parseRelevantTokensResponse,
+} from "./nl/situationalCandidates.js";
+export {
   ADVENTURE_LLM_INTERPRET_ROLE,
+  ADVENTURE_LLM_INTERPRET_ROLE_COMPACT,
   ADVENTURE_LLM_AUTOPLAY_PLANNER_ROLE,
+  ADVENTURE_LLM_AUTOPLAY_PLANNER_ROLE_COMPACT,
   ADVENTURE_LLM_PARSER_TOKEN_RULES,
+  ADVENTURE_LLM_PARSER_TOKEN_RULES_COMPACT,
   adventureLlmInterpretJsonFooter,
   adventureLlmAutoplayJsonFooter,
   buildInterpretSystemAndUserPrompt,
   buildAutoplayPlannerPrompt,
   linesForAutoplayPlannerContextBody,
+  resolveCompactPrompts,
+  resolveVocabHintMaxWords,
 } from "./nl/adventureNlPrompts.js";
 export { chooseNextMoveWithGemini } from "./nl/geminiAutoplay.js";
 export {

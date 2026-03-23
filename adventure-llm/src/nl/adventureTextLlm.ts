@@ -3,13 +3,14 @@ import type { AutoplayPlannerResponse, InterpretedCommand } from "./schema.js";
 import { GoogleGenerativeAiTextLlm } from "./providers/googleGenerativeAiTextLlm.js";
 import { HttpOpenAiCompatibleTextLlm } from "./providers/httpOpenAiCompatibleTextLlm.js";
 import { MlxLmStdioTextLlm } from "./providers/mlxLmStdioTextLlm.js";
+import { resolveCompactPrompts } from "./adventureNlPrompts.js";
 import type { TextLlm } from "./textLlmContract.js";
 
 /** Default Ollama OpenAI-compatible base (`/v1` included). */
 export const DEFAULT_HTTP_OPENAI_BASE_URL = "http://127.0.0.1:11434/v1";
 
-/** Default Hugging Face MLX weights for Gemma 2 2B Instruct on Apple Silicon. */
-export const DEFAULT_MLX_MODEL_ID = "mlx-community/gemma-2-2b-it";
+/** Default Hugging Face MLX weights (Gemma 2 9B Instruct 4-bit — good balance for local JSON tasks on many Apple Silicon Macs). */
+export const DEFAULT_MLX_MODEL_ID = "mlx-community/gemma-2-9b-it-4bit";
 
 /**
  * Resolve which text LLM to use from `process.env`.
@@ -57,6 +58,7 @@ export function resolveTextLlmFromEnv(): TextLlm | null {
       scriptPath: process.env.ADVENTURE_LLM_MLX_SCRIPT?.trim(),
       maxTokens,
       readyTimeoutMs,
+      compactPrompts: resolveCompactPrompts("mlx"),
     };
   };
 

@@ -25,6 +25,14 @@ import {
   planAutoplayWithTextLlm,
   resolveTextLlmFromEnv,
 } from "../nl/adventureTextLlm.js";
+import {
+  resolveCompactPrompts,
+  resolveVocabHintMaxWords,
+} from "../nl/adventureNlPrompts.js";
+import {
+  buildSituationalCandidateTokens,
+  formatSituationalCandidatesSection,
+} from "../nl/situationalCandidates.js";
 import { buildVocabHint } from "../nl/vocabHint.js";
 import { shouldFallbackToClassicForLlmError } from "../nl/llmErrors.js";
 import {
@@ -102,9 +110,9 @@ function resolveAutoplayMaxMoves(): number {
 
 function resolveAutoplayContextChars(): number {
   const v = process.env.ADVENTURE_LLM_AUTOPLAY_CONTEXT_CHARS?.trim();
-  if (v === undefined || v === "") return 12_000;
+  if (v === undefined || v === "") return 6000;
   const n = Number(v);
-  return Number.isFinite(n) && n >= 2000 ? Math.floor(n) : 12_000;
+  return Number.isFinite(n) && n >= 2000 ? Math.floor(n) : 6000;
 }
 
 /** Instructions screen: `ADVENTURE_LLM_INSTRUCTIONS=y` or `n` (default `n`). */
@@ -227,15 +235,21 @@ async function runAutoplaySessionWithTextLlm(client: TextLlm): Promise<void> {
   let movesSent = 0;
   let lastGetinLine = "";
 
+  const compact = resolveCompactPrompts(client.providerId);
+  const repairTailChars = compact ? 1200 : 2500;
   const callPlanner = async (recentForRepair: string) => {
-    const vocabHint = buildVocabHint(db, 120);
+    const vocabHint = buildVocabHint(db, resolveVocabHintMaxWords(compact));
+    const situationalSection = formatSituationalCandidatesSection(
+      buildSituationalCandidateTokens(db, memory.getRecentRawTail()),
+    );
     const plannerUserPrompt = memory.buildPlannerUserPrompt(
       contextChars,
       vocabHint,
+      { compact, situationalSection },
     );
     return planAutoplayWithTextLlm(db, client, {
       plannerUserPrompt,
-      recentGameTextForRepair: recentForRepair.slice(-2500),
+      recentGameTextForRepair: recentForRepair.slice(-repairTailChars),
     });
   };
 
@@ -255,7 +269,9 @@ async function runAutoplaySessionWithTextLlm(client: TextLlm): Promise<void> {
     getFirstCommandLine: async (ctx) => {
       memory.seedOpening(ctx.transcriptSoFar);
       if (paceMs > 0) await sleep(paceMs);
-      const plan = await callPlanner(ctx.transcriptSoFar.slice(-2500));
+      const plan = await callPlanner(
+        ctx.transcriptSoFar.slice(-repairTailChars),
+      );
       if (plan.continuePlaying === false) {
         await appendInteractionLog({
           event: "autoplay_stop_before_first_command",
@@ -289,7 +305,7 @@ async function runAutoplaySessionWithTextLlm(client: TextLlm): Promise<void> {
       }
       if (paceMs > 0) await sleep(paceMs);
       const plan = await callPlanner(
-        ctx.gameOutputSinceLastCommand.slice(-2500),
+        ctx.gameOutputSinceLastCommand.slice(-repairTailChars),
       );
       if (plan.continuePlaying === false) {
         await appendInteractionLog({

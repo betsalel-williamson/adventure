@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-JSONL stdio worker for MLX Gemma (Apple Silicon). Loads the model once, then:
+JSONL stdio worker for MLX (Apple Silicon). Loads the model once, then:
 
   - First stdout line: {"type": "ready"}
   - Each stdin line: {"id": "<string>", "prompt": "<text>", "max_tokens": <int optional>}
@@ -8,7 +8,10 @@ JSONL stdio worker for MLX Gemma (Apple Silicon). Loads the model once, then:
 
 Install deps: from adventure-llm directory run ``uv venv`` then ``uv sync`` (uses ``pyproject.toml``).
 
-Default model (override with ADVENTURE_LLM_MLX_MODEL): mlx-community/gemma-2-2b-it
+Prompts use the tokenizer's ``apply_chat_template`` when available; otherwise a Gemma-2-style
+wrap for legacy compatibility.
+
+Default model (override with ADVENTURE_LLM_MLX_MODEL): mlx-community/gemma-2-9b-it-4bit
 """
 from __future__ import annotations
 
@@ -27,9 +30,30 @@ def _gemma2_turns(user_text: str) -> str:
     )
 
 
+def _build_generation_prompt(tokenizer: object, user_text: str, model_id: str) -> str:
+    """Use HF chat template when present; else Gemma-2 turns; else raw text."""
+    chat_template = getattr(tokenizer, "chat_template", None)
+    apply_fn = getattr(tokenizer, "apply_chat_template", None)
+    if chat_template and callable(apply_fn):
+        try:
+            messages = [{"role": "user", "content": user_text}]
+            out = apply_fn(
+                messages,
+                tokenize=False,
+                add_generation_prompt=True,
+            )
+            if isinstance(out, str) and out.strip():
+                return out
+        except Exception:
+            pass
+    if "gemma" in model_id.lower():
+        return _gemma2_turns(user_text)
+    return user_text
+
+
 def main() -> None:
     model_id = os.environ.get(
-        "ADVENTURE_LLM_MLX_MODEL", "mlx-community/gemma-2-2b-it"
+        "ADVENTURE_LLM_MLX_MODEL", "mlx-community/gemma-2-9b-it-4bit"
     ).strip()
 
     try:
@@ -88,7 +112,7 @@ def main() -> None:
             continue
 
         max_tokens = int(req.get("max_tokens", 512))
-        full_prompt = _gemma2_turns(prompt)
+        full_prompt = _build_generation_prompt(tokenizer, prompt, model_id)
 
         try:
             raw = generate(
