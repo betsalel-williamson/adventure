@@ -1,16 +1,77 @@
 /**
  * In-process session memory for self-acting (autoplay) mode: event log, heuristic
- * derived state, and budgeted prompt text for stateless Gemini calls.
+ * derived state, and budgeted prompt text for stateless TextLlm calls.
+ * Shared role/rules come from {@link linesForAutoplayPlannerContextBody} in adventureNlPrompts.
  */
+import { linesForAutoplayPlannerContextBody } from "./adventureNlPrompts.js";
+import {
+  interpretedToGetinLine,
+  type AutoplayPlannerResponse,
+  type InterpretedCommand,
+} from "./schema.js";
 
 const MAX_INTERNAL_RAW = 48_000;
 const DEFAULT_TURN_LOG_LINES = 24;
 const ONE_LINE_OUTCOME_MAX = 160;
+/** Max GETIN lines remembered as parser-rejected (FIFO, deduped). */
+const MAX_REJECTED_GETIN_QUEUE = 32;
 
 export type AutoplayTurnRecord = {
   command: string;
   outcomeExcerpt: string;
+  /** True when the game output matches known parser/word-rejection lines (see adventure.dat RTEXT). */
+  outcomeWasParserRejection: boolean;
 };
+
+/**
+ * Detect Colossal Cave-style parser rejections from full game output (case-insensitive).
+ * Used so autoplay can tell the planner not to repeat the same token.
+ */
+export function gameOutputLooksLikeParserRejection(text: string): boolean {
+  const u = text.toUpperCase();
+  return (
+    u.includes("I DON'T KNOW HOW TO APPLY THAT WORD HERE") ||
+    u.includes("I DON'T UNDERSTAND THAT") ||
+    u.includes("I DON'T KNOW THAT WORD") ||
+    u.includes("I DON'T KNOW IN FROM OUT HERE") ||
+    u.includes("I DON'T KNOW HOW TO LOCK OR UNLOCK SUCH A THING") ||
+    u.includes("NOTHING HAPPENS")
+  );
+}
+
+/**
+ * Canonical 10-character GETIN key (two five-letter columns, space-padded) for comparing lines.
+ */
+export function normalizeGetinLineKey(line: string): string {
+  const t = line.replace(/\r/g, "").toUpperCase().trim();
+  const head = (t.length >= 10 ? t.slice(0, 10) : t.padEnd(10, " ")).slice(
+    0,
+    10,
+  );
+  const primary = head.slice(0, 5).trimEnd().padEnd(5, " ");
+  const secondary = head.slice(5, 10).trimEnd().padEnd(5, " ");
+  return `${primary}${secondary}`;
+}
+
+function formatRejectedGetinForPrompt(key: string): string {
+  const p = key.slice(0, 5).trimEnd();
+  const s = key.slice(5, 10).trimEnd();
+  if (s.length === 0) return `\`${p}\` (primary only)`;
+  return `\`${p}\` + \`${s}\``;
+}
+
+const ESCAPE_PRIMARY_TOKENS: readonly string[] = [
+  "LOOK",
+  "EXAMI",
+  "EAST",
+  "WEST",
+  "NORTH",
+  "SOUTH",
+  "UP",
+  "DOWN",
+  "IN",
+  "OUT",
+];
 
 function oneLineExcerpt(text: string, maxLen: number): string {
   const t = text.replace(/\r\n/g, "\n").replace(/\s+/g, " ").trim();
@@ -83,6 +144,8 @@ export class AutoplaySessionMemory {
   private inventory: string[] = [];
   private locationHint = "";
   private objectNotes: string[] = [];
+  /** FIFO of GETIN keys the parser rejected; cleared after any non-rejection outcome. */
+  private rejectedGetinQueue: string[] = [];
 
   /** Seed from transcript before the first `> ` command. */
   seedOpening(transcript: string): void {
@@ -96,15 +159,70 @@ export class AutoplaySessionMemory {
    */
   recordCommandOutcome(command: string, gameOutput: string): void {
     const norm = gameOutput.replace(/\r\n/g, "\n");
+    const outcomeWasParserRejection = gameOutputLooksLikeParserRejection(norm);
+    if (outcomeWasParserRejection) {
+      const key = normalizeGetinLineKey(command);
+      if (!this.rejectedGetinQueue.includes(key)) {
+        this.rejectedGetinQueue.push(key);
+        while (this.rejectedGetinQueue.length > MAX_REJECTED_GETIN_QUEUE) {
+          this.rejectedGetinQueue.shift();
+        }
+      }
+    } else {
+      this.rejectedGetinQueue = [];
+    }
     this.turns.push({
       command: command.trimEnd().slice(0, 24),
       outcomeExcerpt: oneLineExcerpt(norm, ONE_LINE_OUTCOME_MAX),
+      outcomeWasParserRejection,
     });
     if (this.turns.length > 400) {
       this.turns.shift();
     }
     this.recentRawTail = (this.recentRawTail + norm).slice(-MAX_INTERNAL_RAW);
     this.refreshDerived(this.recentRawTail);
+  }
+
+  /**
+   * If the planner's GETIN line matches a recently parser-rejected line, substitute a safe
+   * one-word command not in the rejection queue (deterministic escape hatch).
+   */
+  avoidRepeatingRejectedCommand(
+    plan: AutoplayPlannerResponse,
+  ): AutoplayPlannerResponse {
+    if (plan.continuePlaying === false) return plan;
+    const quit = plan.primaryToken.toUpperCase().slice(0, 5).trimEnd();
+    if (quit === "QUIT") return plan;
+
+    const cmd: InterpretedCommand = {
+      primaryToken: plan.primaryToken,
+      secondaryToken: plan.secondaryToken,
+      confidence: plan.confidence,
+    };
+    const lineKey = normalizeGetinLineKey(interpretedToGetinLine(cmd));
+    if (!this.rejectedGetinQueue.includes(lineKey)) return plan;
+
+    for (const primaryToken of ESCAPE_PRIMARY_TOKENS) {
+      const candidate: InterpretedCommand = { primaryToken };
+      const k = normalizeGetinLineKey(interpretedToGetinLine(candidate));
+      if (!this.rejectedGetinQueue.includes(k)) {
+        return {
+          ...plan,
+          primaryToken,
+          secondaryToken: undefined,
+          confidence:
+            plan.confidence !== undefined
+              ? Math.min(plan.confidence, 0.35)
+              : 0.25,
+        };
+      }
+    }
+    return {
+      ...plan,
+      primaryToken: "LOOK",
+      secondaryToken: undefined,
+      confidence: 0.2,
+    };
   }
 
   private refreshDerived(text: string): void {
@@ -130,6 +248,20 @@ export class AutoplaySessionMemory {
     return lines.join("\n");
   }
 
+  /**
+   * When the last GETIN result was a parser rejection, instruct the planner explicitly.
+   * Small models often repeat the same primaryToken unless this is surfaced as state.
+   */
+  private buildParserRejectionBlock(): string | null {
+    const last = this.turns[this.turns.length - 1];
+    if (!last?.outcomeWasParserRejection) return null;
+    return `## Parser rejection (last turn — first-class state)
+The game did not accept the last command as written. Follow all of these:
+- Do **not** repeat the same primaryToken as the previous turn in the log below (unless the room or situation clearly changed).
+- Try a **different** verb or object from the vocabulary. Travel/motion words (e.g. BUILD, ENTER) often apply only in specific situations; inside a location, prefer **TAKE** or **GET** with the object in secondaryToken when items are listed on the ground.
+- If unsure, use **LOOK** or **EXAMI** to refresh the situation before moving again.`;
+  }
+
   private buildTurnLogBlock(maxLines: number): string {
     if (this.turns.length === 0) {
       return "## Turn log\n(none yet)";
@@ -142,6 +274,16 @@ export class AutoplaySessionMemory {
     return `## Turn log (last ${slice.length} moves)\n${lines.join("\n")}`;
   }
 
+  private buildRejectedCommandsBlock(): string | null {
+    if (this.rejectedGetinQueue.length === 0) return null;
+    const lines = this.rejectedGetinQueue.map(
+      (k, i) => `${i + 1}. ${formatRejectedGetinForPrompt(k)}`,
+    );
+    return `## Parser-rejected commands (do not repeat)
+The game already refused these GETIN lines in the current situation. Unless the transcript clearly changed, do **not** choose tokens that produce the same 10-column GETIN line again.
+${lines.join("\n")}`;
+  }
+
   /**
    * Assemble full user prompt body for the planner: narrative sections + raw tail,
    * trimmed to `maxChars` (shrink raw tail first, then older turn lines).
@@ -149,21 +291,19 @@ export class AutoplaySessionMemory {
   buildPlannerUserPrompt(maxChars: number, vocabHint: string): string {
     const stateBlock = this.buildStateBlock();
     const turnLog = this.buildTurnLogBlock(DEFAULT_TURN_LOG_LINES);
+    const parserBlock = this.buildParserRejectionBlock();
+    const rejectedBlock = this.buildRejectedCommandsBlock();
     const rawTail = this.recentRawTail.trim();
 
+    const vocabSection = vocabTrim(vocabHint, maxChars);
     const preamble = [
-      "You are playing Colossal Cave Adventure as the adventurer.",
-      "Choose the next parser command to continue. Reply ONLY with JSON matching the schema.",
-      "Rules: primaryToken = verb or motion (5 letters max); secondaryToken = object or direction when needed.",
-      "For taking items use TAKE or GET in primaryToken and the object in secondaryToken.",
-      "Use only vocabulary words from the list when possible.",
-      "",
-      "## Vocabulary (words the game parser accepts)",
-      vocabTrim(vocabHint, maxChars),
+      ...linesForAutoplayPlannerContextBody(vocabSection),
       "",
       stateBlock,
       "",
       turnLog,
+      ...(rejectedBlock ? ["", rejectedBlock] : []),
+      ...(parserBlock ? ["", parserBlock] : []),
       "",
       "## Recent game output (verbatim tail — use for room details and objects)",
       "---",

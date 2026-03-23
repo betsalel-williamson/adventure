@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
- * CLI: if GEMINI_API_KEY is set, the Fortran opening runs (you answer the instructions question), then
- * each `> ` line is mapped through help-intent shortcuts and Gemini into GETIN tokens until .quit/:q or
- * game exit. Otherwise the original Fortran binary runs in full TTY.
- * Pass --classic to force Fortran even when a key is present. Pass --debug to enable JSONL interaction
+ * CLI: with a configured text LLM (Google Generative AI or OpenAI-compatible HTTP), the Fortran opening runs
+ * (you answer the instructions question), then each `> ` line is mapped through help-intent shortcuts and the LLM
+ * into GETIN tokens until .quit/:q or game exit. Otherwise the original Fortran binary runs in full TTY.
+ * Pass --classic to force Fortran even when an LLM is configured. Pass --debug to enable JSONL interaction
  * logging (see ADVENTURE_LLM_DEBUG* and ADVENTURE_LLM_CACHE_DIR in .env.example).
- * Pass --autoplay for self-acting mode (Gemini drives every move; see ADVENTURE_LLM_AUTOPLAY_* in .env.example).
+ * Pass --autoplay for self-acting mode (LLM drives every move; see ADVENTURE_LLM_AUTOPLAY_* in .env.example).
  */
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -20,12 +20,13 @@ import {
   type ScriptedGetinLine,
 } from "../engine/subprocessEngine.js";
 import { AutoplaySessionMemory } from "../nl/autoplaySessionMemory.js";
-import { chooseNextMoveWithGemini } from "../nl/geminiAutoplay.js";
 import {
-  buildVocabHint,
-  interpretWithGemini,
-  shouldFallbackToClassicForGeminiError,
-} from "../nl/gemini.js";
+  interpretWithTextLlm,
+  planAutoplayWithTextLlm,
+  resolveTextLlmFromEnv,
+} from "../nl/adventureTextLlm.js";
+import { buildVocabHint } from "../nl/vocabHint.js";
+import { shouldFallbackToClassicForLlmError } from "../nl/llmErrors.js";
 import {
   appendInteractionLog,
   resolveCacheDir,
@@ -37,6 +38,7 @@ import {
   swapInterpretedTokens,
   type AutoplayPlannerResponse,
 } from "../nl/schema.js";
+import type { TextLlm } from "../nl/textLlmContract.js";
 
 /** dist/cli -> adventure-llm */
 const packageRoot = path.join(
@@ -48,7 +50,6 @@ const envPaths = [
   path.join(packageRoot, ".env"),
 ].filter((p) => existsSync(p));
 if (envPaths.length > 0) {
-  // Prefer file values over inherited shell env so GEMINI_API_KEY in .env is honored.
   loadEnv({
     path: envPaths.length === 1 ? envPaths[0]! : envPaths,
     override: true,
@@ -62,16 +63,16 @@ const datPath = path.join(repoRoot, "adventure.dat");
 const adventureBin = path.join(repoRoot, "adventure");
 
 function printClassicBanner(
-  hasGeminiKey: boolean,
+  hasTextLlmConfigured: boolean,
   forceClassic: boolean,
 ): void {
   process.stderr.write("\n");
   process.stderr.write(
     "adventure-llm — classic mode uses the original Fortran Colossal Cave engine.\n",
   );
-  if (!hasGeminiKey) {
+  if (!hasTextLlmConfigured) {
     process.stderr.write(
-      "Natural language needs GEMINI_API_KEY in adventure-llm/.env (omit --classic once it is set).\n",
+      "Natural language needs a text LLM: set GEMINI_API_KEY and/or ADVENTURE_LLM_HTTP_* (see adventure-llm/.env.example). Omit --classic once configured.\n",
     );
   } else if (forceClassic) {
     process.stderr.write(
@@ -141,6 +142,52 @@ function plannerToScriptedGetin(r: AutoplayPlannerResponse): ScriptedGetinLine {
   return firstLine;
 }
 
+/** Substitute planner output when it would repeat a GETIN line the parser already rejected. */
+function planAfterRejectedQueueGuard(
+  memory: AutoplaySessionMemory,
+  plan: AutoplayPlannerResponse,
+): AutoplayPlannerResponse {
+  const planSafe = memory.avoidRepeatingRejectedCommand(plan);
+  if (
+    interpretedToGetinLine(toInterpreted(plan)) !==
+    interpretedToGetinLine(toInterpreted(planSafe))
+  ) {
+    process.stderr.write(
+      "adventure-llm: autoplay — replaced plan that repeated a parser-rejected GETIN line\n",
+    );
+  }
+  return planSafe;
+}
+
+/** stderr: LLM tokens and exact GETIN line(s) sent to the Fortran adventure binary. */
+function logAutoplaySendingToGame(
+  plan: AutoplayPlannerResponse,
+  scripted: ScriptedGetinLine,
+): void {
+  const tok: string[] = [`primary=${plan.primaryToken}`];
+  if (plan.secondaryToken !== undefined && plan.secondaryToken !== "") {
+    tok.push(`secondary=${plan.secondaryToken}`);
+  }
+  if (plan.confidence !== undefined) {
+    tok.push(`confidence=${plan.confidence}`);
+  }
+  if (plan.continuePlaying === false) {
+    tok.push("continuePlaying=false");
+  }
+  let getinDesc: string;
+  if (typeof scripted === "string") {
+    getinDesc = JSON.stringify(scripted);
+  } else {
+    getinDesc = JSON.stringify(scripted.line);
+    if (scripted.retryIfRejected !== undefined) {
+      getinDesc += `, retry if rejected: ${JSON.stringify(scripted.retryIfRejected)}`;
+    }
+  }
+  process.stderr.write(
+    `adventure-llm: autoplay — planned ${tok.join(", ")} → to adventure (GETIN): ${getinDesc}\n`,
+  );
+}
+
 function runClassicInteractive(): void {
   if (!existsSync(adventureBin)) {
     process.stderr.write(
@@ -170,13 +217,12 @@ function runClassicInteractive(): void {
   });
 }
 
-async function runAutoplaySession(): Promise<void> {
+async function runAutoplaySessionWithTextLlm(client: TextLlm): Promise<void> {
   const db = loadDatFile(datPath);
   const memory = new AutoplaySessionMemory();
   const maxMoves = resolveAutoplayMaxMoves();
   const paceMs = resolveAutoplayPaceMs();
   const contextChars = resolveAutoplayContextChars();
-  const apiKey = process.env.GEMINI_API_KEY!;
 
   let movesSent = 0;
   let lastGetinLine = "";
@@ -187,8 +233,7 @@ async function runAutoplaySession(): Promise<void> {
       contextChars,
       vocabHint,
     );
-    return chooseNextMoveWithGemini(db, {
-      apiKey,
+    return planAutoplayWithTextLlm(db, client, {
       plannerUserPrompt,
       recentGameTextForRepair: recentForRepair.slice(-2500),
     });
@@ -218,11 +263,14 @@ async function runAutoplaySession(): Promise<void> {
         const quitLine: ScriptedGetinLine = interpretedToGetinLine({
           primaryToken: "QUIT",
         });
+        logAutoplaySendingToGame(plan, quitLine);
         movesSent = 1;
         lastGetinLine = scriptedGetinLineString(quitLine);
         return quitLine;
       }
-      const scripted = plannerToScriptedGetin(plan);
+      const planSafe = planAfterRejectedQueueGuard(memory, plan);
+      const scripted = plannerToScriptedGetin(planSafe);
+      logAutoplaySendingToGame(planSafe, scripted);
       movesSent = 1;
       lastGetinLine = scriptedGetinLineString(scripted);
       return scripted;
@@ -250,7 +298,9 @@ async function runAutoplaySession(): Promise<void> {
         });
         return null;
       }
-      const scripted = plannerToScriptedGetin(plan);
+      const planSafe = planAfterRejectedQueueGuard(memory, plan);
+      const scripted = plannerToScriptedGetin(planSafe);
+      logAutoplaySendingToGame(planSafe, scripted);
       movesSent += 1;
       lastGetinLine = scriptedGetinLineString(scripted);
       return scripted;
@@ -267,11 +317,12 @@ async function main(): Promise<void> {
   }
   const forceClassic = args.includes("--classic");
   const autoplay = args.includes("--autoplay");
-  const hasGeminiKey = Boolean(process.env.GEMINI_API_KEY?.trim());
+  const textLlm = resolveTextLlmFromEnv();
+  const hasTextLlm = textLlm !== null;
 
-  if (autoplay && !hasGeminiKey) {
+  if (autoplay && !hasTextLlm) {
     process.stderr.write(
-      "adventure-llm: --autoplay requires GEMINI_API_KEY.\n",
+      "adventure-llm: --autoplay requires a text LLM (GEMINI_API_KEY and/or ADVENTURE_LLM_HTTP_MODEL; see .env.example).\n",
     );
     process.exitCode = 1;
     return;
@@ -284,7 +335,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  if (autoplay && hasGeminiKey) {
+  if (autoplay && textLlm) {
     if (!existsSync(adventureBin)) {
       process.stderr.write(
         "Cannot find ./adventure next to adventure.dat. From the repository root run: make\n",
@@ -293,11 +344,11 @@ async function main(): Promise<void> {
       return;
     }
     try {
-      await runAutoplaySession();
+      await runAutoplaySessionWithTextLlm(textLlm);
     } catch (err) {
-      if (shouldFallbackToClassicForGeminiError(err)) {
+      if (shouldFallbackToClassicForLlmError(err, textLlm.providerId)) {
         process.stderr.write(
-          "\nadventure-llm: Gemini unavailable (quota, rate limit, or service error). Autoplay stopped.\n",
+          "\nadventure-llm: text LLM unavailable (quota, rate limit, network, or service error). Autoplay stopped.\n",
         );
         process.exitCode = 1;
         return;
@@ -307,10 +358,10 @@ async function main(): Promise<void> {
     return;
   }
 
-  const useNaturalLanguage = hasGeminiKey && !forceClassic;
+  const useNaturalLanguage = hasTextLlm && !forceClassic;
 
   if (!useNaturalLanguage) {
-    printClassicBanner(hasGeminiKey, forceClassic);
+    printClassicBanner(hasTextLlm, forceClassic);
     runClassicInteractive();
     return;
   }
@@ -345,8 +396,7 @@ async function main(): Promise<void> {
       });
       return interpretedToGetinLine(fromIntent);
     }
-    const interpreted = await interpretWithGemini(user, db, {
-      apiKey: process.env.GEMINI_API_KEY!,
+    const interpreted = await interpretWithTextLlm(user, db, textLlm!, {
       recentGameText,
     });
     const firstLine = interpretedToGetinLine(interpreted);
@@ -387,11 +437,11 @@ async function main(): Promise<void> {
       },
     });
   } catch (err) {
-    if (shouldFallbackToClassicForGeminiError(err)) {
+    if (shouldFallbackToClassicForLlmError(err, textLlm!.providerId)) {
       process.stderr.write(
-        "\nadventure-llm: Gemini is unavailable (quota, rate limit, or service error). Switching to classic mode: type parser words directly (e.g. EAST, TAKE LAMP).\n\n",
+        "\nadventure-llm: text LLM is unavailable (quota, rate limit, or service error). Switching to classic mode: type parser words directly (e.g. EAST, TAKE LAMP).\n\n",
       );
-      printClassicBanner(hasGeminiKey, forceClassic);
+      printClassicBanner(hasTextLlm, forceClassic);
       runClassicInteractive();
       return;
     }

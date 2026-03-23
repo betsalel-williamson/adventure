@@ -32,7 +32,27 @@ export {
   type InterpretedCommand,
   type AutoplayPlannerResponse,
 } from "./nl/schema.js";
-export { AutoplaySessionMemory } from "./nl/autoplaySessionMemory.js";
+export {
+  AutoplaySessionMemory,
+  gameOutputLooksLikeParserRejection,
+  normalizeGetinLineKey,
+} from "./nl/autoplaySessionMemory.js";
+export {
+  collectGameVocabTokens,
+  openAiAutoplayPlannerJsonSchema,
+  openAiInterpretCommandJsonSchema,
+  vocabTokensForLlmEnums,
+} from "./nl/gameVocabEnums.js";
+export {
+  ADVENTURE_LLM_INTERPRET_ROLE,
+  ADVENTURE_LLM_AUTOPLAY_PLANNER_ROLE,
+  ADVENTURE_LLM_PARSER_TOKEN_RULES,
+  adventureLlmInterpretJsonFooter,
+  adventureLlmAutoplayJsonFooter,
+  buildInterpretSystemAndUserPrompt,
+  buildAutoplayPlannerPrompt,
+  linesForAutoplayPlannerContextBody,
+} from "./nl/adventureNlPrompts.js";
 export { chooseNextMoveWithGemini } from "./nl/geminiAutoplay.js";
 export {
   buildVocabHint,
@@ -42,6 +62,22 @@ export {
   type GeminiInterpreterOptions,
 } from "./nl/gemini.js";
 export type { GeminiAutoplayPlannerOptions } from "./nl/geminiAutoplay.js";
+export {
+  resolveTextLlmFromEnv,
+  createTextLlmFromEnv,
+  interpretWithTextLlm,
+  planAutoplayWithTextLlm,
+  DEFAULT_HTTP_OPENAI_BASE_URL,
+  DEFAULT_MLX_MODEL_ID,
+} from "./nl/adventureTextLlm.js";
+export type { TextLlm, TextLlmProviderId } from "./nl/textLlmContract.js";
+export { shouldFallbackToClassicForLlmError } from "./nl/llmErrors.js";
+export { GoogleGenerativeAiTextLlm } from "./nl/providers/googleGenerativeAiTextLlm.js";
+export type { GoogleGenerativeAiTextLlmOptions } from "./nl/providers/googleGenerativeAiTextLlm.js";
+export { HttpOpenAiCompatibleTextLlm } from "./nl/providers/httpOpenAiCompatibleTextLlm.js";
+export type { HttpOpenAiCompatibleTextLlmOptions } from "./nl/providers/httpOpenAiCompatibleTextLlm.js";
+export { MlxLmStdioTextLlm } from "./nl/providers/mlxLmStdioTextLlm.js";
+export type { MlxLmStdioTextLlmOptions } from "./nl/providers/mlxLmStdioTextLlm.js";
 export { instructionIntentToHelpCommand } from "./nl/intent.js";
 export {
   DEFAULT_GEMINI_TEXT_MODEL,
