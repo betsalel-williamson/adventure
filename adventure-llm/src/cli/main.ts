@@ -27,6 +27,7 @@ import {
 } from "../nl/adventureTextLlm.js";
 import {
   resolveCompactPrompts,
+  resolveStructuredDashboardPrompts,
   resolveVocabHintMaxWords,
 } from "../nl/adventureNlPrompts.js";
 import {
@@ -46,7 +47,7 @@ import {
   swapInterpretedTokens,
   type AutoplayPlannerResponse,
 } from "../nl/schema.js";
-import type { TextLlm } from "../nl/textLlmContract.js";
+import type { PlannerUserPromptInput, TextLlm } from "../nl/textLlmContract.js";
 
 /** dist/cli -> adventure-llm */
 const packageRoot = path.join(
@@ -150,18 +151,28 @@ function plannerToScriptedGetin(r: AutoplayPlannerResponse): ScriptedGetinLine {
   return firstLine;
 }
 
-/** Substitute planner output when it would repeat a GETIN line the parser already rejected. */
-function planAfterRejectedQueueGuard(
+/** Substitute planner output when it would repeat a rejected GETIN line or ping-pong two rooms. */
+function planAfterAutoplayGuards(
   memory: AutoplaySessionMemory,
   plan: AutoplayPlannerResponse,
 ): AutoplayPlannerResponse {
-  const planSafe = memory.avoidRepeatingRejectedCommand(plan);
+  let planSafe = memory.avoidRepeatingRejectedCommand(plan);
   if (
     interpretedToGetinLine(toInterpreted(plan)) !==
     interpretedToGetinLine(toInterpreted(planSafe))
   ) {
     process.stderr.write(
       "adventure-llm: autoplay — replaced plan that repeated a parser-rejected GETIN line\n",
+    );
+  }
+  const beforeOsc = planSafe;
+  planSafe = memory.avoidOscillatingCommand(planSafe);
+  if (
+    interpretedToGetinLine(toInterpreted(beforeOsc)) !==
+    interpretedToGetinLine(toInterpreted(planSafe))
+  ) {
+    process.stderr.write(
+      "adventure-llm: autoplay — replaced plan that would continue a two-location loop\n",
     );
   }
   return planSafe;
@@ -236,17 +247,31 @@ async function runAutoplaySessionWithTextLlm(client: TextLlm): Promise<void> {
   let lastGetinLine = "";
 
   const compact = resolveCompactPrompts(client.providerId);
+  const structuredDashboard = resolveStructuredDashboardPrompts(
+    client.providerId,
+  );
   const repairTailChars = compact ? 1200 : 2500;
   const callPlanner = async (recentForRepair: string) => {
-    const vocabHint = buildVocabHint(db, resolveVocabHintMaxWords(compact));
+    const vocabHint = buildVocabHint(db, resolveVocabHintMaxWords(compact), {
+      grouped: true,
+      structuredGroups: structuredDashboard,
+      compact,
+    });
     const situationalSection = formatSituationalCandidatesSection(
       buildSituationalCandidateTokens(db, memory.getRecentRawTail()),
     );
-    const plannerUserPrompt = memory.buildPlannerUserPrompt(
-      contextChars,
-      vocabHint,
-      { compact, situationalSection },
-    );
+    const useMxStructuredSplit =
+      client.providerId === "mlx" && structuredDashboard;
+    const plannerUserPrompt: PlannerUserPromptInput = useMxStructuredSplit
+      ? memory.buildPlannerMxStructuredPrompt(contextChars, {
+          compact,
+          situationalSection,
+        })
+      : memory.buildPlannerUserPrompt(contextChars, vocabHint, {
+          compact,
+          situationalSection,
+          structuredDashboard,
+        });
     return planAutoplayWithTextLlm(db, client, {
       plannerUserPrompt,
       recentGameTextForRepair: recentForRepair.slice(-repairTailChars),
@@ -284,7 +309,7 @@ async function runAutoplaySessionWithTextLlm(client: TextLlm): Promise<void> {
         lastGetinLine = scriptedGetinLineString(quitLine);
         return quitLine;
       }
-      const planSafe = planAfterRejectedQueueGuard(memory, plan);
+      const planSafe = planAfterAutoplayGuards(memory, plan);
       const scripted = plannerToScriptedGetin(planSafe);
       logAutoplaySendingToGame(planSafe, scripted);
       movesSent = 1;
@@ -314,7 +339,7 @@ async function runAutoplaySessionWithTextLlm(client: TextLlm): Promise<void> {
         });
         return null;
       }
-      const planSafe = planAfterRejectedQueueGuard(memory, plan);
+      const planSafe = planAfterAutoplayGuards(memory, plan);
       const scripted = plannerToScriptedGetin(planSafe);
       logAutoplaySendingToGame(planSafe, scripted);
       movesSent += 1;

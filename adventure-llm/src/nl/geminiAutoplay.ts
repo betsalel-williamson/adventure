@@ -1,13 +1,14 @@
 import type { AdventureDatabase } from "../dat/types.js";
 import type { AutoplayPlannerResponse } from "./schema.js";
 import { GoogleGenerativeAiTextLlm } from "./providers/googleGenerativeAiTextLlm.js";
+import type { PlannerUserPromptInput } from "./textLlmContract.js";
 
 export type GeminiAutoplayPlannerOptions = {
   apiKey: string;
   /** Defaults to `resolvedGeminiTextModel()`. */
   model?: string;
-  /** Assembled user prompt (memory + vocabulary + transcript). */
-  plannerUserPrompt: string;
+  /** Assembled planner body (memory + vocabulary + transcript), or system/user split. */
+  plannerUserPrompt: PlannerUserPromptInput;
   /** For {@link repairInterpretedCommand}. */
   recentGameTextForRepair?: string;
 };

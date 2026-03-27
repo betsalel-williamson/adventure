@@ -20,8 +20,10 @@ import {
 import { repairInterpretedCommand } from "../repairInterpreted.js";
 import {
   buildAutoplayPlannerPrompt,
+  buildAutoplayPlannerPromptParts,
   buildInterpretSystemAndUserPrompt,
   resolveCompactPrompts,
+  resolveStructuredDashboardPrompts,
 } from "../adventureNlPrompts.js";
 import {
   buildAutoplayRelevantTokensFilterPrompt,
@@ -33,10 +35,14 @@ import {
   coerceAutoplayPlannerJson,
   coerceInterpretedCommandJson,
 } from "../coerceLlmJson.js";
-import type { TextLlm } from "../textLlmContract.js";
+import type {
+  InterpretPlayerInputOptions,
+  PlannerUserPromptInput,
+  TextLlm,
+} from "../textLlmContract.js";
 
 export type MlxLmStdioTextLlmOptions = {
-  /** Hugging Face repo id, e.g. mlx-community/gemma-2-9b-it-4bit */
+  /** Hugging Face repo id, e.g. mlx-community/gemma-2-2b-it */
   modelId: string;
   /**
    * When true (default), runs `uv run python <script>` with `cwd` at the package root (see `pyproject.toml`).
@@ -61,6 +67,22 @@ export type MlxLmStdioTextLlmOptions = {
   compactPrompts?: boolean;
 };
 
+function resolveMlxGenTemp(): number {
+  const v = process.env.ADVENTURE_LLM_MLX_TEMP?.trim();
+  if (v === undefined || v === "") return 0.75;
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 0 && n <= 2 ? n : 0.75;
+}
+
+function resolveMlxStopStrings(): string[] {
+  const v = process.env.ADVENTURE_LLM_MLX_STOP?.trim();
+  if (v === undefined || v === "") return [];
+  return v
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+}
+
 function defaultWorkerScriptPath(): string {
   const here = path.dirname(fileURLToPath(import.meta.url));
   return path.resolve(here, "../../../scripts/mlx_lm_worker.py");
@@ -82,6 +104,8 @@ export class MlxLmStdioTextLlm implements TextLlm {
   private readonly maxTokens: number;
   private readonly readyTimeoutMs: number;
   private readonly compactPrompts: boolean;
+  private readonly mlxGenTemp: number;
+  private readonly mlxStopStrings: string[];
 
   private child: ChildProcessWithoutNullStreams | null = null;
   private rl: ReturnType<typeof createInterface> | null = null;
@@ -108,6 +132,8 @@ export class MlxLmStdioTextLlm implements TextLlm {
     this.readyTimeoutMs = options.readyTimeoutMs ?? 900_000;
     this.compactPrompts =
       options.compactPrompts ?? resolveCompactPrompts("mlx");
+    this.mlxGenTemp = resolveMlxGenTemp();
+    this.mlxStopStrings = resolveMlxStopStrings();
   }
 
   private async withMutex<T>(fn: () => Promise<T>): Promise<T> {
@@ -244,7 +270,16 @@ export class MlxLmStdioTextLlm implements TextLlm {
     }
   }
 
-  private async complete(prompt: string): Promise<string> {
+  /**
+   * Single string or instruction/context split (worker merges into one Gemma user turn).
+   */
+  async generateUnstructured(prompt: string): Promise<string> {
+    return this.complete(prompt);
+  }
+
+  private async complete(
+    prompt: string | { system: string; user: string },
+  ): Promise<string> {
     await this.ensureWorker();
     const child = this.child;
     const rl = this.rl;
@@ -256,12 +291,21 @@ export class MlxLmStdioTextLlm implements TextLlm {
       const id = `mlx${++this.requestId}`;
       return new Promise<string>((resolve, reject) => {
         this.pending.set(id, { resolve, reject });
-        const payload =
-          JSON.stringify({
-            id,
-            prompt,
-            max_tokens: this.maxTokens,
-          }) + "\n";
+        const payloadObj: Record<string, unknown> = {
+          id,
+          max_tokens: this.maxTokens,
+          temp: this.mlxGenTemp,
+        };
+        if (typeof prompt === "string") {
+          payloadObj.prompt = prompt;
+        } else {
+          payloadObj.system = prompt.system;
+          payloadObj.prompt = prompt.user;
+        }
+        if (this.mlxStopStrings.length > 0) {
+          payloadObj.stop = this.mlxStopStrings;
+        }
+        const payload = JSON.stringify(payloadObj) + "\n";
         try {
           child.stdin!.write(payload, (err) => {
             if (err) {
@@ -280,7 +324,7 @@ export class MlxLmStdioTextLlm implements TextLlm {
   async interpretPlayerInput(
     userText: string,
     db: AdventureDatabase,
-    options: { recentGameText?: string },
+    options: InterpretPlayerInputOptions,
   ): Promise<InterpretedCommand> {
     const cacheDir = resolveCacheDir();
     const cacheKey = cacheKeyFor(userText, this.modelId, this.providerId);
@@ -311,11 +355,23 @@ export class MlxLmStdioTextLlm implements TextLlm {
 
     process.stderr.write("adventure-llm: translating with text LLM (MLX)…\n");
 
+    const compact =
+      options.promptStyle?.compact !== undefined
+        ? options.promptStyle.compact
+        : this.compactPrompts;
+    const structuredDashboard =
+      options.promptStyle?.structuredDashboard !== undefined
+        ? options.promptStyle.structuredDashboard
+        : resolveStructuredDashboardPrompts("mlx");
     const prompt = buildInterpretSystemAndUserPrompt(
       db,
       userText,
       options.recentGameText,
-      { compact: this.compactPrompts },
+      {
+        compact,
+        structuredDashboard,
+        providerId: this.providerId,
+      },
     );
 
     await appendInteractionLog({
@@ -363,7 +419,7 @@ export class MlxLmStdioTextLlm implements TextLlm {
   async planAutoplay(
     db: AdventureDatabase,
     options: {
-      plannerUserPrompt: string;
+      plannerUserPrompt: PlannerUserPromptInput;
       recentGameTextForRepair?: string;
     },
   ): Promise<AutoplayPlannerResponse> {
@@ -413,28 +469,47 @@ export class MlxLmStdioTextLlm implements TextLlm {
           narrowed,
         });
         if (narrowed.length > 0) {
-          plannerBody = `## Two-step token filter (prefer these for primary and secondary)
-${narrowed.join(", ")}
+          const filterNote = `## Two-step token filter (prefer these for primary and secondary)
+${narrowed.join(", ")}`;
+          plannerBody =
+            typeof plannerBody === "string"
+              ? `${filterNote}
 
-${plannerBody}`;
+${plannerBody}`
+              : {
+                  ...plannerBody,
+                  user: `${filterNote}
+
+${plannerBody.user}`,
+                };
         }
       }
     }
 
-    const prompt = buildAutoplayPlannerPrompt(db, plannerBody, {
-      compact: this.compactPrompts,
-    });
+    const compactOpts = { compact: this.compactPrompts };
+    const toComplete =
+      typeof plannerBody === "string"
+        ? buildAutoplayPlannerPrompt(db, plannerBody, compactOpts)
+        : buildAutoplayPlannerPromptParts(db, plannerBody, compactOpts);
+
+    const mergedForLog =
+      typeof toComplete === "string"
+        ? toComplete
+        : `${toComplete.system}\n\n${toComplete.user}`;
 
     await appendInteractionLog({
       event: "text_llm_autoplay_request",
       provider: this.providerId,
       model: this.modelId,
-      promptLength: prompt.length,
-      prompt,
+      promptLength: mergedForLog.length,
+      prompt: mergedForLog,
+      ...(typeof toComplete === "string"
+        ? {}
+        : { system: toComplete.system, user: toComplete.user }),
     });
 
     const startedMs = Date.now();
-    const rawText = await this.complete(prompt);
+    const rawText = await this.complete(toComplete);
     const durationMs = Date.now() - startedMs;
 
     const parsedUnknown = parseJsonObjectFromLlmText(rawText);

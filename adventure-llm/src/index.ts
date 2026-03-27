@@ -56,20 +56,58 @@ export {
   ADVENTURE_LLM_AUTOPLAY_PLANNER_ROLE_COMPACT,
   ADVENTURE_LLM_PARSER_TOKEN_RULES,
   ADVENTURE_LLM_PARSER_TOKEN_RULES_COMPACT,
+  ADVENTURE_LLM_INTERPRET_COMPACT_HELP_HINT,
   adventureLlmInterpretJsonFooter,
   adventureLlmAutoplayJsonFooter,
   buildInterpretSystemAndUserPrompt,
   buildAutoplayPlannerPrompt,
   linesForAutoplayPlannerContextBody,
+  autoplayPlannerTaskBlockStructured,
+  interpretTaskBlockStructured,
   resolveCompactPrompts,
+  resolveStructuredDashboardPrompts,
   resolveVocabHintMaxWords,
+  MLX_SYSTEM_PROMPT_VARIANTS,
+  resolveMlxSystemPromptVariant,
+  mlxAutoplayPlannerInstructionsBlock,
+  mlxAutoplaySystemPrompt,
+  mlxAutoplaySystemPromptForVariant,
+  resolveInterpretPromptExamples,
+  resolveInterpretPromptBuildOptions,
+  type BuildInterpretPromptOptions,
+  type MlxSystemPromptVariant,
 } from "./nl/adventureNlPrompts.js";
+export {
+  loadInterpretEvalFixtures,
+  buildInterpretEvalExamplesSection,
+  type InterpretEvalFixture,
+} from "./nl/interpretEvalFixtures.js";
+export {
+  compareInterpretEval,
+  normalizeInterpretEvalToken,
+  type InterpretEvalExpect,
+  type InterpretEvalComparison,
+} from "./nl/interpretEvalMatch.js";
+export {
+  tryLoadAiVocabCategoriesForHint,
+  loadAiVocabCategoriesForHint,
+  resolveAiVocabCategoriesPath,
+  normalizeVocabToken,
+  type AiVocabCategoriesFile,
+  type AiVocabCategoryGroup,
+  type ResolvedAiVocabGroups,
+} from "./nl/vocabAiCategories.js";
+export {
+  buildVocabAiCategorizationPrompt,
+  generateAiVocabCategoriesWithLlm,
+} from "./nl/vocabCategoriesGenerate.js";
 export { chooseNextMoveWithGemini } from "./nl/geminiAutoplay.js";
 export {
   buildVocabHint,
   interpretWithGemini,
   shouldFallbackToClassicForGeminiError,
   validateAgainstVocab,
+  type BuildVocabHintOptions,
   type GeminiInterpreterOptions,
 } from "./nl/gemini.js";
 export type { GeminiAutoplayPlannerOptions } from "./nl/geminiAutoplay.js";
@@ -81,7 +119,13 @@ export {
   DEFAULT_HTTP_OPENAI_BASE_URL,
   DEFAULT_MLX_MODEL_ID,
 } from "./nl/adventureTextLlm.js";
-export type { TextLlm, TextLlmProviderId } from "./nl/textLlmContract.js";
+export type {
+  InterpretPlayerInputOptions,
+  InterpretPromptStyleOverrides,
+  PlannerUserPromptInput,
+  TextLlm,
+  TextLlmProviderId,
+} from "./nl/textLlmContract.js";
 export { shouldFallbackToClassicForLlmError } from "./nl/llmErrors.js";
 export { GoogleGenerativeAiTextLlm } from "./nl/providers/googleGenerativeAiTextLlm.js";
 export type { GoogleGenerativeAiTextLlmOptions } from "./nl/providers/googleGenerativeAiTextLlm.js";

@@ -1,9 +1,14 @@
 /**
  * In-process session memory for self-acting (autoplay) mode: event log, heuristic
  * derived state, and budgeted prompt text for stateless TextLlm calls.
- * Shared role/rules come from {@link linesForAutoplayPlannerContextBody} in adventureNlPrompts.
+ * MLX structured prompts: {@link mlxAutoplaySystemPrompt} (system) + situational user body in `buildPlannerMxStructuredPrompt`.
+ * Shared role/rules for other paths: {@link linesForAutoplayPlannerContextBody}.
  */
-import { linesForAutoplayPlannerContextBody } from "./adventureNlPrompts.js";
+import {
+  autoplayPlannerTaskBlockStructured,
+  linesForAutoplayPlannerContextBody,
+  mlxAutoplaySystemPrompt,
+} from "./adventureNlPrompts.js";
 import {
   interpretedToGetinLine,
   type AutoplayPlannerResponse,
@@ -12,6 +17,10 @@ import {
 
 const MAX_INTERNAL_RAW = 48_000;
 const DEFAULT_TURN_LOG_LINES = 24;
+/** Shorter turn log for MLX system+user split (vocab + duplicate summaries removed). */
+const MX_SPLIT_TURN_LOG_LINES = 12;
+/** Cap "recent command" lines in structured dashboard (RTFM: keep history short). */
+const DASHBOARD_RECENT_COMMANDS = 8;
 const ONE_LINE_OUTCOME_MAX = 160;
 /** Max GETIN lines remembered as parser-rejected (FIFO, deduped). */
 const MAX_REJECTED_GETIN_QUEUE = 32;
@@ -77,6 +86,53 @@ function oneLineExcerpt(text: string, maxLen: number): string {
   const t = text.replace(/\r\n/g, "\n").replace(/\s+/g, " ").trim();
   if (t.length <= maxLen) return t;
   return `${t.slice(0, maxLen - 1)}…`;
+}
+
+/** Normalize outcome one-liner for comparing “same room line” across turns. */
+function fingerprintLocationFromOutcome(excerpt: string): string {
+  const t = excerpt.replace(/\s+/g, " ").trim().toUpperCase();
+  return t.slice(0, 88);
+}
+
+function getPrimaryFromStoredCommand(command: string): string {
+  const t = command.replace(/\r/g, "").trimEnd().toUpperCase();
+  const head = (t.length >= 5 ? t.slice(0, 5) : t.padEnd(5, " ")).slice(0, 5);
+  return head.trimEnd();
+}
+
+export type AlternatingLocationLoopInfo = {
+  /** First five letters of GETIN primary repeated on each of the last four successful moves. */
+  repeatedPrimary: string;
+  locA: string;
+  locB: string;
+};
+
+/**
+ * Detect A→B→A→B movement: same command, alternating location lines, parser accepted each time.
+ * Typical cause: bidirectional travel (e.g. ROAD) with a small model that keeps re-picking the same verb.
+ */
+export function detectAlternatingLocationCommandLoop(
+  turns: readonly AutoplayTurnRecord[],
+): AlternatingLocationLoopInfo | null {
+  const ok = turns.filter((t) => !t.outcomeWasParserRejection);
+  if (ok.length < 4) return null;
+  const last4 = ok.slice(-4);
+  const fp = last4.map((t) => fingerprintLocationFromOutcome(t.outcomeExcerpt));
+  const primaries = last4.map((t) => getPrimaryFromStoredCommand(t.command));
+  if (fp[0] !== fp[2] || fp[1] !== fp[3]) return null;
+  if (fp[0] === fp[1]) return null;
+  if (
+    primaries[0] !== primaries[1] ||
+    primaries[0] !== primaries[2] ||
+    primaries[0] !== primaries[3]
+  ) {
+    return null;
+  }
+  return {
+    repeatedPrimary: primaries[0]!,
+    locA: fp[0]!,
+    locB: fp[1]!,
+  };
 }
 
 function extractInventoryFromText(text: string): string[] {
@@ -230,6 +286,33 @@ export class AutoplaySessionMemory {
     };
   }
 
+  /**
+   * When the last four successful moves alternate between two rooms using the same primary
+   * token, substitute **LOOK** so autoplay does not ping-pong forever (parser accepts the command).
+   */
+  avoidOscillatingCommand(
+    plan: AutoplayPlannerResponse,
+  ): AutoplayPlannerResponse {
+    if (plan.continuePlaying === false) return plan;
+    const quit = plan.primaryToken.toUpperCase().slice(0, 5).trimEnd();
+    if (quit === "QUIT") return plan;
+
+    const loop = detectAlternatingLocationCommandLoop(this.turns);
+    if (loop === null) return plan;
+
+    const p = plan.primaryToken.toUpperCase().slice(0, 5).trimEnd();
+    if (p !== loop.repeatedPrimary) return plan;
+    if (p === "LOOK" || p === "EXAMI") return plan;
+
+    return {
+      ...plan,
+      primaryToken: "LOOK",
+      secondaryToken: undefined,
+      confidence:
+        plan.confidence !== undefined ? Math.min(plan.confidence, 0.35) : 0.25,
+    };
+  }
+
   private refreshDerived(text: string): void {
     this.inventory = extractInventoryFromText(text);
     const loc = extractLocationHint(text);
@@ -254,39 +337,212 @@ export class AutoplaySessionMemory {
   }
 
   /**
+   * Structured dashboard for small MLX models: state first (Fortran output is source of truth).
+   */
+  private buildAdventureStateBlock(): string {
+    const lines: string[] = [
+      "### ADVENTURE STATE",
+      "(Heuristic from recent game text — the Fortran engine is authoritative.)",
+      "",
+      `**Location hint:** ${this.locationHint || "(unknown — infer from RECENT GAME OUTPUT below)"}`,
+    ];
+    if (this.inventory.length > 0) {
+      lines.push(`**Inventory:** ${this.inventory.join("; ")}`);
+    } else {
+      lines.push("**Inventory:** (not detected — infer from game text)");
+    }
+    if (this.objectNotes.length > 0) {
+      lines.push(`**Notes:** ${this.objectNotes.join(" ")}`);
+    }
+    const recentCmds = this.buildRecentCommandsSummary(
+      DASHBOARD_RECENT_COMMANDS,
+    );
+    lines.push("");
+    lines.push(
+      `**Recent commands (last up to ${DASHBOARD_RECENT_COMMANDS}):** ${recentCmds}`,
+    );
+    return lines.join("\n");
+  }
+
+  /**
+   * Single engine-state block for MLX: location/inventory plus optional **Alerts**
+   * (parser rejection, two-room loop, queued rejected GETIN lines).
+   */
+  private buildGameEngineStateBlockMx(): string {
+    const loc = this.locationHint || "(unknown — infer from TRANSCRIPT)";
+    const inv =
+      this.inventory.length > 0
+        ? this.inventory.join("; ")
+        : "(not detected — infer from transcript)";
+    const alerts = this.buildCompactPlannerAlerts();
+    const lines: string[] = [
+      "### GAME ENGINE STATE",
+      `Location: ${loc}`,
+      `Inventory: ${inv}`,
+    ];
+    if (this.objectNotes.length > 0) {
+      lines.push(`Notes: ${this.objectNotes.join(" ")}`);
+    }
+    if (alerts.length > 0) {
+      lines.push("");
+      lines.push("Alerts:");
+      for (const a of alerts) lines.push(`- ${a}`);
+    }
+    return lines.join("\n");
+  }
+
+  private buildCompactPlannerAlerts(): string[] {
+    const out: string[] = [];
+    const last = this.turns[this.turns.length - 1];
+    if (last?.outcomeWasParserRejection) {
+      out.push(
+        "The parser rejected the last command — pick a different verb or use LOOK/EXAMI (do not repeat the same primary as the previous line in RECENT MOVES).",
+      );
+    }
+    const loop = detectAlternatingLocationCommandLoop(this.turns);
+    if (loop !== null) {
+      const a =
+        loop.locA.length > 40 ? `${loop.locA.slice(0, 39)}…` : loop.locA;
+      const b =
+        loop.locB.length > 40 ? `${loop.locB.slice(0, 39)}…` : loop.locB;
+      out.push(
+        `Two-location loop (${a} ↔ ${b}) using \`${loop.repeatedPrimary}\` each time — try LOOK, EXAMI, BUILD, ENTER, or a compass direction; do not repeat \`${loop.repeatedPrimary}\` unless the room clearly changed.`,
+      );
+    }
+    if (this.rejectedGetinQueue.length > 0) {
+      const slice = this.rejectedGetinQueue.slice(-8);
+      const fmt = slice.map((k) => formatRejectedGetinForPrompt(k)).join("; ");
+      out.push(
+        `These GETIN lines were refused by the parser; do not repeat the same combination unless the situation changed: ${fmt}${
+          this.rejectedGetinQueue.length > 8 ? " …" : ""
+        }`,
+      );
+    }
+    return out;
+  }
+
+  private buildRecentCommandsSummary(maxCommands: number): string {
+    if (this.turns.length === 0) return "(none yet)";
+    const slice = this.turns.slice(-maxCommands);
+    return slice
+      .map((t) => `\`${t.command}\` → ${t.outcomeExcerpt}`)
+      .join(" | ");
+  }
+
+  /**
    * When the last GETIN result was a parser rejection, instruct the planner explicitly.
    * Small models often repeat the same primaryToken unless this is surfaced as state.
    */
-  private buildParserRejectionBlock(): string | null {
+  private buildParserRejectionBlock(structured: boolean): string | null {
     const last = this.turns[this.turns.length - 1];
     if (!last?.outcomeWasParserRejection) return null;
-    return `## Parser rejection (last turn — first-class state)
+    const title = structured
+      ? "### Parser rejection (last turn)"
+      : "## Parser rejection (last turn — first-class state)";
+    return `${title}
 The game did not accept the last command as written. Follow all of these:
 - Do **not** repeat the same primaryToken as the previous turn in the log below (unless the room or situation clearly changed).
 - Try a **different** verb or object from the vocabulary. Travel/motion words (e.g. BUILD, ENTER) often apply only in specific situations; inside a location, prefer **TAKE** or **GET** with the object in secondaryToken when items are listed on the ground.
 - If unsure, use **LOOK** or **EXAMI** to refresh the situation before moving again.`;
   }
 
-  private buildTurnLogBlock(maxLines: number): string {
+  private buildOscillationBlock(structured: boolean): string | null {
+    const loop = detectAlternatingLocationCommandLoop(this.turns);
+    if (loop === null) return null;
+    const title = structured
+      ? "### Two-location loop (last 4 moves)"
+      : "## Two-location loop (last 4 moves)";
+    const a = loop.locA.length > 72 ? `${loop.locA.slice(0, 71)}…` : loop.locA;
+    const b = loop.locB.length > 72 ? `${loop.locB.slice(0, 71)}…` : loop.locB;
+    return `${title}
+The last four successful moves alternated between the same two location lines using \`${loop.repeatedPrimary}\` each time:
+- ${a}
+- ${b}
+**Do not** emit the same primaryToken \`${loop.repeatedPrimary}\` again unless the transcript clearly shows a new situation. Prefer **LOOK** or **EXAMI**, then a noun or direction visible in the room text (e.g. **BUILD**, **ENTER**, compass directions).`;
+  }
+
+  private buildTurnLogBlock(
+    maxLines: number,
+    structured: boolean,
+    structuredHeading?: string,
+  ): string {
+    const h = structured
+      ? (structuredHeading ?? "### TURN LOG")
+      : "## Turn log";
     if (this.turns.length === 0) {
-      return "## Turn log\n(none yet)";
+      return `${h}\n(none yet)`;
     }
     const slice = this.turns.slice(-maxLines);
     const lines = slice.map(
       (t, i) =>
         `${i + 1 + this.turns.length - slice.length}. \`${t.command}\` → ${t.outcomeExcerpt}`,
     );
-    return `## Turn log (last ${slice.length} moves)\n${lines.join("\n")}`;
+    return `${h} (last ${slice.length} moves)\n${lines.join("\n")}`;
   }
 
-  private buildRejectedCommandsBlock(): string | null {
+  private buildRejectedCommandsBlock(structured: boolean): string | null {
     if (this.rejectedGetinQueue.length === 0) return null;
     const lines = this.rejectedGetinQueue.map(
       (k, i) => `${i + 1}. ${formatRejectedGetinForPrompt(k)}`,
     );
-    return `## Parser-rejected commands (do not repeat)
+    const title = structured
+      ? "### Parser-rejected commands (do not repeat)"
+      : "## Parser-rejected commands (do not repeat)";
+    return `${title}
 The game already refused these GETIN lines in the current situation. Unless the transcript clearly changed, do **not** choose tokens that produce the same 10-column GETIN line again.
 ${lines.join("\n")}`;
+  }
+
+  /**
+   * Gemma-oriented planner: **system** = {@link mlxAutoplaySystemPrompt} (rules + JSON + background).
+   * **user** = GAME ENGINE STATE → CANDIDATES → RECENT MOVES → TRANSCRIPT (current situation and options).
+   * The worker merges `system` + `user` before generation (`scripts/mlx_lm_worker.py`).
+   */
+  buildPlannerMxStructuredPrompt(
+    maxChars: number,
+    options: {
+      compact: boolean;
+      situationalSection?: string;
+    },
+  ): { system: string; user: string } {
+    const situationalSection = options.situationalSection?.trim();
+    const situationalBlock =
+      situationalSection && situationalSection.length > 0
+        ? situationalSection.replace(
+            /^## Situation candidates[^\n]*/,
+            "### CANDIDATES",
+          )
+        : "";
+
+    const gameEngineBlock = this.buildGameEngineStateBlockMx();
+    const turnLog = this.buildTurnLogBlock(
+      MX_SPLIT_TURN_LOG_LINES,
+      true,
+      "### RECENT MOVES",
+    );
+    const rawTail = this.recentRawTail.trim();
+
+    const sessionFraming = `### CURRENT SESSION
+You are in the situation below. Pick **one** parser command using **GAME ENGINE STATE**, **CANDIDATES**, **RECENT MOVES**, and **TRANSCRIPT**. Follow the system message for JSON shape and parser rules.`;
+
+    const userSections = [
+      sessionFraming,
+      "",
+      gameEngineBlock,
+      ...(situationalBlock ? ["", situationalBlock] : []),
+      "",
+      turnLog,
+      "",
+      "### TRANSCRIPT",
+      "---",
+      rawTail,
+      "---",
+    ];
+    const user = trimPromptToBudget(userSections.join("\n"), maxChars);
+    return {
+      system: mlxAutoplaySystemPrompt(options.compact),
+      user,
+    };
   }
 
   /**
@@ -296,32 +552,70 @@ ${lines.join("\n")}`;
   buildPlannerUserPrompt(
     maxChars: number,
     vocabHint: string,
-    options?: { compact?: boolean; situationalSection?: string },
+    options?: {
+      compact?: boolean;
+      situationalSection?: string;
+      structuredDashboard?: boolean;
+    },
   ): string {
     const compact = options?.compact ?? false;
+    const structured = options?.structuredDashboard ?? false;
     const situationalSection = options?.situationalSection?.trim();
-    const stateBlock = this.buildStateBlock();
-    const turnLog = this.buildTurnLogBlock(DEFAULT_TURN_LOG_LINES);
-    const parserBlock = this.buildParserRejectionBlock();
-    const rejectedBlock = this.buildRejectedCommandsBlock();
+    const turnLog = this.buildTurnLogBlock(DEFAULT_TURN_LOG_LINES, structured);
+    const parserBlock = this.buildParserRejectionBlock(structured);
+    const oscillationBlock = this.buildOscillationBlock(structured);
+    const rejectedBlock = this.buildRejectedCommandsBlock(structured);
     const rawTail = this.recentRawTail.trim();
 
     const vocabSection = vocabTrim(vocabHint, maxChars);
-    const preamble = [
-      ...linesForAutoplayPlannerContextBody(vocabSection, { compact }),
-      ...(situationalSection ? ["", situationalSection] : []),
-      "",
-      stateBlock,
-      "",
-      turnLog,
-      ...(rejectedBlock ? ["", rejectedBlock] : []),
-      ...(parserBlock ? ["", parserBlock] : []),
-      "",
-      "## Recent game output (verbatim tail — use for room details and objects)",
-      "---",
-      rawTail,
-      "---",
-    ].join("\n");
+    const recentHeader = structured
+      ? "### RECENT GAME OUTPUT (verbatim tail — room details and objects)"
+      : "## Recent game output (verbatim tail — use for room details and objects)";
+
+    let preamble: string;
+    if (structured) {
+      const adventureState = this.buildAdventureStateBlock();
+      const taskBlock = autoplayPlannerTaskBlockStructured();
+      preamble = [
+        ...linesForAutoplayPlannerContextBody(vocabSection, {
+          compact,
+          structuredDashboard: true,
+        }),
+        "",
+        adventureState,
+        "",
+        taskBlock,
+        ...(situationalSection ? ["", situationalSection] : []),
+        "",
+        turnLog,
+        ...(rejectedBlock ? ["", rejectedBlock] : []),
+        ...(parserBlock ? ["", parserBlock] : []),
+        ...(oscillationBlock ? ["", oscillationBlock] : []),
+        "",
+        recentHeader,
+        "---",
+        rawTail,
+        "---",
+      ].join("\n");
+    } else {
+      const stateBlock = this.buildStateBlock();
+      preamble = [
+        ...linesForAutoplayPlannerContextBody(vocabSection, { compact }),
+        ...(situationalSection ? ["", situationalSection] : []),
+        "",
+        stateBlock,
+        "",
+        turnLog,
+        ...(rejectedBlock ? ["", rejectedBlock] : []),
+        ...(parserBlock ? ["", parserBlock] : []),
+        ...(oscillationBlock ? ["", oscillationBlock] : []),
+        "",
+        recentHeader,
+        "---",
+        rawTail,
+        "---",
+      ].join("\n");
+    }
 
     return trimPromptToBudget(preamble, maxChars);
   }

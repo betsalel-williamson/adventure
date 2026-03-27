@@ -16,13 +16,18 @@ import { repairInterpretedCommand } from "../repairInterpreted.js";
 import {
   buildAutoplayPlannerPrompt,
   buildInterpretSystemAndUserPrompt,
+  resolveInterpretPromptBuildOptions,
 } from "../adventureNlPrompts.js";
 import { parseJsonObjectFromLlmText } from "../jsonFromLlmText.js";
 import {
   coerceAutoplayPlannerJson,
   coerceInterpretedCommandJson,
 } from "../coerceLlmJson.js";
-import type { TextLlm } from "../textLlmContract.js";
+import type {
+  InterpretPlayerInputOptions,
+  PlannerUserPromptInput,
+  TextLlm,
+} from "../textLlmContract.js";
 import {
   openAiAutoplayPlannerJsonSchema,
   openAiInterpretCommandJsonSchema,
@@ -127,7 +132,7 @@ export class HttpOpenAiCompatibleTextLlm implements TextLlm {
   async interpretPlayerInput(
     userText: string,
     db: AdventureDatabase,
-    options: { recentGameText?: string },
+    options: InterpretPlayerInputOptions,
   ): Promise<InterpretedCommand> {
     const cacheDir = resolveCacheDir();
     const cacheKey = cacheKeyFor(userText, this.modelId, this.providerId);
@@ -158,10 +163,15 @@ export class HttpOpenAiCompatibleTextLlm implements TextLlm {
 
     process.stderr.write("adventure-llm: translating with text LLM…\n");
 
+    const { compact, structuredDashboard } = resolveInterpretPromptBuildOptions(
+      this.providerId,
+      options.promptStyle,
+    );
     const prompt = buildInterpretSystemAndUserPrompt(
       db,
       userText,
       options.recentGameText,
+      { compact, structuredDashboard, providerId: this.providerId },
     );
 
     await appendInteractionLog({
@@ -227,7 +237,7 @@ export class HttpOpenAiCompatibleTextLlm implements TextLlm {
   async planAutoplay(
     db: AdventureDatabase,
     options: {
-      plannerUserPrompt: string;
+      plannerUserPrompt: PlannerUserPromptInput;
       recentGameTextForRepair?: string;
     },
   ): Promise<AutoplayPlannerResponse> {
@@ -296,5 +306,15 @@ export class HttpOpenAiCompatibleTextLlm implements TextLlm {
     });
 
     return out;
+  }
+
+  async generateUnstructured(prompt: string): Promise<string> {
+    return postChatCompletion(
+      this.url,
+      this.apiKey,
+      this.modelId,
+      prompt,
+      undefined,
+    );
   }
 }

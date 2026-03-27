@@ -12,7 +12,7 @@ export type GeminiInterpreterOptions = {
 };
 
 export { shouldFallbackToClassicForGeminiError } from "./llmErrors.js";
-export { buildVocabHint } from "./vocabHint.js";
+export { buildVocabHint, type BuildVocabHintOptions } from "./vocabHint.js";
 
 /**
  * @deprecated Prefer {@link interpretWithTextLlm} with {@link resolveTextLlmFromEnv} or {@link GoogleGenerativeAiTextLlm}.

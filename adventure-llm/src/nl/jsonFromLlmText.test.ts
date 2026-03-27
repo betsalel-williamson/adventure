@@ -22,4 +22,25 @@ describe("parseJsonObjectFromLlmText", () => {
     );
     expect(o).toEqual({ primaryToken: "NORTH" });
   });
+
+  it("accepts Python None/True/False outside strings (MLX-style output)", () => {
+    const o = parseJsonObjectFromLlmText(
+      '{"primaryToken":"SMASH","secondaryToken":None,"confidence":1}',
+    );
+    expect(o).toEqual({
+      primaryToken: "SMASH",
+      secondaryToken: null,
+      confidence: 1,
+    });
+  });
+
+  it("does not rewrite None inside JSON string values", () => {
+    const o = parseJsonObjectFromLlmText(
+      '{"primaryToken":"None","secondaryToken":null}',
+    );
+    expect(o).toEqual({
+      primaryToken: "None",
+      secondaryToken: null,
+    });
+  });
 });

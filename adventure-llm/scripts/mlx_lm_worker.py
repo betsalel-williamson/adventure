@@ -3,15 +3,20 @@
 JSONL stdio worker for MLX (Apple Silicon). Loads the model once, then:
 
   - First stdout line: {"type": "ready"}
-  - Each stdin line: {"id": "<string>", "prompt": "<text>", "max_tokens": <int optional>}
+  - Each stdin line: {"id": "<string>", "prompt": "<text>", "system": "<optional; merged before prompt when non-empty>", "max_tokens": <int optional>, "temp": <float optional>, "stop": [<str>, ...] optional}
   - Each response line: {"id": "<same>", "text": "<model output>", "error": null | "<msg>"}
 
 Install deps: from adventure-llm directory run ``uv venv`` then ``uv sync`` (uses ``pyproject.toml``).
 
-Prompts use the tokenizer's ``apply_chat_template`` when available; otherwise a Gemma-2-style
-wrap for legacy compatibility.
+Gemma IT models only define **user** and **model** turns; there is no separate **system** role.
+Autoplay may send **system** (rules + JSON schema) and **prompt** (engine state, candidates,
+transcript). If ``system`` is non-empty, it is prepended to ``prompt`` for generation. See
+Google’s Gemma prompt notes: https://ai.google.dev/gemma/docs/core/prompt-structure
 
-Default model (override with ADVENTURE_LLM_MLX_MODEL): mlx-community/gemma-2-9b-it-4bit
+Prompts use the tokenizer's ``apply_chat_template`` when available; otherwise Gemma-2-style
+turns as above.
+
+Default model (override with ADVENTURE_LLM_MLX_MODEL): mlx-community/gemma-2-2b-it
 """
 from __future__ import annotations
 
@@ -21,13 +26,41 @@ import sys
 
 
 def _gemma2_turns(user_text: str) -> str:
-    """Gemma 2 chat template (instruction-tuned): user turn then model turn prefix."""
+    """Official Gemma IT single-turn pattern: one user block (may include 'system' instructions inside it), then model prefix."""
     return (
         "<start_of_turn>user\n"
         f"{user_text}\n"
         "<end_of_turn>\n"
         "<start_of_turn>model\n"
     )
+
+
+def _default_mlx_temp() -> float:
+    v = os.environ.get("ADVENTURE_LLM_MLX_TEMP", "0.75").strip()
+    try:
+        t = float(v)
+        return max(0.0, min(2.0, t))
+    except ValueError:
+        return 0.75
+
+
+def _default_stop_strings() -> list[str]:
+    raw = os.environ.get("ADVENTURE_LLM_MLX_STOP", "").strip()
+    if not raw:
+        return []
+    return [s.strip() for s in raw.split(",") if s.strip()]
+
+
+def _truncate_at_stop_strings(text: str, stops: list[str]) -> str:
+    """Cut model output before the first occurrence of any stop substring (Gemma anti-hallucination)."""
+    if not text or not stops:
+        return text
+    best = len(text)
+    for s in stops:
+        i = text.find(s)
+        if i >= 0:
+            best = min(best, i)
+    return text[:best] if best < len(text) else text
 
 
 def _build_generation_prompt(tokenizer: object, user_text: str, model_id: str) -> str:
@@ -53,11 +86,12 @@ def _build_generation_prompt(tokenizer: object, user_text: str, model_id: str) -
 
 def main() -> None:
     model_id = os.environ.get(
-        "ADVENTURE_LLM_MLX_MODEL", "mlx-community/gemma-2-9b-it-4bit"
+        "ADVENTURE_LLM_MLX_MODEL", "mlx-community/gemma-2-2b-it"
     ).strip()
 
     try:
         from mlx_lm import generate, load  # type: ignore[import-untyped]
+        from mlx_lm.sample_utils import make_sampler  # type: ignore[import-untyped]
     except ImportError as e:
         print(
             json.dumps(
@@ -97,14 +131,21 @@ def main() -> None:
             continue
 
         rid = str(req.get("id", ""))
-        prompt = req.get("prompt")
-        if not isinstance(prompt, str) or not prompt:
+        system_raw = req.get("system")
+        prompt_raw = req.get("prompt")
+        system = system_raw.strip() if isinstance(system_raw, str) else ""
+        prompt = prompt_raw.strip() if isinstance(prompt_raw, str) else ""
+        if system:
+            user_text = f"{system}\n\n{prompt}" if prompt else system
+        elif prompt:
+            user_text = prompt
+        else:
             print(
                 json.dumps(
                     {
                         "id": rid,
                         "text": "",
-                        "error": "missing or invalid prompt",
+                        "error": "missing or invalid prompt (need prompt and/or system)",
                     }
                 ),
                 flush=True,
@@ -112,7 +153,20 @@ def main() -> None:
             continue
 
         max_tokens = int(req.get("max_tokens", 512))
-        full_prompt = _build_generation_prompt(tokenizer, prompt, model_id)
+        full_prompt = _build_generation_prompt(tokenizer, user_text, model_id)
+
+        temp = _default_mlx_temp()
+        if "temp" in req and req["temp"] is not None:
+            try:
+                temp = float(req["temp"])
+                temp = max(0.0, min(2.0, temp))
+            except (TypeError, ValueError):
+                pass
+
+        stop_strings = _default_stop_strings()
+        if isinstance(req.get("stop"), list):
+            stop_strings = [str(x).strip() for x in req["stop"] if str(x).strip()]
+        sampler = make_sampler(temp)
 
         try:
             raw = generate(
@@ -121,6 +175,7 @@ def main() -> None:
                 prompt=full_prompt,
                 max_tokens=max_tokens,
                 verbose=False,
+                sampler=sampler,
             )
             if isinstance(raw, str):
                 text = raw
@@ -128,6 +183,7 @@ def main() -> None:
                 text = "".join(str(x) for x in raw)
             else:
                 text = str(raw)
+            text = _truncate_at_stop_strings(text, stop_strings)
             print(
                 json.dumps({"id": rid, "text": text, "error": None}),
                 flush=True,

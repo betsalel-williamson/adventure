@@ -22,13 +22,18 @@ import {
 import {
   buildAutoplayPlannerPrompt,
   buildInterpretSystemAndUserPrompt,
+  resolveInterpretPromptBuildOptions,
 } from "../adventureNlPrompts.js";
 import { vocabTokensForLlmEnums } from "../gameVocabEnums.js";
 import {
   coerceAutoplayPlannerToVocab,
   coerceInterpretedCommandToVocab,
 } from "../coerceToVocab.js";
-import type { TextLlm } from "../textLlmContract.js";
+import type {
+  InterpretPlayerInputOptions,
+  PlannerUserPromptInput,
+  TextLlm,
+} from "../textLlmContract.js";
 
 export type GoogleGenerativeAiTextLlmOptions = {
   apiKey: string;
@@ -52,7 +57,7 @@ export class GoogleGenerativeAiTextLlm implements TextLlm {
   async interpretPlayerInput(
     userText: string,
     db: AdventureDatabase,
-    options: { recentGameText?: string },
+    options: InterpretPlayerInputOptions,
   ): Promise<InterpretedCommand> {
     const cacheDir = resolveCacheDir();
     const cacheKey = cacheKeyFor(userText, this.modelId, this.providerId);
@@ -112,10 +117,15 @@ export class GoogleGenerativeAiTextLlm implements TextLlm {
       },
     });
 
+    const { compact, structuredDashboard } = resolveInterpretPromptBuildOptions(
+      this.providerId,
+      options.promptStyle,
+    );
     const prompt = buildInterpretSystemAndUserPrompt(
       db,
       userText,
       options.recentGameText,
+      { compact, structuredDashboard, providerId: this.providerId },
     );
 
     await appendInteractionLog({
@@ -164,7 +174,7 @@ export class GoogleGenerativeAiTextLlm implements TextLlm {
   async planAutoplay(
     db: AdventureDatabase,
     options: {
-      plannerUserPrompt: string;
+      plannerUserPrompt: PlannerUserPromptInput;
       recentGameTextForRepair?: string;
     },
   ): Promise<AutoplayPlannerResponse> {
@@ -249,5 +259,12 @@ export class GoogleGenerativeAiTextLlm implements TextLlm {
     });
 
     return out;
+  }
+
+  async generateUnstructured(prompt: string): Promise<string> {
+    const gen = new GoogleGenerativeAI(this.apiKey);
+    const model = gen.getGenerativeModel({ model: this.modelId });
+    const res = await model.generateContent(prompt);
+    return res.response.text();
   }
 }

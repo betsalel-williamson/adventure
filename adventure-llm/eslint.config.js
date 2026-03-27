@@ -9,4 +9,13 @@ export default tseslint.config(
   {
     ignores: ["dist/**", "node_modules/**", "reports/**", ".cache/**"],
   },
+  {
+    files: ["scripts/**/*.mjs"],
+    languageOptions: {
+      globals: {
+        console: "readonly",
+        process: "readonly",
+      },
+    },
+  },
 );

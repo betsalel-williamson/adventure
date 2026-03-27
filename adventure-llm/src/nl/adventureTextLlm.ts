@@ -4,13 +4,17 @@ import { GoogleGenerativeAiTextLlm } from "./providers/googleGenerativeAiTextLlm
 import { HttpOpenAiCompatibleTextLlm } from "./providers/httpOpenAiCompatibleTextLlm.js";
 import { MlxLmStdioTextLlm } from "./providers/mlxLmStdioTextLlm.js";
 import { resolveCompactPrompts } from "./adventureNlPrompts.js";
-import type { TextLlm } from "./textLlmContract.js";
+import type {
+  InterpretPlayerInputOptions,
+  PlannerUserPromptInput,
+  TextLlm,
+} from "./textLlmContract.js";
 
 /** Default Ollama OpenAI-compatible base (`/v1` included). */
 export const DEFAULT_HTTP_OPENAI_BASE_URL = "http://127.0.0.1:11434/v1";
 
-/** Default Hugging Face MLX weights (Gemma 2 9B Instruct 4-bit — good balance for local JSON tasks on many Apple Silicon Macs). */
-export const DEFAULT_MLX_MODEL_ID = "mlx-community/gemma-2-9b-it-4bit";
+/** Default Hugging Face MLX weights (Gemma 2 2B Instruct — small default for edge / low RAM). */
+export const DEFAULT_MLX_MODEL_ID = "mlx-community/gemma-2-2b-it";
 
 /**
  * Resolve which text LLM to use from `process.env`.
@@ -113,7 +117,7 @@ export async function interpretWithTextLlm(
   userText: string,
   db: AdventureDatabase,
   client: TextLlm,
-  options?: { recentGameText?: string },
+  options?: InterpretPlayerInputOptions,
 ): Promise<InterpretedCommand> {
   return client.interpretPlayerInput(userText, db, options ?? {});
 }
@@ -122,7 +126,7 @@ export async function planAutoplayWithTextLlm(
   db: AdventureDatabase,
   client: TextLlm,
   options: {
-    plannerUserPrompt: string;
+    plannerUserPrompt: PlannerUserPromptInput;
     recentGameTextForRepair?: string;
   },
 ): Promise<AutoplayPlannerResponse> {
