@@ -8,7 +8,7 @@ This directory holds **project-level** architecture views for the Colossal Cave 
 
 | Document | Scope |
 |----------|--------|
-| [adventure-engine.md](./adventure-engine.md) | **`adventure-llm`**: dat loading, subprocess driver, `TextLlm` providers, NL pipeline, cache, CLI interactive vs autoplay, imagery. |
+| [adventure-engine.md](./adventure-engine.md) | **`adventure-llm`**: dat loading, subprocess driver, `TextLlm` providers, NL pipeline, cache, CLI interactive vs autoplay, autoplay prompt modes (`explore` / `full`), session memory + guards, web dashboard, imagery. |
 | [adventure-fortran-engine.md](./adventure-fortran-engine.md) | **`adventure.f`** and **`adventure.dat`** only: loader, in-memory model, GETIN / ATAB, turn loop. |
 | [ADR0001: adventure-llm TextLlm providers](../decisions/ADR0001-adventure-llm-text-llm-providers.md) | Decision record: unified post-parse pipeline, interpret cache keys, interactive session prefix, HTTP retries, debug truncation. |
 

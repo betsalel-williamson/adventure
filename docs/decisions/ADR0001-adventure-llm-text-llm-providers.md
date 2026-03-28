@@ -35,6 +35,7 @@ Accepted.
 ## References
 
 - [docs/architecture/adventure-engine.md](../architecture/adventure-engine.md) — package-level logical and process view (kept in sync with this ADR).
+- [guidelines/adventure-llm/autoplay-planner-context.md](../../guidelines/adventure-llm/autoplay-planner-context.md) — autoplay prompt modes (`explore` / `full`), candidate hygiene, guards, web pace overrides.
 - [adventure-llm/src/nl/textLlmContract.ts](../../adventure-llm/src/nl/textLlmContract.ts)
 - [adventure-llm/src/nl/textLlmInterpretPipeline.ts](../../adventure-llm/src/nl/textLlmInterpretPipeline.ts)
 - [adventure-llm/src/nl/interpretCacheKey.ts](../../adventure-llm/src/nl/interpretCacheKey.ts)

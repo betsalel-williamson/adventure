@@ -94,11 +94,11 @@ export const ADVENTURE_LLM_INTERPRET_ROLE_COMPACT =
  * Shared parser semantics for NL interpret and autoplay — keep in sync everywhere.
  * (primaryToken / secondaryToken / TAKE vs motion UP / TOUCH, etc.)
  */
-export const ADVENTURE_LLM_PARSER_TOKEN_RULES = `Rules: (1) For taking or carrying something, use primaryToken TAKE or GET and put the object in secondaryToken — never put the object alone in primaryToken. (2) The word UP in column 1 alone means GO UP (a direction), NOT the phrasal verb in "pick it up" / "pick them up"; those mean TAKE + object; secondaryToken must be a concrete object word from recent game output (e.g. KEYS), never UP, THEM, or IT. (3) For compass and travel directions (NORTH, EAST, WEST, SOUTH, etc.), put only the direction in primaryToken and omit secondaryToken — do not use GO, WALK, or RUN in primary with the direction in secondary. (4) "Pick up" phrasing prefers TAKE; bare "get"/"grab" may use GET when the object matches. (5) For picking up items, prefer TAKE or GET over TOUCH (TOUCH often yields an unhelpful game response). (6) Do not use NULL or placeholder secondaries.`;
+export const ADVENTURE_LLM_PARSER_TOKEN_RULES = `Rules: (1) For taking or carrying something, use primaryToken **TAKE** or **GET** with the object in **secondaryToken** (object words belong in secondary, not alone in primary). (2) The word **UP** in column 1 alone means **GO UP** (a direction), not the phrasal verb in "pick it up" / "pick them up"; those map to **TAKE** + object; **secondaryToken** must be a concrete object word from recent game output (e.g. **KEYS**), not **UP**, **THEM**, or **IT**. (3) For compass and travel, put only the direction in **primaryToken** and omit **secondaryToken** (e.g. **EAST** alone — not **GO** + direction in two columns). (4) "Pick up" phrasing prefers **TAKE**; bare "get"/"grab" may use **GET** when the object matches. (5) For picking up items, prefer **TAKE** or **GET** over **TOUCH** (often more helpful). (6) Use concrete secondaries from game text; skip **NULL** or placeholder secondaries. (7) If the transcript lists portable objects in the room and **INVENTORY** does not show you already carrying them (or inventory is empty/unknown), **prefer TAKE or GET + that object in secondaryToken** before **OUT**, **BUILD**, **LEAVE**, **EXIT**, or other travel. When you are **inside** a **building** or **well house**, or a compass move gets **no way to go that direction** while **inside**, **prefer OUT**, **BUILD**, **LEAVE**, **EXIT**, and other motion words from **CANDIDATES** (after **TAKE**/**GET** for anything you still need) until room text reads like open terrain (roads, forest, compass exits).`;
 
 /** Minimal rules for small models (same distinctions, fewer tokens). */
 export const ADVENTURE_LLM_PARSER_TOKEN_RULES_COMPACT =
-  'Rules: TAKE/GET + object in secondary (never object-only primary). Pick-up → prefer TAKE; "get" may be GET. Secondary must be a concrete noun from recent game text (KEYS, …), not THEM/IT/UP. UP in column1 alone = direction, not pick-up. Motion: direction-only primary (EAST…), no GO+secondary. Prefer TAKE/GET over TOUCH. No NULL secondaries.';
+  'Rules: TAKE/GET + object in secondary (never object-only primary). Pick-up → prefer TAKE; "get" may be GET. Secondary must be a concrete noun from recent game text (KEYS, …), not THEM/IT/UP. UP in column1 alone = direction, not pick-up. Motion: direction-only primary (EAST…), no GO+secondary. Prefer TAKE/GET over TOUCH. No NULL secondaries. Indoors: if room lists items you are not carrying, TAKE/GET+object before OUT/BUILD/LEAVE/EXIT; then prefer OUT/BUILD/LEAVE/EXIT over compass until open terrain.';
 
 /** Autoplay: role for the planner + session-memory context (same rules as interpret). */
 export const ADVENTURE_LLM_AUTOPLAY_PLANNER_ROLE =
@@ -107,18 +107,41 @@ export const ADVENTURE_LLM_AUTOPLAY_PLANNER_ROLE =
 export const ADVENTURE_LLM_AUTOPLAY_PLANNER_ROLE_COMPACT =
   "You are the adventurer. Choose the next parser command. Reply ONLY with JSON; keys are repeated at the end of the prompt.";
 
+/** `explore` — shorter prompts, exploration-first default; `full` — legacy richer guidance. */
+export type AutoplayPromptMode = "explore" | "full";
+
+/**
+ * `ADVENTURE_LLM_AUTOPLAY_PROMPT_MODE=explore` (default) or `full`.
+ * Explore mode prioritizes visiting new rooms and varying commands; full preserves longer loot/indoor hints.
+ */
+export function resolveAutoplayPromptMode(): AutoplayPromptMode {
+  const v =
+    process.env.ADVENTURE_LLM_AUTOPLAY_PROMPT_MODE?.trim().toLowerCase();
+  if (v === "full") return "full";
+  return "explore";
+}
+
 /**
  * Core task + JSON contract for autoplay (embedded in {@link mlxAutoplaySystemPrompt}).
  */
-export function mlxAutoplayPlannerInstructionsBlock(compact: boolean): string {
+export function mlxAutoplayPlannerInstructionsBlock(
+  compact: boolean,
+  mode: AutoplayPromptMode = resolveAutoplayPromptMode(),
+): string {
   const rules = compact
     ? ADVENTURE_LLM_PARSER_TOKEN_RULES_COMPACT
     : ADVENTURE_LLM_PARSER_TOKEN_RULES;
+  const bodyExplore = `Default goal: **explore** — **rotate** motion and interaction: **Try next**, **AT THIS NODE**, and **CANDIDATES** show what is still worth trying from this position. **TAKE**/**GET** + object when **INVENTORY** / room text shows ground items you are not carrying yet; when you already hold an item, pick travel or another interaction. **OUT**/**BUILD**/**LEAVE**/**EXIT** help indoors (see user message). **LOOK**/**EXAMI** when you need exact object wording.`;
+
+  const bodyFull = `Prefer tokens from **CANDIDATES** when they fit; use **EXPLORATION MAP** / **INVENTORY** to pick commands that advance the situation. When the transcript names takeable items you are not carrying, use **TAKE** or **GET** with that object noun before travel or indoor exits (**OUT**, **BUILD**, **LEAVE**, **EXIT**). When the transcript already shows where you are and what is present, choose travel or **TAKE**/**GET** (or another interaction); use **LOOK** or **EXAMI** when you need wording for an object or the situation text is missing or clearly stale.`;
+
+  const body = mode === "explore" ? bodyExplore : bodyFull;
+
   return `Choose the next GETIN parser command (two five-letter columns max).
 
 ${rules}
 
-Prefer tokens from **CANDIDATES** in the user message when they fit the situation.
+${body}
 
 Reply with one JSON object only (no markdown fences, no other text):
 {"primaryToken":"TOKEN","secondaryToken":"TOKEN","confidence":0.5,"continuePlaying":true}
@@ -164,13 +187,14 @@ Example: {"primaryToken":"TOKEN","secondaryToken":"TOKEN","confidence":0.5,"cont
 /**
  * System prompt for MLX autoplay (and merged single-string prompts). Variant controls length/structure
  * for experiments with small models (see {@link resolveMlxSystemPromptVariant}).
- * The user message carries **GAME ENGINE STATE**, **CANDIDATES**, **RECENT MOVES**, and **TRANSCRIPT**.
+ * The user message carries **GAME ENGINE STATE**, **CANDIDATES**, and **LOCAL SESSION MAP** (DOT), not a full game transcript.
  */
 export function mlxAutoplaySystemPromptForVariant(
   compact: boolean,
   variant: MlxSystemPromptVariant,
+  mode: AutoplayPromptMode = resolveAutoplayPromptMode(),
 ): string {
-  const core = mlxAutoplayPlannerInstructionsBlock(compact);
+  const core = mlxAutoplayPlannerInstructionsBlock(compact, mode);
   switch (variant) {
     case "bare":
       return mlxAutoplaySystemPromptBare(compact);
@@ -181,20 +205,31 @@ export function mlxAutoplaySystemPromptForVariant(
 
 ${core}`;
     case "full":
+      if (mode === "explore") {
+        return `Colossal Cave Adventure — autoplay planner
+
+You output one JSON GETIN command per turn. The **user** message is **local**: current node, short history, optional small map — not a full transcript.
+
+${core}`;
+      }
       return `Colossal Cave Adventure — autoplay planner
 
 You simulate the adventurer's input to the classic Fortran GETIN parser (five-letter vocabulary tokens). Each turn you must output exactly one JSON object for the next command.
 
-The user message describes the current situation: **GAME ENGINE STATE** (location, inventory, alerts), **CANDIDATES** (suggested tokens for this moment), **RECENT MOVES** (last commands and outcomes), and **TRANSCRIPT** (verbatim game text). Use that context to choose one valid command.
+The user message describes the current situation: **GAME ENGINE STATE** (location, parsed inventory, alerts), **EXPLORATION MAP** (inferred x,y,z and session learnings at the current cell), **CANDIDATES** (suggested tokens), and **LOCAL SESSION MAP** (small Graphviz DOT around your current inferred cell — the **dark filled** node with **YOU ARE HERE** in the label is your position). There is no full verbatim game log. Use that context to choose one valid command; **prioritize** exits and verbs that are still open on the map (**Try next**).
 
 ${core}`;
   }
 }
 
-export function mlxAutoplaySystemPrompt(compact: boolean): string {
+export function mlxAutoplaySystemPrompt(
+  compact: boolean,
+  mode: AutoplayPromptMode = resolveAutoplayPromptMode(),
+): string {
   return mlxAutoplaySystemPromptForVariant(
     compact,
     resolveMlxSystemPromptVariant(),
+    mode,
   );
 }
 
@@ -245,9 +280,15 @@ export function resolveStructuredDashboardPrompts(
 }
 
 /** Single TASK block for structured autoplay (JSON planner). */
-export function autoplayPlannerTaskBlockStructured(): string {
+export function autoplayPlannerTaskBlockStructured(
+  mode: AutoplayPromptMode = resolveAutoplayPromptMode(),
+): string {
+  if (mode === "explore") {
+    return `### TASK
+Default goal: **explore the world** (new rooms, untried exits). Reply with **only** one JSON object: primaryToken (required), secondaryToken (optional), confidence (optional), continuePlaying (optional, default true). **Rotate** your choice: **Try next** and **AT THIS NODE** list strong options; **vary** from your last few turns at this spot when the situation is unchanged. Follow parser rules. **TAKE**/**GET** + object when room/inventory shows ground items you are not carrying. **LOOK**/**EXAMI** when you need exact object words. No markdown fences, no other text.`;
+  }
   return `### TASK
-Choose the next Colossal Cave Adventure parser command. Reply with **only** one JSON object: primaryToken (string, required), secondaryToken (optional), confidence (optional), continuePlaying (optional, default true). Use vocabulary from the lists below; follow parser rules. No markdown fences, no other text.`;
+Choose the next Colossal Cave Adventure parser command. Reply with **only** one JSON object: primaryToken (string, required), secondaryToken (optional), confidence (optional), continuePlaying (optional, default true). Use vocabulary from the lists below; follow parser rules. Use **EXPLORATION MAP**, **LOCAL SESSION MAP** (dark-filled **YOU ARE HERE** node = your current inferred cell), and **INVENTORY (parsed)** to **prioritize** commands that advance the session. If **INVENTORY** or room text suggests items you do not carry, prefer **TAKE**/**GET** + object before exiting or traveling. **LOOK**/**EXAMI** when you need exact object wording. No markdown fences, no other text.`;
 }
 
 /** Single TASK block for structured NL interpret. */
@@ -287,10 +328,15 @@ export function adventureLlmAutoplayJsonFooter(): string {
  */
 export function linesForAutoplayPlannerContextBody(
   vocabSectionText: string,
-  options?: { compact?: boolean; structuredDashboard?: boolean },
+  options?: {
+    compact?: boolean;
+    structuredDashboard?: boolean;
+    autoplayPromptMode?: AutoplayPromptMode;
+  },
 ): string[] {
   const compact = options?.compact ?? false;
   const structured = options?.structuredDashboard ?? false;
+  const mode = options?.autoplayPromptMode ?? resolveAutoplayPromptMode();
   const role = compact
     ? ADVENTURE_LLM_AUTOPLAY_PLANNER_ROLE_COMPACT
     : ADVENTURE_LLM_AUTOPLAY_PLANNER_ROLE;
@@ -300,9 +346,14 @@ export function linesForAutoplayPlannerContextBody(
   const vocabHeader = structured
     ? "### Vocabulary (words the game parser accepts, grouped by kind)"
     : "## Vocabulary (words the game parser accepts, grouped by kind)";
+  const exploreLine =
+    mode === "explore"
+      ? "Default: explore — **Try next** and untried exits first; **TAKE**/**GET** + object for ground items you are not carrying; **OUT**/**BUILD**/**LEAVE**/**EXIT** when indoors and compass stalls. **LOOK**/**EXAMI** when you need object wording or missing room detail."
+      : "When the prompt includes an inferred **EXPLORATION MAP**, **prioritize** motion and interaction from **Try next** and tokens not yet listed as explored from the current cell. If the transcript lists portable objects you are not carrying, prefer **TAKE**/**GET** + object before indoor exits (**OUT**/**BUILD**/**LEAVE**/**EXIT**). **LOOK**/**EXAMI** when you need exact object tokens or room text is still thin.";
   return [
     role,
     "Use only vocabulary words from the grouped lists when possible.",
+    exploreLine,
     rules,
     "",
     vocabHeader,

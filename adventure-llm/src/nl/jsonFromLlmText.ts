@@ -58,6 +58,25 @@ export function normalizePythonJsonLiteralsInJsonText(input: string): string {
 }
 
 /**
+ * Small models sometimes omit the colon after a quoted key, e.g.
+ * `{"continuePlaying" true}` → JSON.parse expects ':' after the property name.
+ */
+function insertMissingColonsAfterQuotedKeys(input: string): string {
+  let s = input;
+  s = s.replace(
+    /"([a-zA-Z_][a-zA-Z0-9_]*)"\s*(true|false|null)\b/g,
+    '"$1": $2',
+  );
+  s = s.replace(
+    /"([a-zA-Z_][a-zA-Z0-9_]*)"\s*(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)\b/g,
+    '"$1": $2',
+  );
+  s = s.replace(/"([a-zA-Z_][a-zA-Z0-9_]*)"\s*([{[])/g, '"$1": $2');
+  s = s.replace(/"([a-zA-Z_][a-zA-Z0-9_]*)"\s+"/g, '"$1": "');
+  return s;
+}
+
+/**
  * Parse JSON from model output that may include markdown fences or prose.
  */
 export function parseJsonObjectFromLlmText(text: string): unknown {
@@ -66,6 +85,7 @@ export function parseJsonObjectFromLlmText(text: string): unknown {
   const jsonStr = fence ? fence[1]!.trim() : trimmed;
   const objMatch = jsonStr.match(/\{[\s\S]*\}/);
   const toParse = objMatch ? objMatch[0]! : jsonStr;
-  const normalized = normalizePythonJsonLiteralsInJsonText(toParse);
+  const withColons = insertMissingColonsAfterQuotedKeys(toParse);
+  const normalized = normalizePythonJsonLiteralsInJsonText(withColons);
   return JSON.parse(normalized) as unknown;
 }

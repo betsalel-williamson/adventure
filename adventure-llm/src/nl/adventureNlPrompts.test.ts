@@ -16,6 +16,7 @@ import {
   resolveInterpretPromptExamples,
   recentGameTextSliceForInterpretPrompt,
   resolveMlxSystemPromptVariant,
+  resolveAutoplayPromptMode,
   resolveStructuredDashboardPrompts,
   resolveVocabHintMaxWords,
 } from "./adventureNlPrompts.js";
@@ -102,10 +103,10 @@ describe("MLX system prompt variants (ADVENTURE_LLM_MLX_SYSTEM_VARIANT)", () => 
   });
 
   it("orders variants by typical length: full > compact > core > bare (compact rules)", () => {
-    const full = mlxAutoplaySystemPromptForVariant(true, "full");
-    const compact = mlxAutoplaySystemPromptForVariant(true, "compact");
-    const core = mlxAutoplaySystemPromptForVariant(true, "core");
-    const bare = mlxAutoplaySystemPromptForVariant(true, "bare");
+    const full = mlxAutoplaySystemPromptForVariant(true, "full", "full");
+    const compact = mlxAutoplaySystemPromptForVariant(true, "compact", "full");
+    const core = mlxAutoplaySystemPromptForVariant(true, "core", "full");
+    const bare = mlxAutoplaySystemPromptForVariant(true, "bare", "full");
     expect(full.length).toBeGreaterThan(compact.length);
     expect(compact.length).toBeGreaterThan(core.length);
     expect(core.length).toBeGreaterThan(bare.length);
@@ -330,5 +331,25 @@ describe("resolveInterpretPromptExamples (ADVENTURE_LLM_INTERPRET_PROMPT_EXAMPLE
     });
     expect(p).toContain("### EXAMPLES");
     expect(p.indexOf("### EXAMPLES")).toBeLessThan(p.indexOf("### USER INPUT"));
+  });
+});
+
+describe("resolveAutoplayPromptMode", () => {
+  const prev = process.env.ADVENTURE_LLM_AUTOPLAY_PROMPT_MODE;
+
+  afterEach(() => {
+    if (prev === undefined)
+      delete process.env.ADVENTURE_LLM_AUTOPLAY_PROMPT_MODE;
+    else process.env.ADVENTURE_LLM_AUTOPLAY_PROMPT_MODE = prev;
+  });
+
+  it("defaults to explore", () => {
+    delete process.env.ADVENTURE_LLM_AUTOPLAY_PROMPT_MODE;
+    expect(resolveAutoplayPromptMode()).toBe("explore");
+  });
+
+  it("returns full when env is full", () => {
+    process.env.ADVENTURE_LLM_AUTOPLAY_PROMPT_MODE = "full";
+    expect(resolveAutoplayPromptMode()).toBe("full");
   });
 });

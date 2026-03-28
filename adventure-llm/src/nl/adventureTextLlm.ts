@@ -2,7 +2,10 @@ import type { AdventureDatabase } from "../dat/types.js";
 import type { AutoplayPlannerResponse, InterpretedCommand } from "./schema.js";
 import { GoogleGenerativeAiTextLlm } from "./providers/googleGenerativeAiTextLlm.js";
 import { HttpOpenAiCompatibleTextLlm } from "./providers/httpOpenAiCompatibleTextLlm.js";
-import { MlxLmStdioTextLlm } from "./providers/mlxLmStdioTextLlm.js";
+import {
+  MlxLmStdioTextLlm,
+  type MlxLmStdioTextLlmOptions,
+} from "./providers/mlxLmStdioTextLlm.js";
 import { resolveCompactPrompts } from "./adventureNlPrompts.js";
 import type {
   InterpretPlayerInputOptions,
@@ -17,6 +20,94 @@ export const DEFAULT_HTTP_OPENAI_BASE_URL = "http://127.0.0.1:11434/v1";
 export const DEFAULT_MLX_MODEL_ID = "mlx-community/gemma-2-2b-it";
 
 /**
+ * Build {@link MlxLmStdioTextLlm} options from `process.env`, optionally overriding the model id
+ * (e.g. web dashboard preset swap).
+ */
+export function mlxLmOptionsFromEnv(
+  modelIdOverride?: string,
+): MlxLmStdioTextLlmOptions {
+  const mlxModel =
+    modelIdOverride?.trim() ||
+    process.env.ADVENTURE_LLM_MLX_MODEL?.trim() ||
+    DEFAULT_MLX_MODEL_ID;
+  const maxTok = process.env.ADVENTURE_LLM_MLX_MAX_TOKENS?.trim();
+  const readyMs = process.env.ADVENTURE_LLM_MLX_READY_TIMEOUT_MS?.trim();
+  let maxTokens: number | undefined;
+  if (maxTok) {
+    const n = Number(maxTok);
+    if (Number.isFinite(n) && n >= 32) maxTokens = Math.floor(n);
+  }
+  let readyTimeoutMs: number | undefined;
+  if (readyMs) {
+    const n = Number(readyMs);
+    if (Number.isFinite(n) && n >= 5000) readyTimeoutMs = Math.floor(n);
+  }
+  const uvEnv = process.env.ADVENTURE_LLM_MLX_USE_UV?.trim().toLowerCase();
+  let useUv: boolean | undefined;
+  if (uvEnv !== undefined && uvEnv !== "") {
+    useUv = !(uvEnv === "0" || uvEnv === "false" || uvEnv === "no");
+  }
+  return {
+    modelId: mlxModel,
+    useUv,
+    uvPath: process.env.ADVENTURE_LLM_MLX_UV?.trim(),
+    packageRoot: process.env.ADVENTURE_LLM_MLX_PACKAGE_ROOT?.trim(),
+    pythonPath: process.env.ADVENTURE_LLM_MLX_PYTHON?.trim(),
+    scriptPath: process.env.ADVENTURE_LLM_MLX_SCRIPT?.trim(),
+    maxTokens,
+    readyTimeoutMs,
+    compactPrompts: resolveCompactPrompts("mlx"),
+  };
+}
+
+/** Construct an MLX client using env-derived paths and options. */
+export function createMlxTextLlmFromEnv(
+  modelIdOverride?: string,
+  extras?: Partial<Pick<MlxLmStdioTextLlmOptions, "onWorkerStderr">>,
+): MlxLmStdioTextLlm {
+  return new MlxLmStdioTextLlm({
+    ...mlxLmOptionsFromEnv(modelIdOverride),
+    ...extras,
+  });
+}
+
+/**
+ * OpenAI-compatible HTTP client from env (base URL, API key) and an explicit `model` id
+ * (web dashboard hot-swap).
+ */
+export function createHttpTextLlmFromEnv(
+  modelId: string,
+): HttpOpenAiCompatibleTextLlm | null {
+  const mid = modelId.trim();
+  if (mid === "") return null;
+  const httpBase =
+    process.env.ADVENTURE_LLM_HTTP_BASE_URL?.trim() ||
+    DEFAULT_HTTP_OPENAI_BASE_URL;
+  const httpApiKey = process.env.ADVENTURE_LLM_HTTP_API_KEY?.trim();
+  return new HttpOpenAiCompatibleTextLlm({
+    baseUrl: httpBase,
+    model: mid,
+    apiKey: httpApiKey,
+  });
+}
+
+/**
+ * Gemini client from env (`GEMINI_API_KEY`) and optional model id (defaults per {@link GoogleGenerativeAiTextLlm} when unset).
+ * For web hot-swap, pass an allowlisted model id string.
+ */
+export function createGoogleTextLlmFromEnv(
+  modelId?: string,
+): GoogleGenerativeAiTextLlm | null {
+  const key = process.env.GEMINI_API_KEY?.trim();
+  if (!key) return null;
+  const mid = modelId?.trim();
+  return new GoogleGenerativeAiTextLlm({
+    apiKey: key,
+    model: mid && mid !== "" ? mid : undefined,
+  });
+}
+
+/**
  * Resolve which text LLM to use from `process.env`.
  *
  * - `ADVENTURE_LLM_TEXT_PROVIDER=google` — requires `GEMINI_API_KEY`
@@ -28,81 +119,30 @@ export function resolveTextLlmFromEnv(): TextLlm | null {
   const rawProvider =
     process.env.ADVENTURE_LLM_TEXT_PROVIDER?.trim().toLowerCase();
   const hasGoogleKey = Boolean(process.env.GEMINI_API_KEY?.trim());
-  const httpBase =
-    process.env.ADVENTURE_LLM_HTTP_BASE_URL?.trim() ||
-    DEFAULT_HTTP_OPENAI_BASE_URL;
   const httpModel = process.env.ADVENTURE_LLM_HTTP_MODEL?.trim();
-  const httpApiKey = process.env.ADVENTURE_LLM_HTTP_API_KEY?.trim();
-  const mlxOptions = (): ConstructorParameters<typeof MlxLmStdioTextLlm>[0] => {
-    const mlxModel =
-      process.env.ADVENTURE_LLM_MLX_MODEL?.trim() || DEFAULT_MLX_MODEL_ID;
-    const maxTok = process.env.ADVENTURE_LLM_MLX_MAX_TOKENS?.trim();
-    const readyMs = process.env.ADVENTURE_LLM_MLX_READY_TIMEOUT_MS?.trim();
-    let maxTokens: number | undefined;
-    if (maxTok) {
-      const n = Number(maxTok);
-      if (Number.isFinite(n) && n >= 32) maxTokens = Math.floor(n);
-    }
-    let readyTimeoutMs: number | undefined;
-    if (readyMs) {
-      const n = Number(readyMs);
-      if (Number.isFinite(n) && n >= 5000) readyTimeoutMs = Math.floor(n);
-    }
-    const uvEnv = process.env.ADVENTURE_LLM_MLX_USE_UV?.trim().toLowerCase();
-    let useUv: boolean | undefined;
-    if (uvEnv !== undefined && uvEnv !== "") {
-      useUv = !(uvEnv === "0" || uvEnv === "false" || uvEnv === "no");
-    }
-    return {
-      modelId: mlxModel,
-      useUv,
-      uvPath: process.env.ADVENTURE_LLM_MLX_UV?.trim(),
-      packageRoot: process.env.ADVENTURE_LLM_MLX_PACKAGE_ROOT?.trim(),
-      pythonPath: process.env.ADVENTURE_LLM_MLX_PYTHON?.trim(),
-      scriptPath: process.env.ADVENTURE_LLM_MLX_SCRIPT?.trim(),
-      maxTokens,
-      readyTimeoutMs,
-      compactPrompts: resolveCompactPrompts("mlx"),
-    };
-  };
-
   if (rawProvider === "mlx") {
-    return new MlxLmStdioTextLlm(mlxOptions());
+    return createMlxTextLlmFromEnv();
   }
 
   if (rawProvider === "http") {
     if (!httpModel) return null;
-    return new HttpOpenAiCompatibleTextLlm({
-      baseUrl: httpBase,
-      model: httpModel,
-      apiKey: httpApiKey,
-    });
+    return createHttpTextLlmFromEnv(httpModel);
   }
 
   if (rawProvider === "google") {
     if (!hasGoogleKey) return null;
-    return new GoogleGenerativeAiTextLlm({
-      apiKey: process.env.GEMINI_API_KEY!,
-      model: process.env.GEMINI_TEXT_MODEL?.trim(),
-    });
+    return createGoogleTextLlmFromEnv(process.env.GEMINI_TEXT_MODEL?.trim());
   }
 
   if (rawProvider === undefined || rawProvider === "") {
     if (hasGoogleKey) {
-      return new GoogleGenerativeAiTextLlm({
-        apiKey: process.env.GEMINI_API_KEY!,
-        model: process.env.GEMINI_TEXT_MODEL?.trim(),
-      });
+      return createGoogleTextLlmFromEnv(process.env.GEMINI_TEXT_MODEL?.trim());
     }
     if (httpModel) {
-      return new HttpOpenAiCompatibleTextLlm({
-        baseUrl: httpBase,
-        model: httpModel,
-        apiKey: httpApiKey,
-      });
+      return createHttpTextLlmFromEnv(httpModel);
     }
     if (process.env.ADVENTURE_LLM_MLX_MODEL?.trim()) {
-      return new MlxLmStdioTextLlm(mlxOptions());
+      return createMlxTextLlmFromEnv();
     }
     return null;
   }

@@ -2,7 +2,8 @@
 """
 JSONL stdio worker for MLX (Apple Silicon). Loads the model once, then:
 
-  - First stdout line: {"type": "ready"}
+  - After ``load()`` completes, one stdout line: {"type": "ready"} (libraries may print non-JSON
+    lines to stdout before that; the Node client skips non-JSON lines until ``ready``).
   - Each stdin line: {"id": "<string>", "prompt": "<text>", "system": "<optional; merged before prompt when non-empty>", "max_tokens": <int optional>, "temp": <float optional>, "stop": [<str>, ...] optional}
   - Each response line: {"id": "<same>", "text": "<model output>", "error": null | "<msg>"}
 

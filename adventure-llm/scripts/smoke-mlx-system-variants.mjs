@@ -80,6 +80,7 @@ async function main() {
     process.env.ADVENTURE_LLM_MLX_SYSTEM_VARIANT = variant;
     const memory = buildSyntheticMemory();
     const situationalSection = formatSituationalCandidatesSection(
+      db,
       buildSituationalCandidateTokens(db, memory.getRecentRawTail()),
     );
     const plannerUserPrompt = memory.buildPlannerMxStructuredPrompt(

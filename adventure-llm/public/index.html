@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Adventure LLM — autoplay dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=VT323&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/dashboard.css" />
+  </head>
+  <body>
+    <svg class="crt-filters-svg" aria-hidden="true" focusable="false" width="0" height="0">
+      <defs>
+        <filter id="crt-bubble" x="-8%" y="-8%" width="116%" height="116%">
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.006 0.01"
+            numOctaves="2"
+            result="noise"
+            seed="17"
+          />
+          <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.2" xChannelSelector="R" yChannelSelector="G" />
+        </filter>
+      </defs>
+    </svg>
+    <main class="page-main">
+      <div class="layout-dashboard">
+        <div class="side-left-column">
+          <header class="dashboard-brand" aria-label="Adventure LLM">
+            <span class="dashboard-brand-mark" aria-hidden="true">▸</span>
+            <span class="dashboard-brand-text">Adventure<span class="dashboard-brand-llm">LLM</span></span>
+          </header>
+          <aside class="side side-left" aria-label="Planner and heuristic state">
+            <section class="panel">
+              <h2>Last plan → GETIN</h2>
+              <pre id="last-plan" class="mono small"></pre>
+            </section>
+
+            <section class="panel">
+              <div class="panel-hint-row">
+                <h2>Heuristic state</h2>
+                <button
+                  type="button"
+                  class="help-icon-btn"
+                  data-help-template="help-tpl-heuristic"
+                  data-help-title="Heuristic state"
+                  aria-label="About heuristic state"
+                >
+                  ?
+                </button>
+              </div>
+              <p><strong>Location hint</strong></p>
+              <p id="location-hint" class="mono small">—</p>
+              <p><strong>Inventory (parsed)</strong></p>
+              <ul id="inventory"></ul>
+              <p id="stagnation" class="small muted"></p>
+              <p id="try-next" class="small"></p>
+            </section>
+
+            <section class="panel">
+              <div class="panel-hint-row">
+                <h2>Planner prompt (truncated)</h2>
+                <button
+                  type="button"
+                  class="help-icon-btn"
+                  data-help-template="help-tpl-planner-prompt"
+                  data-help-title="Planner prompt"
+                  aria-label="About planner prompts"
+                >
+                  ?
+                </button>
+              </div>
+              <details>
+                <summary class="prompt-summary">
+                  <span class="prompt-summary-label">User / context preview</span>
+                  <button
+                    type="button"
+                    id="copy-prompt-user"
+                    class="copy-prompt-btn"
+                    aria-label="Copy user context preview"
+                  >
+                    Copy
+                  </button>
+                </summary>
+                <pre id="prompt-user" class="mono small prompt"></pre>
+              </details>
+              <details id="prompt-system-wrap" class="hidden">
+                <summary class="prompt-summary">
+                  <span class="prompt-summary-label">System preview</span>
+                  <button
+                    type="button"
+                    id="copy-prompt-system"
+                    class="copy-prompt-btn"
+                    aria-label="Copy system preview"
+                  >
+                    Copy
+                  </button>
+                </summary>
+                <pre id="prompt-system" class="mono small prompt"></pre>
+              </details>
+            </section>
+
+            <section class="panel">
+              <h2>Recent moves</h2>
+              <ol id="recent-turns" class="small"></ol>
+            </section>
+          </aside>
+        </div>
+
+        <section
+          class="panel transcript-panel transcript-panel--crt transcript-panel--hero"
+          aria-label="Game transcript"
+        >
+          <div class="panel-hint-row">
+            <h2>Game transcript</h2>
+            <button
+              type="button"
+              class="help-icon-btn"
+              data-help-template="help-tpl-transcript"
+              data-help-title="Game transcript"
+              aria-label="About the game transcript"
+            >
+              ?
+            </button>
+          </div>
+          <div class="crt-terminal">
+            <div class="crt-terminal-screen">
+              <div id="transcript" class="transcript-feed transcript-feed--crt" aria-live="polite"></div>
+            </div>
+          </div>
+          <div class="panel-hint-row panel-hint-row--sub">
+            <h3 class="transcript-subheading">Autoplay log</h3>
+            <button
+              type="button"
+              class="help-icon-btn"
+              data-help-template="help-tpl-autoplay-log"
+              data-help-title="Autoplay log"
+              aria-label="About the autoplay log"
+            >
+              ?
+            </button>
+          </div>
+          <div id="autoplay-log" class="autoplay-log-feed" aria-live="polite"></div>
+        </section>
+
+        <div class="map-hero-column">
+          <div class="map-hero-column-body">
+            <section class="panel map-hero map-hero-center" aria-label="Inferred exploration map">
+              <div class="map-hero-head">
+                <div class="map-hero-title-row">
+                  <h2 class="map-hero-title">Exploration map</h2>
+                  <button
+                    type="button"
+                    class="help-icon-btn"
+                    data-help-template="help-tpl-exploration-map"
+                    data-help-title="Exploration map"
+                    aria-label="About the exploration map"
+                  >
+                    ?
+                  </button>
+                </div>
+                <div class="map-xyz" aria-live="polite">
+                  <span class="map-xyz-label">Position (x, y, z)</span>
+                  <span id="map-coords" class="map-xyz-value">—</span>
+                </div>
+              </div>
+              <p class="map-hero-sub map-hero-sub--compact">
+                <label class="inline-z">
+                  Layer <strong>z</strong> =
+                  <input type="number" id="map-z" value="0" step="1" />
+                </label>
+              </p>
+              <p id="map-room-kind" class="map-room-kind small" aria-live="polite"></p>
+              <div class="map-viewport">
+                <div
+                  id="map-grid"
+                  class="map-grid mono"
+                  role="img"
+                  aria-label="Inferred exploration grid"
+                ></div>
+              </div>
+              <div id="map-legend" class="map-legend" aria-label="Room type legend"></div>
+            </section>
+            <section class="panel map-fsm-card" aria-label="Session exploration state machine">
+              <div class="map-fsm-head">
+                <div class="map-fsm-title-row">
+                  <h3 class="map-fsm-title">Session FSM (Mermaid)</h3>
+                  <button
+                    type="button"
+                    id="mermaid-fullscreen-open"
+                    class="mermaid-fullscreen-open-btn"
+                    aria-label="Open Mermaid graph full screen"
+                    title="View diagram full screen"
+                  >
+                    Expand
+                  </button>
+                  <button
+                    type="button"
+                    class="help-icon-btn"
+                    data-help-template="help-tpl-fsm"
+                    data-help-title="Session FSM graph"
+                    aria-label="About the session FSM graph"
+                  >
+                    ?
+                  </button>
+                </div>
+              </div>
+              <div id="map-mermaid" class="map-mermaid" role="img" aria-label="Mermaid graph"></div>
+              <p id="map-null-keys" class="map-null-keys small" aria-live="polite"></p>
+              <details class="map-fsm-details">
+                <summary class="prompt-summary">
+                  <span class="prompt-summary-label">Mermaid source</span>
+                  <button
+                    type="button"
+                    id="copy-mermaid"
+                    class="copy-prompt-btn"
+                    aria-label="Copy Mermaid source"
+                  >
+                    Copy
+                  </button>
+                </summary>
+                <pre id="map-mermaid-src" class="map-fsm-pre mono"></pre>
+              </details>
+              <details class="map-fsm-details">
+                <summary class="prompt-summary">
+                  <span class="prompt-summary-label">Graphviz DOT</span>
+                  <button type="button" id="copy-dot" class="copy-prompt-btn" aria-label="Copy Graphviz DOT">
+                    Copy
+                  </button>
+                </summary>
+                <pre id="map-dot-src" class="map-fsm-pre mono"></pre>
+              </details>
+            </section>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="status-footer" aria-live="polite">
+      <div class="status-footer-inner">
+        <div class="status-line">
+          <span id="session-status" class="footer-status">Connecting…</span>
+          <span id="planner-spinner" class="spinner footer-spinner hidden" aria-hidden="true"
+            >Thinking…</span
+          >
+          <span id="manual-banner" class="manual-banner hidden"
+            >Waiting for your command.</span
+          >
+        </div>
+        <p id="manual-error" class="manual-error" role="alert"></p>
+        <div class="footer-controls" aria-label="Autoplay and manual command">
+          <div id="text-llm-wrap" class="text-llm-wrap mlx-model-wrap hidden" aria-hidden="true">
+            <label class="text-llm-label mlx-model-label"
+              >Text LLM
+              <select id="text-llm-select" aria-label="Text LLM backend and model"></select>
+            </label>
+          </div>
+          <label class="autoplay-pace-label" title="Delay between moves (ms). Saved automatically; applies to the running autoplay session.">
+            Pace
+            <input type="number" id="autoplay-pace-ms" min="0" max="3600000" step="100" value="2000" class="autoplay-pace-input" />
+            <span class="autoplay-pace-unit">ms</span>
+          </label>
+          <label class="autoplay-pace-label" title="Maximum GETIN lines for this session. Saved automatically; applies when the limit is checked each turn.">
+            Max
+            <input type="number" id="autoplay-max-moves" min="1" max="1000000" step="1" value="300" class="autoplay-pace-input" />
+          </label>
+          <label class="toggle-label">
+            <input type="checkbox" id="autoplay-toggle" checked />
+            <span>LLM autoplay</span>
+          </label>
+          <label class="toggle-label" title="When checked, your text is interpreted by the text LLM into parser tokens before sending.">
+            <input type="checkbox" id="manual-interpret-toggle" />
+            <span>Interpret with text LLM</span>
+          </label>
+          <input
+            type="text"
+            id="manual-input"
+            class="manual-input"
+            placeholder="Parser command or phrase"
+            autocomplete="off"
+            disabled
+          />
+          <button type="button" id="manual-send" disabled>Send</button>
+          <button type="button" id="manual-end-session" class="btn-quiet" disabled>End</button>
+        </div>
+      </div>
+    </footer>
+
+    <div
+      id="mlx-load-overlay"
+      class="mlx-load-overlay hidden"
+      aria-hidden="true"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="mlx-load-title"
+    >
+      <div class="mlx-load-panel">
+        <h2 id="mlx-load-title" class="mlx-load-title">Loading MLX model…</h2>
+        <pre
+          id="mlx-load-progress"
+          class="mlx-load-progress mono"
+          aria-live="polite"
+          aria-label="MLX worker download and load progress"
+        ></pre>
+        <div class="mlx-load-actions">
+          <button type="button" id="mlx-load-cancel" class="mlx-load-cancel hidden">
+            Cancel — keep previous model
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <dialog
+      id="mermaid-fullscreen-dialog"
+      class="mermaid-fullscreen-dialog"
+      aria-labelledby="mermaid-fullscreen-dialog-title"
+      aria-modal="true"
+    >
+      <div class="mermaid-fullscreen-panel">
+        <button
+          type="button"
+          id="mermaid-fullscreen-close"
+          class="mermaid-fullscreen-close"
+          aria-label="Close full screen graph"
+        >
+          ×
+        </button>
+        <h2 id="mermaid-fullscreen-dialog-title" class="mermaid-fullscreen-title">
+          Session FSM (Mermaid)
+        </h2>
+        <div
+          id="mermaid-fullscreen-body"
+          class="mermaid-fullscreen-body"
+          role="region"
+          aria-label="Mermaid graph, full size"
+        ></div>
+      </div>
+    </dialog>
+
+    <dialog
+      id="dashboard-help-dialog"
+      class="dashboard-help-dialog"
+      aria-labelledby="dashboard-help-dialog-title"
+    >
+      <div class="dashboard-help-dialog-panel">
+        <button
+          type="button"
+          class="dashboard-help-dialog-close"
+          aria-label="Close"
+        >
+          ×
+        </button>
+        <h2 id="dashboard-help-dialog-title" class="dashboard-help-dialog-title"></h2>
+        <div id="dashboard-help-dialog-body" class="dashboard-help-dialog-body"></div>
+      </div>
+    </dialog>
+
+    <template id="help-tpl-exploration-map">
+      <div class="help-dialog-prose">
+        <p>
+          <strong>3D layout</strong> (East +x, North +y, Up +z) is a tunnel-like embedding only;
+          <strong>reachability</strong> follows the session FSM in the card below (directed edges,
+          self-loops = no progress).
+        </p>
+        <p>
+          Grid cells are explored rooms (heuristic type); empty cells are unused layout space;
+          <strong>@</strong> is you. Change layer <strong>z</strong> to view other vertical slices.
+        </p>
+      </div>
+    </template>
+    <template id="help-tpl-fsm">
+      <div class="help-dialog-prose">
+        <p>
+          Arrows show observed commands. Self-loops mean a reject, blocked move, or NULL (no location or
+          inventory change). The highlighted node is the current state.
+        </p>
+      </div>
+    </template>
+    <template id="help-tpl-transcript">
+      <div class="help-dialog-prose">
+        <p>
+          Newest game output at the top. Each block header shows the GETIN line for that turn when known
+          (step 0 = opening).
+        </p>
+        <p>
+          Text keeps the engine’s line breaks. Font size scales with the CRT width for readability; very
+          long lines may clip at the edge unless you widen the window.
+        </p>
+      </div>
+    </template>
+    <template id="help-tpl-autoplay-log">
+      <div class="help-dialog-prose">
+        <p>
+          Guard substitutions, model diagnostics, and planner notes. Newest at top; scroll inside the box.
+        </p>
+      </div>
+    </template>
+    <template id="help-tpl-heuristic">
+      <div class="help-dialog-prose">
+        <p>
+          <strong>Location hint</strong> and <strong>inventory</strong> are parsed from recent game text for
+          planning; they are heuristics, not guaranteed engine truth.
+        </p>
+        <p>Stagnation messages and suggested moves use the inferred map when available.</p>
+      </div>
+    </template>
+    <template id="help-tpl-planner-prompt">
+      <div class="help-dialog-prose">
+        <p>
+          Truncated previews of what was sent to the planner. Expand each section for the full text; use
+          Copy to grab it for debugging.
+        </p>
+      </div>
+    </template>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

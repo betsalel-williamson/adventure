@@ -53,7 +53,7 @@ describe("resolveTextLlmFromEnv", () => {
     expect(llm).toBeInstanceOf(HttpOpenAiCompatibleTextLlm);
   });
 
-  it("returns MLX when ADVENTURE_LLM_TEXT_PROVIDER=mlx (lazy subprocess)", () => {
+  it("returns MLX when ADVENTURE_LLM_TEXT_PROVIDER=mlx", () => {
     process.env.ADVENTURE_LLM_TEXT_PROVIDER = "mlx";
     delete process.env.GEMINI_API_KEY;
     delete process.env.ADVENTURE_LLM_HTTP_MODEL;

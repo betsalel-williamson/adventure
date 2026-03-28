@@ -1,5 +1,9 @@
 export { loadDatFile, loadDatFromString } from "./dat/loadDat.js";
 export type { AdventureDatabase, LLineRow } from "./dat/types.js";
+export {
+  buildMotionGraphFromDat,
+  type DatMotionEdge,
+} from "./dat/motionGraphFromDat.js";
 export { getin, type GetinResult } from "./cli/getin.js";
 export { findVocabIndex, ktabK, ktabClass, toA5 } from "./vocab/vocab.js";
 export {
@@ -9,6 +13,7 @@ export {
   normalizeTranscript,
   transcriptSuggestsCommandRejected,
   type SubprocessEngineOptions,
+  type FortranStreamOptions,
   type ScriptedGetinLine,
   type ContinueLineContext,
   type FirstCommandContext,
@@ -34,9 +39,53 @@ export {
 } from "./nl/schema.js";
 export {
   AutoplaySessionMemory,
+  gameOutputLooksLikeBlockedMove,
   gameOutputLooksLikeParserRejection,
+  gameOutputLooksLikePlayAgainPrompt,
   normalizeGetinLineKey,
+  type AutoplayUiSnapshot,
+  type AutoplayUiTurnSnapshot,
 } from "./nl/autoplaySessionMemory.js";
+export {
+  InferredExplorationMap,
+  classifyRoomFingerprint,
+  detectLocationStagnation,
+  extractLocationLineForFingerprint,
+  fingerprintLocationFromExcerpt,
+  fingerprintLocationFromGameOutput,
+  graphNodeIdFromCellKey,
+  inverseMotionPrimary,
+  isGridMotionPrimary,
+  isMazeFingerprint,
+  MOTION_GRID_DELTA,
+  AUTOPLAY_ESCAPE_PRIMARY_ORDER,
+  CARDINAL_ESCAPE_PRIMARIES,
+  cardinalRotationForCellKey,
+  orderedEscapePrimariesForCellKey,
+  primaryFromGetinCommand,
+  secondaryFromGetinCommand,
+  fsmLabelFromGetinCommand,
+  graphEdgeLabelFromCommand,
+  isBlockedTravelOrExitPrimary,
+  isLegitimateGraphEdgePrimary,
+  canonicalMotionPrimaryForDedup,
+  describeMotionGridDelta,
+  type Vec3,
+  type ExitOutcomeKind,
+  type InferredRoomKind,
+  type InferredExplorationMapSnapshot,
+  type InferredExplorationCellSnapshot,
+  type DirectedEdgeKind,
+  type DirectedEdgeSnapshot,
+  type TriedCommandSnapshot,
+} from "./nl/inferredExplorationMap.js";
+export {
+  collectNeighborhoodNodeIds,
+  graphNodeCaptionForSnapshot,
+  inferredMapToDot,
+  inferredMapToLocalDot,
+  inferredMapToMermaid,
+} from "./nl/explorationGraphViz.js";
 export {
   collectGameVocabTokens,
   openAiAutoplayPlannerJsonSchema,
@@ -46,8 +95,13 @@ export {
 export {
   buildAutoplayRelevantTokensFilterPrompt,
   buildSituationalCandidateTokens,
+  countVisibleAdventureObjectsInText,
+  listVisibleAdventureObjectsInText,
+  matchSecondaryToObjectAtabWord,
   formatSituationalCandidatesSection,
   parseRelevantTokensResponse,
+  recentTextSuggestsIndoorBuildingNavigation,
+  stripInjectedCommandLinesForObjectHints,
 } from "./nl/situationalCandidates.js";
 export {
   ADVENTURE_LLM_INTERPRET_ROLE,
@@ -75,8 +129,10 @@ export {
   mlxAutoplayPlannerInstructionsBlock,
   mlxAutoplaySystemPrompt,
   mlxAutoplaySystemPromptForVariant,
+  resolveAutoplayPromptMode,
   resolveInterpretPromptExamples,
   resolveInterpretPromptBuildOptions,
+  type AutoplayPromptMode,
   type BuildInterpretPromptOptions,
   type MlxSystemPromptVariant,
 } from "./nl/adventureNlPrompts.js";
@@ -117,11 +173,30 @@ export type { GeminiAutoplayPlannerOptions } from "./nl/geminiAutoplay.js";
 export {
   resolveTextLlmFromEnv,
   createTextLlmFromEnv,
+  createMlxTextLlmFromEnv,
+  mlxLmOptionsFromEnv,
   interpretWithTextLlm,
   planAutoplayWithTextLlm,
   DEFAULT_HTTP_OPENAI_BASE_URL,
   DEFAULT_MLX_MODEL_ID,
 } from "./nl/adventureTextLlm.js";
+export {
+  runAutoplaySessionWithTextLlm,
+  plannerToScriptedGetin,
+  formatPlannerPromptPreviews,
+  syntheticPlannerResponseFromScripted,
+  resolveAutoplayPaceMs,
+  resolveAutoplayMaxMoves,
+  resolveAutoplayContextChars,
+  resolveAutoplayInstructionsAnswer,
+  AUTOPLAY_RESUME_PLANNER,
+  type AutoplayUiSink,
+  type AutoplayRunPaths,
+  type AutoplayRunOverrides,
+  type AutoplayManualPlannerGate,
+  type TextLlmSource,
+} from "./cli/autoplayRunner.js";
+export { createAutoplayDashboardServer } from "./cli/webDashboard.js";
 export type {
   InterpretPlayerInputOptions,
   InterpretPromptStyleOverrides,

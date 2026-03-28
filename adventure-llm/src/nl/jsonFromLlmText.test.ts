@@ -43,4 +43,25 @@ describe("parseJsonObjectFromLlmText", () => {
       secondaryToken: null,
     });
   });
+
+  it("repairs missing colon before boolean (common small-model mistake)", () => {
+    const o = parseJsonObjectFromLlmText(
+      '{"primaryToken":"EAST","continuePlaying" true}',
+    );
+    expect(o).toEqual({ primaryToken: "EAST", continuePlaying: true });
+  });
+
+  it("repairs missing colon before boolean without space", () => {
+    const o = parseJsonObjectFromLlmText(
+      '{"primaryToken":"EAST","continuePlaying"false}',
+    );
+    expect(o).toEqual({ primaryToken: "EAST", continuePlaying: false });
+  });
+
+  it("repairs missing colon before quoted string value", () => {
+    const o = parseJsonObjectFromLlmText(
+      '{"primaryToken" "NORTH","continuePlaying":true}',
+    );
+    expect(o).toEqual({ primaryToken: "NORTH", continuePlaying: true });
+  });
 });

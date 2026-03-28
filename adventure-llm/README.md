@@ -16,6 +16,20 @@ npm run check
 npm run build
 ```
 
+### Autoplay web dashboard
+
+After `make` at the repo root (so `../adventure` exists), from **`adventure-llm/`**:
+
+```sh
+npm run build && npm run web
+```
+
+Or from the repo root: **`make run-autoplay-web`**.
+
+Open **http://127.0.0.1:8787/** (override port with **`ADVENTURE_LLM_WEB_PORT`**). The page opens an **SSE** connection to **`/events`**, which starts one autoplay session: game text streams into the transcript panel, **Thinking…** shows while the planner runs, and the **inferred map** (wrapper grid), **parsed inventory**, and **truncated planner prompts** update each turn. Static files live under `adventure-llm/public/`.
+
+The **Text LLM** dropdown (when at least one backend is configured in env) hot-swaps between **local MLX**, **OpenAI-compatible HTTP** (`ADVENTURE_LLM_HTTP_*`), and **Google Gemini** (`GEMINI_API_KEY`) without restarting the server. API keys and base URLs stay server-side; the UI only sends **`POST /api/text-llm`** with `{ providerId, modelId }` from allowlisted presets. **`ADVENTURE_LLM_HTTP_WEB_PRESETS`** (comma-separated) adds extra HTTP model names for that dropdown alongside **`ADVENTURE_LLM_HTTP_MODEL`**.
+
 ## OWASP Dependency-Check (SCA)
 
 Install the [official CLI](https://owasp.org/www-project-dependency-check/) on macOS:
@@ -68,6 +82,8 @@ dependency-check --nvdApiKey "$NVD_API_KEY" --project adventure-llm --scan . --o
 | `ADVENTURE_LLM_AUTOPLAY_PACE_MS`          | Autoplay: delay in ms after each screen before the next Gemini call (default `2000`; `0` disables)                                                                                                                                                |
 | `ADVENTURE_LLM_AUTOPLAY_MAX_MOVES`        | Autoplay: stop after this many GETIN lines (default `300`)                                                                                                                                                                                        |
 | `ADVENTURE_LLM_AUTOPLAY_CONTEXT_CHARS`    | Autoplay: approximate max size of the planner user prompt (default `6000`; use `4000`–`6000` for very small local models)                                                                                                                         |
+| `ADVENTURE_LLM_WEB_PORT`                  | Autoplay dashboard (`npm run web`): HTTP listen port (default `8787`; binds `127.0.0.1` only)                                                                                                                                                     |
+| `ADVENTURE_LLM_HTTP_WEB_PRESETS`          | Optional comma-separated extra HTTP model ids for the dashboard hot-swap list (merged with `ADVENTURE_LLM_HTTP_MODEL`; requires HTTP configured)                                                                                                  |
 | `ADVENTURE_LLM_COMPACT_PROMPTS`           | `1` / `0`: force compact or full prompts for all providers. If **unset**, compact defaults **on** for MLX only (shorter rules, smaller vocab list, no HELP preamble in planner/interpret prompts).                                                |
 | `ADVENTURE_LLM_VOCAB_HINT_MAX`            | Override word count in vocabulary hints (8–500). If unset: **48** when compact, **120** when full.                                                                                                                                                |
 | `ADVENTURE_LLM_AUTOPLAY_TWO_STEP`         | Set to `1` **MLX only**: run a first LLM call to pick a subset of **situation candidates**, then the planner (doubles MLX calls per move). Default off.                                                                                           |

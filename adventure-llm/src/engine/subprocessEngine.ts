@@ -185,17 +185,28 @@ export function normalizeInstructionsAnswer(line: string): string {
  * (plain text to GETIN) until the process exits or it returns `null` (then we SIGTERM). If omitted, we SIGTERM
  * after the first command (used by tests; avoids EOF read errors on stdin close).
  */
+export type FortranStreamOptions = {
+  /**
+   * When false, game stdout/stderr are not copied to `process.stdout` (e.g. web dashboard).
+   * Default true.
+   */
+  readonly forwardGameOutputToTerminal?: boolean;
+  /** Called for each chunk of combined stdout+stderr (UTF-8) after opening the child. */
+  readonly onGameOutputChunk?: (chunk: Buffer) => void;
+};
+
 export async function runFortranOpenThenFirstCommand(
-  options: SubprocessEngineOptions & {
-    getInstructionsAnswer: () => Promise<string>;
-    getFirstCommandLine: (
-      ctx: FirstCommandContext,
-    ) => Promise<ScriptedGetinLine>;
-    /** Further moves: return a line to send, or `null` to end the session (SIGTERM). */
-    getContinueLine?: (
-      ctx: ContinueLineContext,
-    ) => Promise<ScriptedGetinLine | null>;
-  },
+  options: SubprocessEngineOptions &
+    FortranStreamOptions & {
+      getInstructionsAnswer: () => Promise<string>;
+      getFirstCommandLine: (
+        ctx: FirstCommandContext,
+      ) => Promise<ScriptedGetinLine>;
+      /** Further moves: return a line to send, or `null` to end the session (SIGTERM). */
+      getContinueLine?: (
+        ctx: ContinueLineContext,
+      ) => Promise<ScriptedGetinLine | null>;
+    },
 ): Promise<string> {
   const bin = options.adventureBinary ?? path.join(options.cwd, "adventure");
   const child = spawn(bin, [], {
@@ -204,10 +215,15 @@ export async function runFortranOpenThenFirstCommand(
     env: process.env,
   }) as ChildProcessWithoutNullStreams;
 
+  const forward = options.forwardGameOutputToTerminal !== false;
+  const onChunk = options.onGameOutputChunk;
   const allChunks: Buffer[] = [];
   const tee = (d: Buffer) => {
     allChunks.push(d);
-    process.stdout.write(d);
+    onChunk?.(d);
+    if (forward) {
+      process.stdout.write(d);
+    }
   };
   child.stdout.on("data", tee);
   child.stderr.on("data", tee);

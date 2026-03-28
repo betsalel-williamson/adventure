@@ -25,6 +25,7 @@ import {
   buildAutoplayPlannerPrompt,
   buildAutoplayPlannerPromptParts,
   buildInterpretSystemAndUserPrompt,
+  resolveAutoplayPromptMode,
   resolveCompactPrompts,
   resolveStructuredDashboardPrompts,
 } from "../adventureNlPrompts.js";
@@ -32,6 +33,7 @@ import {
   buildAutoplayRelevantTokensFilterPrompt,
   buildSituationalCandidateTokens,
   parseRelevantTokensResponse,
+  recentTextSuggestsIndoorBuildingNavigation,
 } from "../situationalCandidates.js";
 import { parseJsonObjectFromLlmText } from "../jsonFromLlmText.js";
 import {
@@ -68,6 +70,11 @@ export type MlxLmStdioTextLlmOptions = {
    * Default: {@link resolveCompactPrompts} for `mlx` (typically true unless `ADVENTURE_LLM_COMPACT_PROMPTS=0`).
    */
   compactPrompts?: boolean;
+  /**
+   * Receives UTF-8 chunks from the worker’s stderr (download progress, logs). Still mirrored to
+   * `process.stderr` when set.
+   */
+  onWorkerStderr?: (chunk: string) => void;
 };
 
 function resolveMlxGenTemp(): number {
@@ -93,7 +100,7 @@ function defaultWorkerScriptPath(): string {
 
 /**
  * Apple Silicon MLX via a persistent Python stdio worker (`scripts/mlx_lm_worker.py`).
- * Model loads on first use; keep one subprocess for the session.
+ * Spawns the worker and loads the model on {@link preloadWorker} or first completion.
  */
 export class MlxLmStdioTextLlm implements TextLlm {
   readonly providerId = "mlx" as const;
@@ -109,6 +116,7 @@ export class MlxLmStdioTextLlm implements TextLlm {
   private readonly compactPrompts: boolean;
   private readonly mlxGenTemp: number;
   private readonly mlxStopStrings: string[];
+  private readonly onWorkerStderr?: (chunk: string) => void;
 
   private child: ChildProcessWithoutNullStreams | null = null;
   private rl: ReturnType<typeof createInterface> | null = null;
@@ -119,6 +127,12 @@ export class MlxLmStdioTextLlm implements TextLlm {
   >();
   private requestId = 0;
   private mutex: Promise<void> = Promise.resolve();
+
+  /** Cleared after first line or on teardown. */
+  private startupTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  /** Rejects the in-flight `ensureWorker` promise when tearing down during startup. */
+  private startupReject: ((e: Error) => void) | null = null;
+  private stderrForwarder: ((data: Buffer) => void) | null = null;
 
   constructor(options: MlxLmStdioTextLlmOptions) {
     this.modelId = options.modelId.trim();
@@ -137,6 +151,69 @@ export class MlxLmStdioTextLlm implements TextLlm {
       options.compactPrompts ?? resolveCompactPrompts("mlx");
     this.mlxGenTemp = resolveMlxGenTemp();
     this.mlxStopStrings = resolveMlxStopStrings();
+    this.onWorkerStderr = options.onWorkerStderr;
+  }
+
+  /** Start the worker and wait for the model (same readiness as first `complete`). Idempotent. */
+  async preloadWorker(): Promise<void> {
+    await this.ensureWorker();
+  }
+
+  /**
+   * Waits until no MLX request is in progress (same mutex as completions).
+   * Call before replacing this client (e.g. web model swap) so the planner does not overlap load/dispose.
+   */
+  async waitForIdle(): Promise<void> {
+    await this.withMutex(async () => {
+      /* drain queue */
+    });
+  }
+
+  /**
+   * Stops the worker subprocess and rejects in-flight requests. Safe to call multiple times.
+   * Runs behind the completion mutex so no `complete` overlaps shutdown.
+   */
+  async dispose(): Promise<void> {
+    await this.withMutex(async () => {
+      this.teardownWorkerUnlocked("MLX worker disposed");
+    });
+  }
+
+  private teardownWorkerUnlocked(reason: string): void {
+    if (this.startupTimeoutId !== null) {
+      clearTimeout(this.startupTimeoutId);
+      this.startupTimeoutId = null;
+    }
+    if (this.startupReject) {
+      const rj = this.startupReject;
+      this.startupReject = null;
+      rj(new Error(reason));
+    }
+    const err = new Error(reason);
+    for (const [, p] of this.pending) {
+      p.reject(err);
+    }
+    this.pending.clear();
+    const rl = this.rl;
+    if (rl) {
+      rl.close();
+      this.rl = null;
+    }
+    const child = this.child;
+    if (child) {
+      if (this.stderrForwarder && child.stderr) {
+        child.stderr.removeListener("data", this.stderrForwarder);
+      }
+      this.stderrForwarder = null;
+      child.removeAllListeners();
+      try {
+        child.kill("SIGTERM");
+      } catch {
+        /* ignore */
+      }
+      this.child = null;
+    }
+    this.readyPromise = null;
   }
 
   private async withMutex<T>(fn: () => Promise<T>): Promise<T> {
@@ -175,6 +252,8 @@ export class MlxLmStdioTextLlm implements TextLlm {
     }
 
     this.readyPromise = new Promise((resolve, reject) => {
+      this.startupReject = reject;
+
       const env = {
         ...process.env,
         ADVENTURE_LLM_MLX_MODEL: this.modelId,
@@ -195,10 +274,20 @@ export class MlxLmStdioTextLlm implements TextLlm {
 
       const onErr = (data: Buffer) => {
         process.stderr.write(data);
+        if (this.onWorkerStderr) {
+          const s = data.toString("utf8");
+          if (s.length > 0) this.onWorkerStderr(s);
+        }
       };
+      this.stderrForwarder = onErr;
       child.stderr?.on("data", onErr);
 
       child.on("error", (err) => {
+        this.startupReject = null;
+        if (this.startupTimeoutId !== null) {
+          clearTimeout(this.startupTimeoutId);
+          this.startupTimeoutId = null;
+        }
         reject(err);
       });
 
@@ -206,6 +295,12 @@ export class MlxLmStdioTextLlm implements TextLlm {
         this.child = null;
         this.rl = null;
         this.readyPromise = null;
+        this.stderrForwarder = null;
+        this.startupReject = null;
+        if (this.startupTimeoutId !== null) {
+          clearTimeout(this.startupTimeoutId);
+          this.startupTimeoutId = null;
+        }
         const msg = `MLX worker exited code=${code} signal=${signal}`;
         for (const [, p] of this.pending) {
           p.reject(new Error(msg));
@@ -216,7 +311,42 @@ export class MlxLmStdioTextLlm implements TextLlm {
       const rl = createInterface({ input: child.stdout });
       this.rl = rl;
 
-      const timeout = setTimeout(() => {
+      const clearStartupTimeout = (): void => {
+        if (this.startupTimeoutId !== null) {
+          clearTimeout(this.startupTimeoutId);
+          this.startupTimeoutId = null;
+        }
+      };
+
+      const onStartupLine = (line: string): void => {
+        const trimmed = line.trim();
+        if (trimmed === "") return;
+        let o: { type?: string; message?: string };
+        try {
+          o = JSON.parse(trimmed) as { type?: string; message?: string };
+        } catch {
+          /* hf_hub / tqdm may print non-JSON lines to stdout during download; skip until ready */
+          return;
+        }
+        if (o.type === "error") {
+          rl.removeListener("line", onStartupLine);
+          clearStartupTimeout();
+          this.startupReject = null;
+          reject(new Error(o.message ?? "MLX worker failed to start"));
+          return;
+        }
+        if (o.type === "ready") {
+          rl.removeListener("line", onStartupLine);
+          clearStartupTimeout();
+          this.startupReject = null;
+          rl.on("line", (l) => this.dispatchLine(l));
+          resolve();
+        }
+      };
+
+      this.startupTimeoutId = setTimeout(() => {
+        this.startupTimeoutId = null;
+        rl.removeListener("line", onStartupLine);
         reject(
           new Error(
             `MLX worker ready timeout after ${this.readyTimeoutMs}ms (first run may download weights)`,
@@ -225,27 +355,7 @@ export class MlxLmStdioTextLlm implements TextLlm {
         child.kill("SIGTERM");
       }, this.readyTimeoutMs);
 
-      rl.once("line", (line: string) => {
-        try {
-          const o = JSON.parse(line) as { type?: string; message?: string };
-          if (o.type === "error") {
-            clearTimeout(timeout);
-            reject(new Error(o.message ?? "MLX worker failed to start"));
-            return;
-          }
-          if (o.type === "ready") {
-            clearTimeout(timeout);
-            rl.on("line", (l) => this.dispatchLine(l));
-            resolve();
-            return;
-          }
-          clearTimeout(timeout);
-          reject(new Error(`MLX worker unexpected first line: ${line}`));
-        } catch (e) {
-          clearTimeout(timeout);
-          reject(e instanceof Error ? e : new Error(String(e)));
-        }
-      });
+      rl.on("line", onStartupLine);
     });
 
     await this.readyPromise;
@@ -429,7 +539,10 @@ export class MlxLmStdioTextLlm implements TextLlm {
     const recent = options.recentGameTextForRepair?.trim() ?? "";
     const twoStep = process.env.ADVENTURE_LLM_AUTOPLAY_TWO_STEP?.trim() === "1";
     if (twoStep && recent.length > 0) {
-      const candidates = buildSituationalCandidateTokens(db, recent);
+      const candidates = buildSituationalCandidateTokens(db, recent, {
+        indoorLeaveBuilding: recentTextSuggestsIndoorBuildingNavigation(recent),
+        exploreFirst: resolveAutoplayPromptMode() === "explore",
+      });
       if (candidates.length > 0) {
         process.stderr.write(
           "adventure-llm: autoplay — two-step token filter (MLX)…\n",
