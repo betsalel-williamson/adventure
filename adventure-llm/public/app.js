@@ -62,7 +62,6 @@ const promptSystemEl = document.getElementById("prompt-system");
 const promptSystemWrap = document.getElementById("prompt-system-wrap");
 const copyPromptUserBtn = document.getElementById("copy-prompt-user");
 const copyPromptSystemBtn = document.getElementById("copy-prompt-system");
-const parserVerbHintsEl = document.getElementById("parser-verb-hints");
 const autoplayToggle = document.getElementById("autoplay-toggle");
 const autoplayPaceMsEl = document.getElementById("autoplay-pace-ms");
 const autoplayMaxMovesEl = document.getElementById("autoplay-max-moves");
@@ -173,7 +172,6 @@ const motionGridHintByStep = {};
 let waitingForManual = false;
 
 const TRANSCRIPT_LAYOUT_KEY = "adventureTranscriptLayout";
-const TRANSCRIPT_SCROLL_BOTTOM_EPS_PX = 48;
 
 function isTerminalTranscriptLayout() {
   return document.body.classList.contains("transcript-layout--terminal");
@@ -285,7 +283,8 @@ function maxTranscriptStep() {
 
 /**
  * @param {string} line raw command (trimmed)
- * @param {{ animate?: boolean }} [options]
+ * @param {{ animate?: boolean; afterStep?: number }} [options]
+ *   `afterStep`: echo prints after the game block for this step (autoplay uses moveNumber − 1).
  */
 function appendTerminalCommandEcho(line, options = {}) {
   if (!isTerminalTranscriptLayout() || !line) return;
@@ -295,8 +294,12 @@ function appendTerminalCommandEcho(line, options = {}) {
   if (options.animate) {
     pendingEchoTypeTextBySeq.set(seq, displayText);
   }
+  const afterStep =
+    typeof options.afterStep === "number" && Number.isFinite(options.afterStep)
+      ? Math.max(0, Math.floor(options.afterStep))
+      : maxTranscriptStep();
   terminalEchoQueue.push({
-    afterStep: maxTranscriptStep(),
+    afterStep,
     line,
     seq,
     animate: Boolean(options.animate),
@@ -340,12 +343,10 @@ async function runPendingTerminalEchoAnimations() {
       entry.animate = false;
     }
     if (typeof full === "string" && full.length > 0) {
-      await typeTextIntoPre(
-        transcriptEl,
-        /** @type {HTMLPreElement} */ (pre),
-        full,
-        { charDelayMs: 26, finalPauseMs: 240 },
-      );
+      await typeTextIntoPre(null, /** @type {HTMLPreElement} */ (pre), full, {
+        charDelayMs: 26,
+        finalPauseMs: 240,
+      });
     }
   }
 }
@@ -353,11 +354,6 @@ async function runPendingTerminalEchoAnimations() {
 function renderTranscriptFeed() {
   if (!transcriptEl) return;
   const terminal = isTerminalTranscriptLayout();
-  const prevScrollTop = transcriptEl.scrollTop;
-  const prevScrollHeight = transcriptEl.scrollHeight;
-  const wasAtBottom =
-    prevScrollHeight - prevScrollTop - transcriptEl.clientHeight <=
-    TRANSCRIPT_SCROLL_BOTTOM_EPS_PX;
 
   transcriptEl.replaceChildren();
   const frag = document.createDocumentFragment();
@@ -412,14 +408,7 @@ function renderTranscriptFeed() {
 
   requestAnimationFrame(() => {
     if (!transcriptEl) return;
-    if (terminal) {
-      if (wasAtBottom || prevScrollHeight === 0) {
-        transcriptEl.scrollTop = transcriptEl.scrollHeight;
-      } else {
-        const delta = transcriptEl.scrollHeight - prevScrollHeight;
-        transcriptEl.scrollTop = prevScrollTop + delta;
-      }
-    } else {
+    if (!terminal) {
       transcriptEl.scrollTop = 0;
     }
   });
@@ -1144,41 +1133,88 @@ async function applyStoredAutoplaySettings() {
 
 await applyStoredAutoplaySettings();
 
-async function loadParserVerbHints() {
-  if (!parserVerbHintsEl) return;
-  try {
-    const r = await fetch("/api/parser-verbs");
-    const j = r.ok ? await r.json() : null;
-    const groups =
-      j && Array.isArray(j.groups) ? /** @type {string[][]} */ (j.groups) : [];
-    parserVerbHintsEl.replaceChildren();
-    if (!r.ok || groups.length === 0) {
-      const p = document.createElement("p");
-      p.className = "small muted";
-      p.textContent = r.ok
-        ? "No verb data."
-        : "Verb list unavailable (is adventure.dat missing?)";
-      parserVerbHintsEl.appendChild(p);
-      return;
-    }
-    for (const tokens of groups) {
-      if (!Array.isArray(tokens) || tokens.length === 0) continue;
-      const line = document.createElement("p");
-      line.className = "parser-verb-hint-line";
-      line.textContent = tokens.join(" · ");
-      parserVerbHintsEl.appendChild(line);
-    }
-  } catch {
-    parserVerbHintsEl.replaceChildren();
+/**
+ * @param {string[][]} groups
+ * @param {{ datAvailable?: boolean }} [meta]
+ */
+function renderParserVerbHintGroups(groups, meta) {
+  const el = document.getElementById("parser-verb-hints");
+  if (!el) return;
+  el.replaceChildren();
+  if (meta && meta.datAvailable === false) {
     const p = document.createElement("p");
     p.className = "small muted";
-    p.textContent = "Could not load verb hints.";
-    parserVerbHintsEl.appendChild(p);
+    p.textContent =
+      "Verb list unavailable (adventure.dat not found on server).";
+    el.appendChild(p);
+    return;
+  }
+  const list = Array.isArray(groups) ? groups : [];
+  if (list.length === 0) {
+    const p = document.createElement("p");
+    p.className = "small muted";
+    p.textContent = "No verb data.";
+    el.appendChild(p);
+    return;
+  }
+  for (const tokens of list) {
+    if (!Array.isArray(tokens) || tokens.length === 0) continue;
+    const line = document.createElement("p");
+    line.className = "parser-verb-hint-line";
+    line.textContent = tokens.join(" · ");
+    el.appendChild(line);
+  }
+}
+
+async function loadParserVerbHints() {
+  const url = new URL("/api/parser-verbs", window.location.href).href;
+  const el = document.getElementById("parser-verb-hints");
+  try {
+    const r = await fetch(url);
+    let j = null;
+    if (r.ok) {
+      try {
+        j = await r.json();
+      } catch {
+        j = null;
+      }
+    }
+    if (!r.ok) {
+      if (el) {
+        el.replaceChildren();
+        const p = document.createElement("p");
+        p.className = "small muted";
+        p.textContent = `Could not load verb list (HTTP ${r.status}). It will fill when the event stream connects if the server is up to date.`;
+        el.appendChild(p);
+      }
+      return;
+    }
+    const groups =
+      j && Array.isArray(j.groups) ? /** @type {string[][]} */ (j.groups) : [];
+    renderParserVerbHintGroups(groups, { datAvailable: true });
+  } catch {
+    if (el) {
+      el.replaceChildren();
+      const p = document.createElement("p");
+      p.className = "small muted";
+      p.textContent =
+        "Network error loading verbs. They will fill when the event stream connects.";
+      el.appendChild(p);
+    }
   }
 }
 
 await loadParserVerbHints();
-const es = new EventSource("/events");
+const es = new EventSource(new URL("/events", window.location.href).href);
+
+es.addEventListener("parser_verbs", (ev) => {
+  const d = parseData(ev.data);
+  if (!d || !Array.isArray(d.groups)) return;
+  const datOk = d.datAvailable !== false;
+  renderParserVerbHintGroups(/** @type {string[][]} */ (d.groups), {
+    datAvailable: datOk,
+  });
+});
 
 es.addEventListener("autoplay_mode", (ev) => {
   const d = parseData(ev.data);
@@ -1407,11 +1443,28 @@ es.addEventListener("plan_applied", (ev) => {
     getin ? `GETIN: ${getin}` : null,
   ].filter(Boolean);
   lastPlanEl.textContent = parts.join("\n");
+  let needsRender = false;
   if (mn !== null) {
     if (getin) getinLineByStep[mn] = getin;
     motionGridHintByStep[mn] =
       typeof d.motionGridHint === "string" ? d.motionGridHint : null;
+    needsRender = true;
+  }
+  if (isTerminalTranscriptLayout() && getin && autoplayToggle.checked) {
+    const echoAfterStep =
+      mn !== null && mn >= 1 ? mn - 1 : Math.max(0, maxTranscriptStep());
+    preloadTerminalSounds();
+    appendTerminalCommandEcho(getin, {
+      animate: true,
+      afterStep: echoAfterStep,
+    });
+    needsRender = true;
+  }
+  if (needsRender) {
     renderTranscriptFeed();
+    if (isTerminalTranscriptLayout() && getin && autoplayToggle.checked) {
+      void runPendingTerminalEchoAnimations();
+    }
   }
 });
 

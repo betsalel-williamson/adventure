@@ -100,6 +100,28 @@ describe("createAutoplayDashboardServer", () => {
     });
   });
 
+  it("GET /api/parser-verbs returns synonym groups", async () => {
+    const server = createAutoplayDashboardServer();
+    await new Promise<void>((resolve) => {
+      server.listen(0, "127.0.0.1", () => resolve());
+    });
+    const addr = server.address();
+    const port =
+      typeof addr === "object" && addr !== null ? addr.port : undefined;
+    expect(port).toBeDefined();
+    const res = await fetch(`http://127.0.0.1:${port}/api/parser-verbs`);
+    expect(res.ok).toBe(true);
+    const j = (await res.json()) as { groups: string[][] };
+    expect(Array.isArray(j.groups)).toBe(true);
+    expect(j.groups.length).toBeGreaterThan(0);
+    const takeLine = j.groups.find((g) => g.includes("TAKE"));
+    expect(takeLine).toBeDefined();
+    expect(takeLine!.includes("GET")).toBe(true);
+    await new Promise<void>((resolve, reject) => {
+      server.close((err) => (err ? reject(err) : resolve()));
+    });
+  });
+
   it("GET and POST /api/autoplay-settings round-trip", async () => {
     const server = createAutoplayDashboardServer();
     await new Promise<void>((resolve) => {

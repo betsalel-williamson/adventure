@@ -28,6 +28,7 @@ import {
 } from "../nl/mlxModelPresets.js";
 import { MlxLmStdioTextLlm } from "../nl/providers/mlxLmStdioTextLlm.js";
 import { interpretedToGetinLine, swapInterpretedTokens } from "../nl/schema.js";
+import { buildVerbSynonymGroups } from "../vocab/verbSynonymGroups.js";
 import type { TextLlm, TextLlmProviderId } from "../nl/textLlmContract.js";
 import {
   buildTextLlmBackendSnapshots,
@@ -437,6 +438,18 @@ export function createAutoplayDashboardServer(): http.Server {
       return;
     }
 
+    if (pathname === "/api/parser-verbs" && req.method === "GET") {
+      if (!db) {
+        jsonResponse(res, 503, { error: "adventure.dat not available" });
+        return;
+      }
+      const groups = buildVerbSynonymGroups(db);
+      jsonResponse(res, 200, {
+        groups: groups.map((g) => g.tokens),
+      });
+      return;
+    }
+
     if (pathname === "/api/autoplay-settings" && req.method === "POST") {
       try {
         const body = (await readJsonBody(req)) as {
@@ -711,6 +724,13 @@ export function createAutoplayDashboardServer(): http.Server {
       sseWrite(res, "manual_waiting", {
         waitingForManual: manualPending !== null,
       });
+      if (db) {
+        sseWrite(res, "parser_verbs", {
+          groups: buildVerbSynonymGroups(db).map((g) => g.tokens),
+        });
+      } else {
+        sseWrite(res, "parser_verbs", { groups: [], datAvailable: false });
+      }
       if (textLlmRef) {
         const cur = textLlmRef.current;
         sseWrite(res, "text_llm", {
@@ -814,8 +834,12 @@ export function createAutoplayDashboardServer(): http.Server {
     }
 
     const ext = path.extname(filePath);
+    const base = path.basename(filePath);
+    const noCacheDashboardAsset =
+      base === "index.html" || base === "app.js" || base === "dashboard.css";
     res.writeHead(200, {
       "Content-Type": MIME[ext] ?? "application/octet-stream",
+      ...(noCacheDashboardAsset ? { "Cache-Control": "no-store" } : {}),
     });
     createReadStream(filePath).pipe(res);
   });

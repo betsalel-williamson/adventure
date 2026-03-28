@@ -52,28 +52,6 @@
             class="side side-left"
             aria-label="Planner and heuristic state"
           >
-            <section class="panel panel-verb-hints" aria-label="Parser verbs">
-              <div class="panel-hint-row">
-                <h2>Verb hints</h2>
-                <button
-                  type="button"
-                  class="help-icon-btn"
-                  data-help-template="help-tpl-parser-verbs"
-                  data-help-title="Parser verbs"
-                  aria-label="About parser verbs"
-                >
-                  ?
-                </button>
-              </div>
-              <p class="small muted parser-verb-hints-intro">
-                GETIN action words (five-letter forms). Same line = synonyms.
-              </p>
-              <div
-                id="parser-verb-hints"
-                class="parser-verb-hints mono small"
-              ></div>
-            </section>
-
             <section class="panel">
               <h2>Last plan → GETIN</h2>
               <pre id="last-plan" class="mono small"></pre>
@@ -143,6 +121,28 @@
                 </summary>
                 <pre id="prompt-system" class="mono small prompt"></pre>
               </details>
+            </section>
+
+            <section class="panel panel-verb-hints" aria-label="Parser verbs">
+              <div class="panel-hint-row">
+                <h2>Verb hints</h2>
+                <button
+                  type="button"
+                  class="help-icon-btn"
+                  data-help-template="help-tpl-parser-verbs"
+                  data-help-title="Parser verbs"
+                  aria-label="About parser verbs"
+                >
+                  ?
+                </button>
+              </div>
+              <p class="small muted parser-verb-hints-intro">
+                GETIN action words (five-letter forms). Same line = synonyms.
+              </p>
+              <div
+                id="parser-verb-hints"
+                class="parser-verb-hints mono small"
+              ></div>
             </section>
           </aside>
         </div>
