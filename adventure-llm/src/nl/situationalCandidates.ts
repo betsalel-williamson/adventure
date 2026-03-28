@@ -1,10 +1,21 @@
 import type { AdventureDatabase } from "../dat/types.js";
+import {
+  DIAGONAL_COMPASS_MOTION_TOKEN_SET,
+  isDiagonalCompassMotionEnabled,
+} from "./diagonalCompassMotion.js";
 import { findVocabIndex, ktabClass } from "../vocab/vocab.js";
 
 /** KTAB encoding: KQ = KTAB/1000+1 in adventure.f (motion / object / verb / misc). */
 const CLASS_MOTION = 1;
 const CLASS_OBJECT = 2;
 const CLASS_VERB = 3;
+
+function skipDiagonalMotionToken(token: string): boolean {
+  return (
+    !isDiagonalCompassMotionEnabled() &&
+    DIAGONAL_COMPASS_MOTION_TOKEN_SET.has(token.trim().toUpperCase())
+  );
+}
 
 /**
  * True when recent Fortran text indicates the player is in an enclosed building
@@ -292,12 +303,14 @@ export function buildSituationalCandidateTokens(
   };
 
   for (const p of MOTION_PRIORITY) {
+    if (skipDiagonalMotionToken(p)) continue;
     if (deferMotion.has(p)) continue;
     if (motionSet.has(p)) push(motion, p);
     if (motion.length >= motionCap) break;
   }
   for (const w of [...motionSet.keys()].sort((a, b) => a.localeCompare(b))) {
     if (motion.length >= motionCap) break;
+    if (skipDiagonalMotionToken(w)) continue;
     if (deferMotion.has(w)) continue;
     if (!seen.has(w)) push(motion, w);
   }

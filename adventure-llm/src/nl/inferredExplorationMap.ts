@@ -4,6 +4,7 @@
  */
 
 import type { AdventureDatabase } from "../dat/types.js";
+import { isDiagonalCompassMotionEnabled } from "./diagonalCompassMotion.js";
 import {
   listVisibleAdventureObjectsInText,
   matchSecondaryToObjectAtabWord,
@@ -549,11 +550,15 @@ export const CARDINAL_ESCAPE_PRIMARIES: readonly string[] = [
   "SOUTH",
 ];
 
-const ESCAPE_PRIMARY_NON_CARDINAL_TAIL: readonly string[] = [
+/** Diagonal motion slice (adventure.dat); omitted unless {@link isDiagonalCompassMotionEnabled}. */
+const ESCAPE_PRIMARY_DIAGONAL_BLOCK: readonly string[] = [
   "NE",
   "SE",
   "NW",
   "SW",
+];
+
+const ESCAPE_PRIMARY_NON_CARDINAL_TAIL_REST: readonly string[] = [
   "UP",
   "DOWN",
   "ENTER",
@@ -566,14 +571,32 @@ const ESCAPE_PRIMARY_NON_CARDINAL_TAIL: readonly string[] = [
   "LOOK",
 ];
 
+function escapePrimaryNonCardinalTail(): string[] {
+  if (isDiagonalCompassMotionEnabled()) {
+    return [
+      ...ESCAPE_PRIMARY_DIAGONAL_BLOCK,
+      ...ESCAPE_PRIMARY_NON_CARDINAL_TAIL_REST,
+    ];
+  }
+  return [...ESCAPE_PRIMARY_NON_CARDINAL_TAIL_REST];
+}
+
 /**
  * Full escape list: cardinals first (same base order as situationalCandidates motion slice),
- * then diagonals and other motion. Use {@link orderedEscapePrimariesForCellKey} for prompts and
- * {@link InferredExplorationMap#pickEscapePrimary} so the first cardinal is not globally fixed.
+ * then diagonals (when enabled) and other motion. Respects `ADVENTURE_LLM_DIAGONAL_COMPASS_MOTION`.
+ */
+export function autoplayEscapePrimaryOrder(): string[] {
+  return [...CARDINAL_ESCAPE_PRIMARIES, ...escapePrimaryNonCardinalTail()];
+}
+
+/**
+ * Escape order when diagonal compass motion is enabled (matches historical full adventure.dat list).
+ * @deprecated Prefer {@link autoplayEscapePrimaryOrder} for flag-aware behavior.
  */
 export const AUTOPLAY_ESCAPE_PRIMARY_ORDER: readonly string[] = [
   ...CARDINAL_ESCAPE_PRIMARIES,
-  ...ESCAPE_PRIMARY_NON_CARDINAL_TAIL,
+  ...ESCAPE_PRIMARY_DIAGONAL_BLOCK,
+  ...ESCAPE_PRIMARY_NON_CARDINAL_TAIL_REST,
 ];
 
 /**
@@ -594,7 +617,7 @@ export function orderedEscapePrimariesForCellKey(cellKey: string): string[] {
   const rot = cardinalRotationForCellKey(cellKey);
   const c = CARDINAL_ESCAPE_PRIMARIES;
   const rotated = [...c.slice(rot), ...c.slice(0, rot)];
-  return [...rotated, ...ESCAPE_PRIMARY_NON_CARDINAL_TAIL];
+  return [...rotated, ...escapePrimaryNonCardinalTail()];
 }
 
 function deprioritizeLastPrimary(
@@ -657,7 +680,7 @@ export function isBlockedTravelOrExitPrimary(primary: string): boolean {
   const p = primary.toUpperCase().trim();
   if (OBSERVATION_ESCAPE_PRIMARIES.has(p)) return false;
   if (isGridMotionPrimary(p)) return true;
-  return AUTOPLAY_ESCAPE_PRIMARY_ORDER.includes(p);
+  return autoplayEscapePrimaryOrder().includes(p);
 }
 
 /**
@@ -667,7 +690,7 @@ export function isBlockedTravelOrExitPrimary(primary: string): boolean {
 export function isLegitimateGraphEdgePrimary(primary: string): boolean {
   const p = primary.toUpperCase().trim();
   if (isGridMotionPrimary(p)) return true;
-  if (AUTOPLAY_ESCAPE_PRIMARY_ORDER.includes(p)) return true;
+  if (autoplayEscapePrimaryOrder().includes(p)) return true;
   if (isNonLocationObjectPrimary(p)) return true;
   if (TAKE_VERB_PRIMARIES_FOR_ROOM.has(p)) return true;
   if (DROP_VERB_PRIMARIES_FOR_ROOM.has(p)) return true;

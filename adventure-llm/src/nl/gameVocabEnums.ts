@@ -1,4 +1,8 @@
 import type { AdventureDatabase } from "../dat/types.js";
+import {
+  DIAGONAL_COMPASS_MOTION_TOKEN_SET,
+  isDiagonalCompassMotionEnabled,
+} from "./diagonalCompassMotion.js";
 
 /** Planner / NL may use QUIT even when it is not an ATAB travel word. */
 const SYNTHETIC_ENUM_TOKENS = ["QUIT"] as const;
@@ -29,6 +33,9 @@ export function collectGameVocabTokens(db: AdventureDatabase): string[] {
 export function vocabTokensForLlmEnums(db: AdventureDatabase): string[] {
   const set = new Set(collectGameVocabTokens(db));
   for (const t of SYNTHETIC_ENUM_TOKENS) set.add(t);
+  if (!isDiagonalCompassMotionEnabled()) {
+    for (const d of DIAGONAL_COMPASS_MOTION_TOKEN_SET) set.delete(d);
+  }
   return [...set].sort((a, b) => a.localeCompare(b));
 }
 

@@ -59,6 +59,7 @@ export {
   isMazeFingerprint,
   MOTION_GRID_DELTA,
   AUTOPLAY_ESCAPE_PRIMARY_ORDER,
+  autoplayEscapePrimaryOrder,
   CARDINAL_ESCAPE_PRIMARIES,
   cardinalRotationForCellKey,
   orderedEscapePrimariesForCellKey,

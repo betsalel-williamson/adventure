@@ -1,25 +1,31 @@
 import type { InterpretedCommand } from "./schema.js";
+import {
+  DIAGONAL_COMPASS_MOTION_TOKENS,
+  isDiagonalCompassMotionEnabled,
+} from "./diagonalCompassMotion.js";
 
-const MOTION_ONLY_PRIMARY = new Set([
-  "UP",
-  "DOWN",
-  "N",
-  "S",
-  "E",
-  "W",
-  "NE",
-  "NW",
-  "SE",
-  "SW",
-  "NORTH",
-  "SOUTH",
-  "EAST",
-  "WEST",
-  "IN",
-  "OUT",
-  "ENTER",
-  "EXIT",
-]);
+function motionOnlyPrimarySet(): Set<string> {
+  const base = [
+    "UP",
+    "DOWN",
+    "N",
+    "S",
+    "E",
+    "W",
+    "NORTH",
+    "SOUTH",
+    "EAST",
+    "WEST",
+    "IN",
+    "OUT",
+    "ENTER",
+    "EXIT",
+  ];
+  if (isDiagonalCompassMotionEnabled()) {
+    base.push(...DIAGONAL_COMPASS_MOTION_TOKENS);
+  }
+  return new Set(base);
+}
 
 function stripBadSecondary(s: string | undefined): string | undefined {
   if (s === undefined) return undefined;
@@ -66,7 +72,10 @@ export function repairInterpretedCommand(
     !/\bgo\b\s+up\b/.test(u) &&
     !/^\s*up\b/i.test(userText.trim());
 
-  if (pickUpPhrasal && (primary === "UP" || MOTION_ONLY_PRIMARY.has(primary))) {
+  if (
+    pickUpPhrasal &&
+    (primary === "UP" || motionOnlyPrimarySet().has(primary))
+  ) {
     const obj = inferObjectFromGameText(game) ?? inferObjectFromUserText(u);
     if (obj) {
       return {

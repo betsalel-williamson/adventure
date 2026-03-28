@@ -31,6 +31,25 @@ describe("orderedEscapePrimariesForCellKey", () => {
     expect(orderedEscapePrimariesForCellKey("0,0,0")[0]).toBe("SOUTH");
     expect(orderedEscapePrimariesForCellKey("2,0,1")[0]).toBe("NORTH");
   });
+
+  it("omits diagonal compass primaries from the tail unless ADVENTURE_LLM_DIAGONAL_COMPASS_MOTION is set", () => {
+    const prev = process.env.ADVENTURE_LLM_DIAGONAL_COMPASS_MOTION;
+    try {
+      delete process.env.ADVENTURE_LLM_DIAGONAL_COMPASS_MOTION;
+      const order = orderedEscapePrimariesForCellKey("0,0,0");
+      expect(order).not.toContain("NE");
+      expect(order).toContain("UP");
+
+      process.env.ADVENTURE_LLM_DIAGONAL_COMPASS_MOTION = "1";
+      const orderDiag = orderedEscapePrimariesForCellKey("0,0,0");
+      expect(orderDiag).toContain("NE");
+      expect(orderDiag.indexOf("NE")).toBeLessThan(orderDiag.indexOf("UP"));
+    } finally {
+      if (prev === undefined)
+        delete process.env.ADVENTURE_LLM_DIAGONAL_COMPASS_MOTION;
+      else process.env.ADVENTURE_LLM_DIAGONAL_COMPASS_MOTION = prev;
+    }
+  });
 });
 
 describe("graphEdgeLabelFromCommand", () => {

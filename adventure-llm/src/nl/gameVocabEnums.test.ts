@@ -24,11 +24,32 @@ describe("gameVocabEnums", () => {
     expect(w).toContain("KEYS");
   });
 
-  it("adds QUIT for planner enums", () => {
+  it("adds QUIT for planner enums and omits diagonal compass motion by default", () => {
     const db = loadDatFile(datPath);
+    const full = collectGameVocabTokens(db);
     const w = vocabTokensForLlmEnums(db);
     expect(w).toContain("QUIT");
-    expect(w.length).toBeGreaterThanOrEqual(collectGameVocabTokens(db).length);
+    expect(w).not.toContain("NE");
+    expect(w).not.toContain("NW");
+    expect(w).not.toContain("SE");
+    expect(w).not.toContain("SW");
+    expect(w.length).toBe(full.length + 1 - 4);
+  });
+
+  it("includes diagonal compass motion in planner enums when ADVENTURE_LLM_DIAGONAL_COMPASS_MOTION is set", () => {
+    const prev = process.env.ADVENTURE_LLM_DIAGONAL_COMPASS_MOTION;
+    process.env.ADVENTURE_LLM_DIAGONAL_COMPASS_MOTION = "1";
+    try {
+      const db = loadDatFile(datPath);
+      const full = collectGameVocabTokens(db);
+      const w = vocabTokensForLlmEnums(db);
+      expect(w).toContain("NE");
+      expect(w.length).toBe(full.length + 1);
+    } finally {
+      if (prev === undefined)
+        delete process.env.ADVENTURE_LLM_DIAGONAL_COMPASS_MOTION;
+      else process.env.ADVENTURE_LLM_DIAGONAL_COMPASS_MOTION = prev;
+    }
   });
 
   it("OpenAI strict schemas reference only enum tokens", () => {
