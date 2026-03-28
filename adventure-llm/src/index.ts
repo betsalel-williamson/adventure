@@ -86,6 +86,7 @@ export {
   inferredMapToDot,
   inferredMapToLocalDot,
   inferredMapToMermaid,
+  shortMermaidPlaceLabelForSnapshot,
 } from "./nl/explorationGraphViz.js";
 export {
   collectGameVocabTokens,

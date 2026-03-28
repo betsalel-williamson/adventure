@@ -5,9 +5,95 @@
 import type {
   DirectedEdgeKind,
   InferredExplorationMapSnapshot,
+  InferredRoomKind,
 } from "./inferredExplorationMap.js";
 
 const MERMAID_SAFE = /[^a-zA-Z0-9_]/g;
+
+/** Longest first so we peel compound phrases before shorter prefixes. */
+const MERMAID_LOCATION_PREFIX_STRIPS: readonly string[] = [
+  "YOU ARE STANDING AT THE ",
+  "YOU'RE STANDING AT THE ",
+  "YOU ARE STANDING AT ",
+  "YOU'RE STANDING AT ",
+  "YOU ARE INSIDE THE ",
+  "YOU'RE INSIDE THE ",
+  "YOU ARE INSIDE A ",
+  "YOU'RE INSIDE A ",
+  "YOU ARE INSIDE ",
+  "YOU'RE INSIDE ",
+  "YOU ARE IN THE ",
+  "YOU'RE IN THE ",
+  "YOU ARE IN A ",
+  "YOU'RE IN A ",
+  "YOU ARE IN ",
+  "YOU'RE IN ",
+  "YOU ARE AT THE ",
+  "YOU'RE AT THE ",
+  "YOU ARE AT ",
+  "YOU'RE AT ",
+  "YOU ARE ON THE ",
+  "YOU'RE ON THE ",
+  "YOU ARE ON A ",
+  "YOU'RE ON A ",
+  "YOU ARE ON ",
+  "YOU'RE ON ",
+  "YOU ARE ",
+  "YOU'RE ",
+];
+
+const MERMAID_PLACE_LABEL_MAX = 48;
+
+const MERMAID_FALLBACK_BY_ROOM_KIND: Record<InferredRoomKind, string> = {
+  road: "ROAD",
+  building: "BUILDING",
+  forest: "FOREST",
+  valley: "VALLEY",
+  cave: "CAVE",
+  maze: "MAZE",
+  grate: "GRATE",
+  hall: "HALL",
+  water: "WATER",
+  other: "PLACE",
+};
+
+/**
+ * Short uppercase place line for Mermaid node text only (no takeable / inventory hints).
+ * Strips leading YOU ARE / YOU'RE boilerplate from the session fingerprint label.
+ */
+export function shortMermaidPlaceLabelForSnapshot(
+  snap: InferredExplorationMapSnapshot,
+  graphNodeId: string,
+): string {
+  const cell = snap.cells.find((c) => c.graphNodeId === graphNodeId);
+  const raw =
+    cell?.label ||
+    cell?.fingerprint ||
+    (graphNodeId === snap.currentGraphNodeId
+      ? (snap.lastFingerprint ?? "")
+      : "");
+  let u = raw.replace(/\s+/g, " ").trim().toUpperCase();
+  if (u.endsWith(".")) u = u.slice(0, -1).trimEnd();
+
+  let prev = "";
+  while (u !== prev) {
+    prev = u;
+    for (const p of MERMAID_LOCATION_PREFIX_STRIPS) {
+      if (u.startsWith(p)) {
+        u = u.slice(p.length).trimStart();
+        break;
+      }
+    }
+  }
+
+  if (u.length === 0) {
+    const kind = cell?.roomKind;
+    if (kind !== undefined) return MERMAID_FALLBACK_BY_ROOM_KIND[kind];
+    return graphNodeId;
+  }
+
+  return u.slice(0, MERMAID_PLACE_LABEL_MAX);
+}
 
 /** Room label plus optional visible object count for graph nodes. */
 export function graphNodeCaptionForSnapshot(
@@ -45,8 +131,29 @@ function mermaidNodeId(raw: string): string {
   return s.length > 0 ? s : "n_unknown";
 }
 
-function escapeEdgeLabel(s: string): string {
-  return s.replace(/\|/g, "/").slice(0, 32);
+const MERMAID_EDGE_LABEL_MAX = 32;
+
+/**
+ * Safe text for `A -->|here| B`: `|` delimits the label; `(`, `/`, etc. can confuse the
+ * flowchart lexer. Truncate on a word boundary so we do not leave dangling punctuation.
+ */
+function mermaidFlowchartEdgeLabel(raw: string): string {
+  const t = raw
+    .replace(/\r/g, " ")
+    .replace(/\n/g, " ")
+    .replace(/\|/g, "/")
+    .replace(/#/g, " ")
+    .replace(/[[\]()]/g, " ")
+    .replace(/\//g, "·")
+    .replace(/\s+/g, " ")
+    .trim();
+  const max = MERMAID_EDGE_LABEL_MAX;
+  if (t.length <= max) return t;
+  const slice = t.slice(0, max);
+  const lastSpace = slice.lastIndexOf(" ");
+  const base =
+    lastSpace > 10 ? slice.slice(0, lastSpace).trimEnd() : slice.trimEnd();
+  return `${base}…`;
 }
 
 export type ExplorationVizOptions = {
@@ -259,12 +366,12 @@ export function inferredMapToMermaid(
 
   const nodeLabels = new Map<string, string>();
   const cur = snap.currentGraphNodeId;
-  nodeLabels.set(cur, graphNodeCaptionForSnapshot(snap, cur));
+  nodeLabels.set(cur, shortMermaidPlaceLabelForSnapshot(snap, cur));
   for (const c of snap.cells) {
     if (c.graphNodeId === cur) continue;
     nodeLabels.set(
       c.graphNodeId,
-      graphNodeCaptionForSnapshot(snap, c.graphNodeId),
+      shortMermaidPlaceLabelForSnapshot(snap, c.graphNodeId),
     );
   }
 
@@ -290,8 +397,13 @@ export function inferredMapToMermaid(
 
   for (const raw of declOrder.slice(0, maxN)) {
     const mid = mermaidNodeId(raw);
-    const lab = (nodeLabels.get(raw) ?? graphNodeCaptionForSnapshot(snap, raw))
+    const lab = (
+      nodeLabels.get(raw) ?? shortMermaidPlaceLabelForSnapshot(snap, raw)
+    )
       .replace(/"/g, "'")
+      .replace(/[[\]\n\r]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
       .slice(0, 48);
     lines.push(`  ${mid}["${lab}"]`);
   }
@@ -300,8 +412,12 @@ export function inferredMapToMermaid(
     const a = mermaidNodeId(e.from);
     const b = mermaidNodeId(e.to);
     const arr = arrowForKind(e.kind);
-    const lab = escapeEdgeLabel(e.label);
-    lines.push(`  ${a} ${arr}|${lab}| ${b}`);
+    const lab = mermaidFlowchartEdgeLabel(e.label);
+    if (lab.length === 0) {
+      lines.push(`  ${a} ${arr} ${b}`);
+    } else {
+      lines.push(`  ${a} ${arr}|${lab}| ${b}`);
+    }
   }
 
   lines.push("  classDef currentState fill:#3d3d5c,stroke:#888,color:#eee");

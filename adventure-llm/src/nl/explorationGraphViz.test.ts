@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { loadDatFile } from "../dat/loadDat.js";
 import { InferredExplorationMap } from "./inferredExplorationMap.js";
 import { interpretedToGetinLine } from "./schema.js";
+import type { InferredExplorationMapSnapshot } from "./inferredExplorationMap.js";
 import {
   inferredMapToDot,
   inferredMapToLocalDot,
@@ -29,6 +30,8 @@ describe("explorationGraphViz", () => {
     const mer = inferredMapToMermaid(snap);
     expect(mer).toContain("flowchart LR");
     expect(mer).toContain("-->");
+    expect(mer).toMatch(/\["OPEN FOREST"\]/);
+    expect(mer).not.toMatch(/YOU ARE IN OPEN FOREST/);
     const dot = inferredMapToDot(snap);
     expect(dot).toContain("digraph exploration_fsm");
     expect(dot).toContain("->");
@@ -55,6 +58,44 @@ describe("explorationGraphViz", () => {
     expect(local).toContain("edge [dir=forward; arrowhead=vee]");
   });
 
+  it("emits parse-safe Mermaid edge labels (no broken pipe text from parens or slashes)", () => {
+    const snap: InferredExplorationMapSnapshot = {
+      current: { x: 3, y: 0, z: 0 },
+      currentGraphNodeId: "k_3_0_0",
+      lastFingerprint: "YOU ARE IN FOREST",
+      cells: [
+        {
+          graphNodeId: "k_3_0_0",
+          x: 3,
+          y: 0,
+          z: 0,
+          fingerprint: "YOU ARE IN FOREST",
+          roomKind: "forest",
+          label: "YOU ARE IN FOREST",
+          groundObjectWords: null,
+          takeableObjectWords: null,
+          visibleObjectCount: null,
+        },
+      ],
+      exitOutcomes: {},
+      directedEdges: [
+        {
+          from: "k_3_0_0",
+          to: "k_3_0_0",
+          label: "FOREST WATER (use TAKE/GET + object)",
+          kind: "self",
+        },
+      ],
+      triedCommandsByNode: {},
+      nonLocationActionsByNode: {},
+    };
+    const mer = inferredMapToMermaid(snap);
+    expect(mer).toContain("k_3_0_0 -->|");
+    expect(mer).not.toMatch(/\|[^\n]*\([^\n]*\|/);
+    expect(mer).toMatch(/k_3_0_0 -->\|[^|]*…\| k_3_0_0/);
+    expect(mer).toMatch(/\["FOREST"\]/);
+  });
+
   it("includes visible object count in Mermaid and DOT labels when adventure.dat is used", () => {
     const db = loadDatFile(datPath);
     const m = new InferredExplorationMap();
@@ -67,7 +108,8 @@ describe("explorationGraphViz", () => {
     const building = snap.cells.find((c) => c.graphNodeId !== "k_0_0_0");
     expect(building?.takeableObjectWords?.length).toBeGreaterThanOrEqual(3);
     const mer = inferredMapToMermaid(snap);
-    expect(mer).toMatch(/takeable:/i);
+    expect(mer).not.toMatch(/takeable/i);
+    expect(mer).toMatch(/\["BUILDING"\]/);
     const dot = inferredMapToDot(snap);
     expect(dot).toContain("label=");
     expect(dot).toMatch(/takeable/i);
