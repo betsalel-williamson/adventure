@@ -2,6 +2,12 @@
  * Autoplay dashboard: EventSource consumer for /events.
  */
 
+import {
+  blockBodyChronological,
+  sortTranscriptBlocksChronological,
+} from "./transcriptLayoutLogic.js";
+import { preloadTerminalSounds, typeTextIntoPre } from "./terminalTyper.js";
+
 const transcriptEl = document.getElementById("transcript");
 const autoplayLogEl = document.getElementById("autoplay-log");
 const sessionStatusEl = document.getElementById("session-status");
@@ -36,6 +42,8 @@ const mermaidFullscreenCloseBtn = document.getElementById(
   "mermaid-fullscreen-close",
 );
 
+let mapMermaidRenderGeneration = 0;
+
 /** @type {Record<string, string>} */
 const ROOM_KIND_LABELS = {
   road: "Road",
@@ -54,7 +62,7 @@ const promptSystemEl = document.getElementById("prompt-system");
 const promptSystemWrap = document.getElementById("prompt-system-wrap");
 const copyPromptUserBtn = document.getElementById("copy-prompt-user");
 const copyPromptSystemBtn = document.getElementById("copy-prompt-system");
-const recentTurnsEl = document.getElementById("recent-turns");
+const parserVerbHintsEl = document.getElementById("parser-verb-hints");
 const autoplayToggle = document.getElementById("autoplay-toggle");
 const autoplayPaceMsEl = document.getElementById("autoplay-pace-ms");
 const autoplayMaxMovesEl = document.getElementById("autoplay-max-moves");
@@ -66,6 +74,30 @@ const manualInterpretToggle = document.getElementById(
 const manualSend = document.getElementById("manual-send");
 const manualEndSession = document.getElementById("manual-end-session");
 const manualError = document.getElementById("manual-error");
+const transcriptLayoutToggle = document.getElementById(
+  "transcript-layout-toggle",
+);
+const manualControlsGroup = document.getElementById("manual-controls-group");
+const manualControlsSlotFooter = document.getElementById(
+  "manual-controls-slot-footer",
+);
+const manualControlsSlotCrt = document.getElementById(
+  "manual-controls-slot-crt",
+);
+const transcriptPanelHintRow = document.querySelector(
+  ".panel-hint-row--transcript",
+);
+const transcriptToolbarClassic = document.getElementById(
+  "transcript-toolbar-classic",
+);
+const crtBezelSlot = document.getElementById("crt-bezel-slot");
+const footerDashboardChunks = document.getElementById(
+  "footer-dashboard-chunks",
+);
+const manualInterpretContainer = document.getElementById(
+  "manual-interpret-container",
+);
+const footerControls = document.querySelector(".footer-controls");
 const textLlmWrap = document.getElementById("text-llm-wrap");
 const textLlmSelect = document.getElementById("text-llm-select");
 const mlxLoadOverlay = document.getElementById("mlx-load-overlay");
@@ -117,6 +149,18 @@ function setMlxLoadOverlayVisible(show) {
  */
 let transcriptBlocks = [];
 
+/**
+ * Terminal layout: local echo lines shown after server text for `afterStep`, in send order.
+ * @type {{ afterStep: number; line: string; seq: number; animate?: boolean }[]}
+ */
+let terminalEchoQueue = [];
+
+/** Monotonic sequence for stable echo ordering. */
+let terminalEchoSeq = 0;
+
+/** seq → full line to type (including `> ` and newline); cleared after animation. */
+const pendingEchoTypeTextBySeq = new Map();
+
 /** GETIN line for transcript step (from plan_applied), for block headers. */
 /** @type {Record<number, string>} */
 const getinLineByStep = {};
@@ -127,6 +171,98 @@ const motionGridHintByStep = {};
 
 /** @type {boolean} */
 let waitingForManual = false;
+
+const TRANSCRIPT_LAYOUT_KEY = "adventureTranscriptLayout";
+const TRANSCRIPT_SCROLL_BOTTOM_EPS_PX = 48;
+
+function isTerminalTranscriptLayout() {
+  return document.body.classList.contains("transcript-layout--terminal");
+}
+
+/**
+ * @param {"classic" | "terminal"} mode
+ */
+function applyTranscriptLayout(mode) {
+  const isTerminal = mode === "terminal";
+  const wasTerminal = isTerminalTranscriptLayout();
+  document.body.classList.toggle("transcript-layout--terminal", isTerminal);
+  try {
+    localStorage.setItem(TRANSCRIPT_LAYOUT_KEY, mode);
+  } catch {
+    /* ignore */
+  }
+  if (transcriptLayoutToggle) {
+    transcriptLayoutToggle.checked = isTerminal;
+  }
+
+  const canRelocateBezel =
+    crtBezelSlot &&
+    transcriptToolbarClassic &&
+    footerDashboardChunks &&
+    transcriptPanelHintRow &&
+    footerControls &&
+    manualControlsSlotFooter;
+
+  if (canRelocateBezel) {
+    if (isTerminal) {
+      crtBezelSlot.hidden = false;
+      crtBezelSlot.setAttribute("aria-hidden", "false");
+      crtBezelSlot.appendChild(transcriptToolbarClassic);
+      crtBezelSlot.appendChild(footerDashboardChunks);
+      if (manualInterpretContainer) {
+        crtBezelSlot.appendChild(manualInterpretContainer);
+      }
+    } else {
+      crtBezelSlot.hidden = true;
+      crtBezelSlot.setAttribute("aria-hidden", "true");
+      transcriptPanelHintRow.appendChild(transcriptToolbarClassic);
+      footerControls.insertBefore(
+        footerDashboardChunks,
+        manualControlsSlotFooter,
+      );
+      if (manualControlsGroup && manualInterpretContainer) {
+        manualControlsGroup.insertBefore(
+          manualInterpretContainer,
+          manualControlsGroup.firstChild,
+        );
+      }
+    }
+  }
+
+  if (
+    manualControlsGroup &&
+    manualControlsSlotFooter &&
+    manualControlsSlotCrt
+  ) {
+    (isTerminal ? manualControlsSlotCrt : manualControlsSlotFooter).appendChild(
+      manualControlsGroup,
+    );
+  }
+  renderTranscriptFeed();
+  if (isTerminal && !wasTerminal && manualInput && !manualInput.disabled) {
+    preloadTerminalSounds();
+    manualInput.focus();
+  }
+}
+
+function initTranscriptLayout() {
+  const params = new URLSearchParams(window.location.search);
+  const q = params.get("transcript");
+  let mode = "classic";
+  if (q === "terminal" || q === "classic") {
+    mode = q;
+  } else {
+    try {
+      const s = localStorage.getItem(TRANSCRIPT_LAYOUT_KEY);
+      if (s === "terminal" || s === "classic") {
+        mode = s;
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  applyTranscriptLayout(mode);
+}
 
 function stepCaption(step) {
   if (step === 0) return "Step 0 · opening (no GETIN yet)";
@@ -142,24 +278,151 @@ function blockBodyText(b) {
   return b.parts.join("");
 }
 
+function maxTranscriptStep() {
+  if (transcriptBlocks.length === 0) return 0;
+  return Math.max(...transcriptBlocks.map((b) => b.step), 0);
+}
+
+/**
+ * @param {string} line raw command (trimmed)
+ * @param {{ animate?: boolean }} [options]
+ */
+function appendTerminalCommandEcho(line, options = {}) {
+  if (!isTerminalTranscriptLayout() || !line) return;
+  terminalEchoSeq += 1;
+  const seq = terminalEchoSeq;
+  const displayText = `> ${line.toUpperCase()}\n`;
+  if (options.animate) {
+    pendingEchoTypeTextBySeq.set(seq, displayText);
+  }
+  terminalEchoQueue.push({
+    afterStep: maxTranscriptStep(),
+    line,
+    seq,
+    animate: Boolean(options.animate),
+  });
+}
+
+/**
+ * @param {DocumentFragment} frag
+ * @param {{ line: string; seq: number; animate?: boolean }} e
+ */
+function appendTerminalEchoPre(frag, e) {
+  const wrap = document.createElement("div");
+  wrap.className =
+    "transcript-block transcript-block--terminal transcript-block--echo";
+  const pre = document.createElement("pre");
+  pre.className = "transcript-body transcript-terminal-echo-line";
+  if (e.animate && pendingEchoTypeTextBySeq.has(e.seq)) {
+    pre.dataset.terminalEchoAnimate = String(e.seq);
+    pre.textContent = "";
+  } else {
+    pre.textContent = `> ${e.line.toUpperCase()}\n`;
+  }
+  wrap.appendChild(pre);
+  frag.appendChild(wrap);
+}
+
+/**
+ * Type pending echo lines (Unknown-style) after DOM mount.
+ */
+async function runPendingTerminalEchoAnimations() {
+  if (!transcriptEl) return;
+  const pres = transcriptEl.querySelectorAll("pre[data-terminal-echo-animate]");
+  for (const pre of pres) {
+    const seqStr = pre.getAttribute("data-terminal-echo-animate");
+    pre.removeAttribute("data-terminal-echo-animate");
+    const seq = Number(seqStr);
+    const full = pendingEchoTypeTextBySeq.get(seq);
+    pendingEchoTypeTextBySeq.delete(seq);
+    const entry = terminalEchoQueue.find((x) => x.seq === seq);
+    if (entry) {
+      entry.animate = false;
+    }
+    if (typeof full === "string" && full.length > 0) {
+      await typeTextIntoPre(
+        transcriptEl,
+        /** @type {HTMLPreElement} */ (pre),
+        full,
+        { charDelayMs: 26, finalPauseMs: 240 },
+      );
+    }
+  }
+}
+
 function renderTranscriptFeed() {
+  if (!transcriptEl) return;
+  const terminal = isTerminalTranscriptLayout();
+  const prevScrollTop = transcriptEl.scrollTop;
+  const prevScrollHeight = transcriptEl.scrollHeight;
+  const wasAtBottom =
+    prevScrollHeight - prevScrollTop - transcriptEl.clientHeight <=
+    TRANSCRIPT_SCROLL_BOTTOM_EPS_PX;
+
   transcriptEl.replaceChildren();
   const frag = document.createDocumentFragment();
-  for (const b of transcriptBlocks) {
-    const wrap = document.createElement("div");
-    wrap.className = "transcript-block";
-    const cap = document.createElement("div");
-    cap.className = "transcript-step";
-    cap.textContent = stepCaption(b.step);
-    const pre = document.createElement("pre");
-    pre.className = "transcript-body";
-    pre.textContent = blockBodyText(b);
-    wrap.appendChild(cap);
-    wrap.appendChild(pre);
-    frag.appendChild(wrap);
+  if (terminal) {
+    const sorted = sortTranscriptBlocksChronological(transcriptBlocks);
+    const echoes = [...terminalEchoQueue].sort((a, b) => a.seq - b.seq);
+    /** @type {Map<number, { line: string; seq: number; animate?: boolean }[]>} */
+    const echoesByStep = new Map();
+    for (const e of echoes) {
+      const list = echoesByStep.get(e.afterStep) ?? [];
+      list.push(e);
+      echoesByStep.set(e.afterStep, list);
+    }
+    const renderedSteps = new Set();
+    for (const b of sorted) {
+      const wrap = document.createElement("div");
+      wrap.className = "transcript-block transcript-block--terminal";
+      const pre = document.createElement("pre");
+      pre.className = "transcript-body transcript-terminal-game";
+      pre.textContent = blockBodyChronological(b);
+      wrap.appendChild(pre);
+      frag.appendChild(wrap);
+      renderedSteps.add(b.step);
+      const forStep = echoesByStep.get(b.step);
+      if (forStep) {
+        for (const echoEntry of forStep) {
+          appendTerminalEchoPre(frag, echoEntry);
+        }
+      }
+    }
+    for (const e of echoes) {
+      if (!renderedSteps.has(e.afterStep)) {
+        appendTerminalEchoPre(frag, e);
+      }
+    }
+  } else {
+    for (const b of transcriptBlocks) {
+      const wrap = document.createElement("div");
+      wrap.className = "transcript-block";
+      const cap = document.createElement("div");
+      cap.className = "transcript-step";
+      cap.textContent = stepCaption(b.step);
+      const pre = document.createElement("pre");
+      pre.className = "transcript-body";
+      pre.textContent = blockBodyText(b);
+      wrap.appendChild(cap);
+      wrap.appendChild(pre);
+      frag.appendChild(wrap);
+    }
   }
   transcriptEl.appendChild(frag);
-  transcriptEl.scrollTop = 0;
+
+  requestAnimationFrame(() => {
+    if (!transcriptEl) return;
+    if (terminal) {
+      if (wasAtBottom || prevScrollHeight === 0) {
+        transcriptEl.scrollTop = transcriptEl.scrollHeight;
+      } else {
+        const delta = transcriptEl.scrollHeight - prevScrollHeight;
+        transcriptEl.scrollTop = prevScrollTop + delta;
+      }
+    } else {
+      transcriptEl.scrollTop = 0;
+    }
+  });
 }
 
 /**
@@ -205,6 +468,9 @@ function addTranscriptChunk(text, step) {
 
 function resetTranscriptFeed() {
   transcriptBlocks = [];
+  terminalEchoQueue = [];
+  terminalEchoSeq = 0;
+  pendingEchoTypeTextBySeq.clear();
   for (const k of Object.keys(getinLineByStep)) {
     delete getinLineByStep[Number(k)];
   }
@@ -266,7 +532,12 @@ function showManualError(msg) {
 function setManualUiState() {
   const plannerOn = autoplayToggle.checked;
   manualBanner.classList.toggle("hidden", !waitingForManual || plannerOn);
-  const canSend = waitingForManual && !plannerOn;
+  /**
+   * When LLM autoplay is off, the runner will block on waitForManualLine on the next
+   * move — but that can lag behind the toggle (pace delay, in-flight planner call).
+   * Enable the field whenever autoplay is off; the server returns 409 until ready.
+   */
+  const canSend = !plannerOn;
   manualInput.disabled = !canSend;
   manualInterpretToggle.disabled = !canSend;
   manualSend.disabled = !canSend;
@@ -378,7 +649,14 @@ async function postManualCommand(body) {
     });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) {
-      showManualError(j.error || `Request failed (${r.status})`);
+      const raw = typeof j.error === "string" ? j.error : "";
+      if (r.status === 409 && /not waiting for a manual command/i.test(raw)) {
+        showManualError(
+          "Session is not ready for input yet (finishing the previous step or pace delay). Try again in a moment.",
+        );
+      } else {
+        showManualError(raw || `Request failed (${r.status})`);
+      }
       return;
     }
     manualInput.value = "";
@@ -387,7 +665,7 @@ async function postManualCommand(body) {
   }
 }
 
-function submitManualCommand() {
+async function submitManualCommand() {
   const line = manualInput.value.trim();
   if (!line) {
     showManualError(
@@ -397,14 +675,23 @@ function submitManualCommand() {
     );
     return;
   }
+  if (isTerminalTranscriptLayout()) {
+    preloadTerminalSounds();
+    manualInput.value = "";
+    appendTerminalCommandEcho(line, { animate: true });
+    renderTranscriptFeed();
+    await runPendingTerminalEchoAnimations();
+  }
   if (manualInterpretToggle.checked) {
-    postManualCommand({ natural: line });
+    await postManualCommand({ natural: line });
   } else {
-    postManualCommand({ getinLine: line });
+    await postManualCommand({ getinLine: line });
   }
 }
 
-manualSend.addEventListener("click", submitManualCommand);
+manualSend.addEventListener("click", () => {
+  void submitManualCommand();
+});
 
 manualEndSession.addEventListener("click", () => {
   postManualCommand({ endSession: true });
@@ -414,9 +701,19 @@ manualInput.addEventListener("keydown", (ev) => {
   if (ev.key !== "Enter") return;
   ev.preventDefault();
   if (!manualSend.disabled) {
-    submitManualCommand();
+    void submitManualCommand();
   }
 });
+
+initTranscriptLayout();
+
+if (transcriptLayoutToggle) {
+  transcriptLayoutToggle.addEventListener("change", () => {
+    applyTranscriptLayout(
+      transcriptLayoutToggle.checked ? "terminal" : "classic",
+    );
+  });
+}
 
 void refreshModeFromServer();
 
@@ -564,11 +861,24 @@ function parseData(data) {
  * @param {string} src
  * @param {HTMLElement | null} container
  */
+/**
+ * Mermaid returns an error diagram (not a throw) when the source fails to parse.
+ * @param {string} svgHtml
+ */
+function isMermaidParseErrorSvg(svgHtml) {
+  return (
+    typeof svgHtml === "string" &&
+    (svgHtml.includes('aria-roledescription="error"') ||
+      svgHtml.includes("Syntax error in text"))
+  );
+}
+
 async function renderMermaidInto(src, container) {
   if (!container || typeof src !== "string" || src.trim() === "") {
     if (container) container.textContent = "";
     return;
   }
+  const gen = ++mapMermaidRenderGeneration;
   try {
     const mod =
       await import("https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs");
@@ -580,9 +890,16 @@ async function renderMermaidInto(src, container) {
     });
     const id = "mermap_" + Date.now().toString(36);
     const { svg } = await mer.render(id, src);
+    if (gen !== mapMermaidRenderGeneration) return;
     container.innerHTML = "";
+    if (isMermaidParseErrorSvg(svg)) {
+      container.textContent =
+        "(Could not render diagram in-browser. Use Copy Mermaid or open the source below.)";
+      return;
+    }
     container.insertAdjacentHTML("beforeend", svg);
   } catch {
+    if (gen !== mapMermaidRenderGeneration) return;
     container.textContent =
       "(Could not render diagram in-browser. Use Copy Mermaid or open the source below.)";
   }
@@ -776,14 +1093,6 @@ function applySnapshot(snapshot) {
   mapZInput.value = String(sliceZ);
   renderMapSlice(snapshot.map, sliceZ);
   applyFsmPanel(snapshot);
-
-  recentTurnsEl.replaceChildren();
-  for (const t of snapshot.recentTurns || []) {
-    const li = document.createElement("li");
-    const tag = t.outcomeWasParserRejection ? " (rejected)" : "";
-    li.textContent = `${t.command} → ${t.outcomeExcerpt}${tag}`;
-    recentTurnsEl.appendChild(li);
-  }
 }
 
 mapZInput.addEventListener("change", () => {
@@ -834,6 +1143,41 @@ async function applyStoredAutoplaySettings() {
 }
 
 await applyStoredAutoplaySettings();
+
+async function loadParserVerbHints() {
+  if (!parserVerbHintsEl) return;
+  try {
+    const r = await fetch("/api/parser-verbs");
+    const j = r.ok ? await r.json() : null;
+    const groups =
+      j && Array.isArray(j.groups) ? /** @type {string[][]} */ (j.groups) : [];
+    parserVerbHintsEl.replaceChildren();
+    if (!r.ok || groups.length === 0) {
+      const p = document.createElement("p");
+      p.className = "small muted";
+      p.textContent = r.ok
+        ? "No verb data."
+        : "Verb list unavailable (is adventure.dat missing?)";
+      parserVerbHintsEl.appendChild(p);
+      return;
+    }
+    for (const tokens of groups) {
+      if (!Array.isArray(tokens) || tokens.length === 0) continue;
+      const line = document.createElement("p");
+      line.className = "parser-verb-hint-line";
+      line.textContent = tokens.join(" · ");
+      parserVerbHintsEl.appendChild(line);
+    }
+  } catch {
+    parserVerbHintsEl.replaceChildren();
+    const p = document.createElement("p");
+    p.className = "small muted";
+    p.textContent = "Could not load verb hints.";
+    parserVerbHintsEl.appendChild(p);
+  }
+}
+
+await loadParserVerbHints();
 const es = new EventSource("/events");
 
 es.addEventListener("autoplay_mode", (ev) => {

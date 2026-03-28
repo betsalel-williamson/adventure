@@ -13,7 +13,13 @@
     <link rel="stylesheet" href="/dashboard.css" />
   </head>
   <body>
-    <svg class="crt-filters-svg" aria-hidden="true" focusable="false" width="0" height="0">
+    <svg
+      class="crt-filters-svg"
+      aria-hidden="true"
+      focusable="false"
+      width="0"
+      height="0"
+    >
       <defs>
         <filter id="crt-bubble" x="-8%" y="-8%" width="116%" height="116%">
           <feTurbulence
@@ -23,7 +29,13 @@
             result="noise"
             seed="17"
           />
-          <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.2" xChannelSelector="R" yChannelSelector="G" />
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="noise"
+            scale="1.2"
+            xChannelSelector="R"
+            yChannelSelector="G"
+          />
         </filter>
       </defs>
     </svg>
@@ -32,9 +44,36 @@
         <div class="side-left-column">
           <header class="dashboard-brand" aria-label="Adventure LLM">
             <span class="dashboard-brand-mark" aria-hidden="true">▸</span>
-            <span class="dashboard-brand-text">Adventure<span class="dashboard-brand-llm">LLM</span></span>
+            <span class="dashboard-brand-text"
+              >Adventure<span class="dashboard-brand-llm">LLM</span></span
+            >
           </header>
-          <aside class="side side-left" aria-label="Planner and heuristic state">
+          <aside
+            class="side side-left"
+            aria-label="Planner and heuristic state"
+          >
+            <section class="panel panel-verb-hints" aria-label="Parser verbs">
+              <div class="panel-hint-row">
+                <h2>Verb hints</h2>
+                <button
+                  type="button"
+                  class="help-icon-btn"
+                  data-help-template="help-tpl-parser-verbs"
+                  data-help-title="Parser verbs"
+                  aria-label="About parser verbs"
+                >
+                  ?
+                </button>
+              </div>
+              <p class="small muted parser-verb-hints-intro">
+                GETIN action words (five-letter forms). Same line = synonyms.
+              </p>
+              <div
+                id="parser-verb-hints"
+                class="parser-verb-hints mono small"
+              ></div>
+            </section>
+
             <section class="panel">
               <h2>Last plan → GETIN</h2>
               <pre id="last-plan" class="mono small"></pre>
@@ -76,7 +115,9 @@
               </div>
               <details>
                 <summary class="prompt-summary">
-                  <span class="prompt-summary-label">User / context preview</span>
+                  <span class="prompt-summary-label"
+                    >User / context preview</span
+                  >
                   <button
                     type="button"
                     id="copy-prompt-user"
@@ -103,11 +144,6 @@
                 <pre id="prompt-system" class="mono small prompt"></pre>
               </details>
             </section>
-
-            <section class="panel">
-              <h2>Recent moves</h2>
-              <ol id="recent-turns" class="small"></ol>
-            </section>
           </aside>
         </div>
 
@@ -115,21 +151,57 @@
           class="panel transcript-panel transcript-panel--crt transcript-panel--hero"
           aria-label="Game transcript"
         >
-          <div class="panel-hint-row">
-            <h2>Game transcript</h2>
-            <button
-              type="button"
-              class="help-icon-btn"
-              data-help-template="help-tpl-transcript"
-              data-help-title="Game transcript"
-              aria-label="About the game transcript"
+          <div class="panel-hint-row panel-hint-row--transcript">
+            <h2 class="transcript-panel-heading">Game transcript</h2>
+            <div
+              id="transcript-toolbar-classic"
+              class="transcript-toolbar-classic"
             >
-              ?
-            </button>
+              <label
+                class="toggle-label transcript-layout-toggle-label"
+                title="Chronological transcript with prompt inside the CRT; scroll back through full history. Add ?transcript=terminal or ?transcript=classic to the URL."
+              >
+                <input type="checkbox" id="transcript-layout-toggle" />
+                <span>Terminal layout</span>
+              </label>
+              <button
+                type="button"
+                class="help-icon-btn"
+                data-help-template="help-tpl-transcript"
+                data-help-title="Game transcript"
+                aria-label="About the game transcript"
+              >
+                ?
+              </button>
+            </div>
           </div>
-          <div class="crt-terminal">
-            <div class="crt-terminal-screen">
-              <div id="transcript" class="transcript-feed transcript-feed--crt" aria-live="polite"></div>
+          <div class="crt-monitor-chassis">
+            <div class="crt-terminal crt-terminal--integrated">
+              <div class="crt-terminal-screen">
+                <div
+                  class="crt-terminal-scanline-sweep"
+                  aria-hidden="true"
+                ></div>
+                <div class="transcript-terminal-column">
+                  <div
+                    id="transcript"
+                    class="transcript-feed transcript-feed--crt"
+                    aria-live="polite"
+                  ></div>
+                  <div class="transcript-terminal-prompt-shell">
+                    <div
+                      id="manual-controls-slot-crt"
+                      class="manual-controls-slot manual-controls-slot--crt"
+                    ></div>
+                  </div>
+                </div>
+              </div>
+              <div
+                id="crt-bezel-slot"
+                class="crt-bezel-slot crt-bezel-slot--deck"
+                hidden
+                aria-hidden="true"
+              ></div>
             </div>
           </div>
           <div class="panel-hint-row panel-hint-row--sub">
@@ -144,12 +216,19 @@
               ?
             </button>
           </div>
-          <div id="autoplay-log" class="autoplay-log-feed" aria-live="polite"></div>
+          <div
+            id="autoplay-log"
+            class="autoplay-log-feed"
+            aria-live="polite"
+          ></div>
         </section>
 
         <div class="map-hero-column">
           <div class="map-hero-column-body">
-            <section class="panel map-hero map-hero-center" aria-label="Inferred exploration map">
+            <section
+              class="panel map-hero map-hero-center"
+              aria-label="Inferred exploration map"
+            >
               <div class="map-hero-head">
                 <div class="map-hero-title-row">
                   <h2 class="map-hero-title">Exploration map</h2>
@@ -174,7 +253,11 @@
                   <input type="number" id="map-z" value="0" step="1" />
                 </label>
               </p>
-              <p id="map-room-kind" class="map-room-kind small" aria-live="polite"></p>
+              <p
+                id="map-room-kind"
+                class="map-room-kind small"
+                aria-live="polite"
+              ></p>
               <div class="map-viewport">
                 <div
                   id="map-grid"
@@ -183,9 +266,16 @@
                   aria-label="Inferred exploration grid"
                 ></div>
               </div>
-              <div id="map-legend" class="map-legend" aria-label="Room type legend"></div>
+              <div
+                id="map-legend"
+                class="map-legend"
+                aria-label="Room type legend"
+              ></div>
             </section>
-            <section class="panel map-fsm-card" aria-label="Session exploration state machine">
+            <section
+              class="panel map-fsm-card"
+              aria-label="Session exploration state machine"
+            >
               <div class="map-fsm-head">
                 <div class="map-fsm-title-row">
                   <h3 class="map-fsm-title">Session FSM (Mermaid)</h3>
@@ -209,8 +299,17 @@
                   </button>
                 </div>
               </div>
-              <div id="map-mermaid" class="map-mermaid" role="img" aria-label="Mermaid graph"></div>
-              <p id="map-null-keys" class="map-null-keys small" aria-live="polite"></p>
+              <div
+                id="map-mermaid"
+                class="map-mermaid"
+                role="img"
+                aria-label="Mermaid graph"
+              ></div>
+              <p
+                id="map-null-keys"
+                class="map-null-keys small"
+                aria-live="polite"
+              ></p>
               <details class="map-fsm-details">
                 <summary class="prompt-summary">
                   <span class="prompt-summary-label">Mermaid source</span>
@@ -228,7 +327,12 @@
               <details class="map-fsm-details">
                 <summary class="prompt-summary">
                   <span class="prompt-summary-label">Graphviz DOT</span>
-                  <button type="button" id="copy-dot" class="copy-prompt-btn" aria-label="Copy Graphviz DOT">
+                  <button
+                    type="button"
+                    id="copy-dot"
+                    class="copy-prompt-btn"
+                    aria-label="Copy Graphviz DOT"
+                  >
                     Copy
                   </button>
                 </summary>
@@ -244,7 +348,10 @@
       <div class="status-footer-inner">
         <div class="status-line">
           <span id="session-status" class="footer-status">Connecting…</span>
-          <span id="planner-spinner" class="spinner footer-spinner hidden" aria-hidden="true"
+          <span
+            id="planner-spinner"
+            class="spinner footer-spinner hidden"
+            aria-hidden="true"
             >Thinking…</span
           >
           <span id="manual-banner" class="manual-banner hidden"
@@ -253,39 +360,98 @@
         </div>
         <p id="manual-error" class="manual-error" role="alert"></p>
         <div class="footer-controls" aria-label="Autoplay and manual command">
-          <div id="text-llm-wrap" class="text-llm-wrap mlx-model-wrap hidden" aria-hidden="true">
-            <label class="text-llm-label mlx-model-label"
-              >Text LLM
-              <select id="text-llm-select" aria-label="Text LLM backend and model"></select>
+          <div id="footer-dashboard-chunks" class="footer-dashboard-chunks">
+            <div
+              id="text-llm-wrap"
+              class="text-llm-wrap mlx-model-wrap hidden"
+              aria-hidden="true"
+            >
+              <label class="text-llm-label mlx-model-label"
+                >Text LLM
+                <select
+                  id="text-llm-select"
+                  aria-label="Text LLM backend and model"
+                ></select>
+              </label>
+            </div>
+            <label
+              class="autoplay-pace-label"
+              title="Delay between moves (ms). Saved automatically; applies to the running autoplay session."
+            >
+              Pace
+              <input
+                type="number"
+                id="autoplay-pace-ms"
+                min="0"
+                max="3600000"
+                step="100"
+                value="2000"
+                class="autoplay-pace-input"
+              />
+              <span class="autoplay-pace-unit">ms</span>
+            </label>
+            <label
+              class="autoplay-pace-label"
+              title="Maximum GETIN lines for this session. Saved automatically; applies when the limit is checked each turn."
+            >
+              Max
+              <input
+                type="number"
+                id="autoplay-max-moves"
+                min="1"
+                max="1000000"
+                step="1"
+                value="300"
+                class="autoplay-pace-input"
+              />
+            </label>
+            <label class="toggle-label">
+              <input type="checkbox" id="autoplay-toggle" checked />
+              <span>LLM autoplay</span>
             </label>
           </div>
-          <label class="autoplay-pace-label" title="Delay between moves (ms). Saved automatically; applies to the running autoplay session.">
-            Pace
-            <input type="number" id="autoplay-pace-ms" min="0" max="3600000" step="100" value="2000" class="autoplay-pace-input" />
-            <span class="autoplay-pace-unit">ms</span>
-          </label>
-          <label class="autoplay-pace-label" title="Maximum GETIN lines for this session. Saved automatically; applies when the limit is checked each turn.">
-            Max
-            <input type="number" id="autoplay-max-moves" min="1" max="1000000" step="1" value="300" class="autoplay-pace-input" />
-          </label>
-          <label class="toggle-label">
-            <input type="checkbox" id="autoplay-toggle" checked />
-            <span>LLM autoplay</span>
-          </label>
-          <label class="toggle-label" title="When checked, your text is interpreted by the text LLM into parser tokens before sending.">
-            <input type="checkbox" id="manual-interpret-toggle" />
-            <span>Interpret with text LLM</span>
-          </label>
-          <input
-            type="text"
-            id="manual-input"
-            class="manual-input"
-            placeholder="Parser command or phrase"
-            autocomplete="off"
-            disabled
-          />
-          <button type="button" id="manual-send" disabled>Send</button>
-          <button type="button" id="manual-end-session" class="btn-quiet" disabled>End</button>
+          <div
+            id="manual-controls-slot-footer"
+            class="manual-controls-slot manual-controls-slot--footer"
+          >
+            <div id="manual-controls-group" class="manual-controls-group">
+              <div id="manual-interpret-container">
+                <label
+                  class="toggle-label"
+                  title="When checked, your text is interpreted by the text LLM into parser tokens before sending."
+                >
+                  <input type="checkbox" id="manual-interpret-toggle" />
+                  <span>Interpret with text LLM</span>
+                </label>
+              </div>
+              <span class="transcript-terminal-input-wrap">
+                <span class="transcript-terminal-prompt" aria-hidden="true"
+                  >&gt;&nbsp;</span
+                >
+                <span class="transcript-terminal-caret" aria-hidden="true"
+                  >■</span
+                >
+                <input
+                  type="text"
+                  id="manual-input"
+                  class="manual-input"
+                  placeholder="Parser command or phrase"
+                  autocomplete="off"
+                  aria-label="Parser command or phrase"
+                  disabled
+                />
+              </span>
+              <button type="button" id="manual-send" disabled>Send</button>
+              <button
+                type="button"
+                id="manual-end-session"
+                class="btn-quiet"
+                disabled
+              >
+                End
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </footer>
@@ -307,7 +473,11 @@
           aria-label="MLX worker download and load progress"
         ></pre>
         <div class="mlx-load-actions">
-          <button type="button" id="mlx-load-cancel" class="mlx-load-cancel hidden">
+          <button
+            type="button"
+            id="mlx-load-cancel"
+            class="mlx-load-cancel hidden"
+          >
             Cancel — keep previous model
           </button>
         </div>
@@ -329,7 +499,10 @@
         >
           ×
         </button>
-        <h2 id="mermaid-fullscreen-dialog-title" class="mermaid-fullscreen-title">
+        <h2
+          id="mermaid-fullscreen-dialog-title"
+          class="mermaid-fullscreen-title"
+        >
           Session FSM (Mermaid)
         </h2>
         <div
@@ -354,65 +527,95 @@
         >
           ×
         </button>
-        <h2 id="dashboard-help-dialog-title" class="dashboard-help-dialog-title"></h2>
-        <div id="dashboard-help-dialog-body" class="dashboard-help-dialog-body"></div>
+        <h2
+          id="dashboard-help-dialog-title"
+          class="dashboard-help-dialog-title"
+        ></h2>
+        <div
+          id="dashboard-help-dialog-body"
+          class="dashboard-help-dialog-body"
+        ></div>
       </div>
     </dialog>
 
     <template id="help-tpl-exploration-map">
       <div class="help-dialog-prose">
         <p>
-          <strong>3D layout</strong> (East +x, North +y, Up +z) is a tunnel-like embedding only;
-          <strong>reachability</strong> follows the session FSM in the card below (directed edges,
-          self-loops = no progress).
+          <strong>3D layout</strong> (East +x, North +y, Up +z) is a tunnel-like
+          embedding only; <strong>reachability</strong> follows the session FSM
+          in the card below (directed edges, self-loops = no progress).
         </p>
         <p>
-          Grid cells are explored rooms (heuristic type); empty cells are unused layout space;
-          <strong>@</strong> is you. Change layer <strong>z</strong> to view other vertical slices.
+          Grid cells are explored rooms (heuristic type); empty cells are unused
+          layout space;
+          <strong>@</strong> is you. Change layer <strong>z</strong> to view
+          other vertical slices.
         </p>
       </div>
     </template>
     <template id="help-tpl-fsm">
       <div class="help-dialog-prose">
         <p>
-          Arrows show observed commands. Self-loops mean a reject, blocked move, or NULL (no location or
-          inventory change). The highlighted node is the current state.
+          Arrows show observed commands. Self-loops mean a reject, blocked move,
+          or NULL (no location or inventory change). The highlighted node is the
+          current state.
         </p>
       </div>
     </template>
     <template id="help-tpl-transcript">
       <div class="help-dialog-prose">
         <p>
-          Newest game output at the top. Each block header shows the GETIN line for that turn when known
-          (step 0 = opening).
+          Newest game output at the top. Each block header shows the GETIN line
+          for that turn when known (step 0 = opening).
         </p>
         <p>
-          Text keeps the engine’s line breaks. Font size scales with the CRT width for readability; very
-          long lines may clip at the edge unless you widen the window.
+          Text keeps the engine’s line breaks. Font size scales with the CRT
+          width for readability; very long lines may clip at the edge unless you
+          widen the window.
         </p>
       </div>
     </template>
     <template id="help-tpl-autoplay-log">
       <div class="help-dialog-prose">
         <p>
-          Guard substitutions, model diagnostics, and planner notes. Newest at top; scroll inside the box.
+          Guard substitutions, model diagnostics, and planner notes. Newest at
+          top; scroll inside the box.
         </p>
       </div>
     </template>
     <template id="help-tpl-heuristic">
       <div class="help-dialog-prose">
         <p>
-          <strong>Location hint</strong> and <strong>inventory</strong> are parsed from recent game text for
-          planning; they are heuristics, not guaranteed engine truth.
+          <strong>Location hint</strong> and <strong>inventory</strong> are
+          parsed from recent game text for planning; they are heuristics, not
+          guaranteed engine truth.
         </p>
-        <p>Stagnation messages and suggested moves use the inferred map when available.</p>
+        <p>
+          Stagnation messages and suggested moves use the inferred map when
+          available.
+        </p>
       </div>
     </template>
     <template id="help-tpl-planner-prompt">
       <div class="help-dialog-prose">
         <p>
-          Truncated previews of what was sent to the planner. Expand each section for the full text; use
-          Copy to grab it for debugging.
+          Truncated previews of what was sent to the planner. Expand each
+          section for the full text; use Copy to grab it for debugging.
+        </p>
+      </div>
+    </template>
+    <template id="help-tpl-parser-verbs">
+      <div class="help-dialog-prose">
+        <p>
+          These are <strong>verb-class</strong> words from the Fortran
+          vocabulary table (<code>adventure.dat</code>): five-character tokens
+          the GETIN parser accepts as the action part of a command. Words on the
+          same row share one KTAB slot (synonyms).
+        </p>
+        <p>
+          Motion (compass directions, <strong>LOOK</strong>, etc.) and object
+          nouns are not listed here; they appear in planner vocabulary and game
+          text.
         </p>
       </div>
     </template>
