@@ -232,6 +232,10 @@ The abstract pattern is unchanged: **world state + input → transition → outp
 
 ---
 
+## Related repository components
+
+This document is limited to **`adventure.f`** and **`adventure.dat`**. The [`adventure-llm`](../../adventure-llm/) package loads the same dat file, spawns the built **`./adventure`** binary for GETIN-compatible play, and optionally maps natural language to the two five-letter columns described under **Vocabulary lookup** above. For that wrapper architecture (LLM providers, caching, CLI), see [adventure-engine.md](./adventure-engine.md) and [ADR0001: adventure-llm TextLlm providers](../decisions/ADR0001-adventure-llm-text-llm-providers.md).
+
 ## References
 
 - [`adventure.f`](../../adventure.f)

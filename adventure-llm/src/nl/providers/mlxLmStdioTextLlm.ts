@@ -12,12 +12,15 @@ import {
 import type { AdventureDatabase } from "../../dat/types.js";
 import {
   appendInteractionLog,
-  cacheKeyFor,
-  readCachedInterpreted,
   resolveCacheDir,
   writeCachedInterpreted,
 } from "../llmDebug.js";
-import { repairInterpretedCommand } from "../repairInterpreted.js";
+import { interpretCacheKeyFromBuildOptions } from "../interpretCacheKey.js";
+import { loadCachedInterpretIfHit } from "../interpretDiskCache.js";
+import {
+  finalizeAutoplayPlannerResponse,
+  finalizeInterpretedCommand,
+} from "../textLlmInterpretPipeline.js";
 import {
   buildAutoplayPlannerPrompt,
   buildAutoplayPlannerPromptParts,
@@ -327,34 +330,6 @@ export class MlxLmStdioTextLlm implements TextLlm {
     options: InterpretPlayerInputOptions,
   ): Promise<InterpretedCommand> {
     const cacheDir = resolveCacheDir();
-    const cacheKey = cacheKeyFor(userText, this.modelId, this.providerId);
-
-    if (cacheDir) {
-      const cached = await readCachedInterpreted(cacheDir, cacheKey);
-      if (cached) {
-        const parsed = InterpretedCommandSchema.safeParse(cached);
-        if (parsed.success) {
-          const repaired = repairInterpretedCommand(
-            userText,
-            parsed.data,
-            options.recentGameText,
-          );
-          await appendInteractionLog({
-            event: "text_llm_cache_hit",
-            provider: this.providerId,
-            userText,
-            model: this.modelId,
-            cacheKey,
-            parsed: parsed.data,
-            repaired,
-          });
-          return repaired;
-        }
-      }
-    }
-
-    process.stderr.write("adventure-llm: translating with text LLM (MLX)…\n");
-
     const compact =
       options.promptStyle?.compact !== undefined
         ? options.promptStyle.compact
@@ -363,6 +338,28 @@ export class MlxLmStdioTextLlm implements TextLlm {
       options.promptStyle?.structuredDashboard !== undefined
         ? options.promptStyle.structuredDashboard
         : resolveStructuredDashboardPrompts("mlx");
+    const cacheKey = interpretCacheKeyFromBuildOptions({
+      userText,
+      modelId: this.modelId,
+      providerId: this.providerId,
+      recentGameText: options.recentGameText,
+      compact,
+      structuredDashboard,
+    });
+
+    const cacheHit = await loadCachedInterpretIfHit({
+      cacheDir,
+      cacheKey,
+      db,
+      userText,
+      recentGameText: options.recentGameText,
+      providerId: this.providerId,
+      modelId: this.modelId,
+    });
+    if (cacheHit) return cacheHit;
+
+    process.stderr.write("adventure-llm: translating with text LLM (MLX)…\n");
+
     const prompt = buildInterpretSystemAndUserPrompt(
       db,
       userText,
@@ -391,7 +388,8 @@ export class MlxLmStdioTextLlm implements TextLlm {
     const rawCmd = InterpretedCommandSchema.parse(
       coerceInterpretedCommandJson(parsedJson),
     );
-    const cmd = repairInterpretedCommand(
+    const cmd = finalizeInterpretedCommand(
+      db,
       userText,
       rawCmd,
       options.recentGameText,
@@ -516,21 +514,11 @@ ${plannerBody.user}`,
     const raw = AutoplayPlannerResponseSchema.parse(
       coerceAutoplayPlannerJson(parsedUnknown),
     );
-    const continuePlaying = raw.continuePlaying ?? true;
-    const repaired = repairInterpretedCommand(
-      "autoplay",
-      {
-        primaryToken: raw.primaryToken,
-        secondaryToken: raw.secondaryToken,
-        confidence: raw.confidence,
-      },
+    const out = finalizeAutoplayPlannerResponse(
+      db,
+      raw,
       options.recentGameTextForRepair,
     );
-
-    const out: AutoplayPlannerResponse = {
-      ...repaired,
-      continuePlaying,
-    };
 
     await appendInteractionLog({
       event: "text_llm_autoplay_response",

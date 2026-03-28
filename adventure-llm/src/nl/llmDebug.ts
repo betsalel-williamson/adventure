@@ -20,20 +20,48 @@ export function resolveCacheDir(): string | null {
   return d ? path.resolve(d) : null;
 }
 
+/** Default schema version for interpret disk cache; bump when key material meaning changes. */
+export const DEFAULT_INTERPRET_CACHE_SCHEMA_VERSION = "2";
+
 /**
- * Cache key for NL interpretation. When `providerId` is set, it is included so
- * the same model name on different providers does not collide.
+ * Effective interpret cache schema version (`ADVENTURE_LLM_CACHE_SCHEMA_VERSION` or default).
+ * Change the env var or bump {@link DEFAULT_INTERPRET_CACHE_SCHEMA_VERSION} to invalidate caches.
+ */
+export function interpretCacheSchemaVersion(): string {
+  const v = process.env.ADVENTURE_LLM_CACHE_SCHEMA_VERSION?.trim();
+  return v && v.length > 0 ? v : DEFAULT_INTERPRET_CACHE_SCHEMA_VERSION;
+}
+
+/**
+ * Hash for interpret cache entries: version, provider, model, user line, prompt layout, recent-game slice.
+ */
+export function interpretCacheKeyMaterialHash(
+  parts: readonly string[],
+): string {
+  return createHash("sha256")
+    .update(
+      ["interpret", interpretCacheSchemaVersion(), ...parts].join("\u001e"),
+      "utf8",
+    )
+    .digest("hex");
+}
+
+/**
+ * @deprecated Prefer {@link interpretCacheKeyFromBuildOptions} in `interpretCacheKey.js` — includes
+ * recent game text and layout. This legacy key omits context (empty slice); used for tests only.
  */
 export function cacheKeyFor(
   userText: string,
   model: string,
   providerId?: string,
 ): string {
-  const material =
-    providerId !== undefined
-      ? `${providerId}\n${model}\n${userText}`
-      : `${model}\n${userText}`;
-  return createHash("sha256").update(material, "utf8").digest("hex");
+  return interpretCacheKeyMaterialHash([
+    providerId ?? "",
+    model,
+    userText,
+    "compact=false;structured=false",
+    "",
+  ]);
 }
 
 export function cacheFilePath(cacheDir: string, key: string): string {
@@ -63,6 +91,34 @@ export async function writeCachedInterpreted(
   await writeFile(p, `${JSON.stringify(cmd, null, 2)}\n`, "utf8");
 }
 
+function resolveDebugMaxPromptChars(): number {
+  const v = process.env.ADVENTURE_LLM_DEBUG_MAX_PROMPT_CHARS?.trim();
+  if (v === undefined || v === "") return 50_000;
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 50_000;
+}
+
+function truncateLogString(s: string, max: number): string {
+  if (s.length <= max) return s;
+  return `${s.slice(0, max)}…[truncated ${s.length - max} chars]`;
+}
+
+/**
+ * Truncate long prompt fields before writing JSONL (`ADVENTURE_LLM_DEBUG_MAX_PROMPT_CHARS`, default 50000).
+ */
+export function sanitizeInteractionLogRecord(
+  record: Record<string, unknown>,
+): Record<string, unknown> {
+  const max = resolveDebugMaxPromptChars();
+  if (max <= 0) return record;
+  const out: Record<string, unknown> = { ...record };
+  for (const key of ["prompt", "system", "user", "rawJson"] as const) {
+    const v = out[key];
+    if (typeof v === "string") out[key] = truncateLogString(v, max);
+  }
+  return out;
+}
+
 /**
  * Append one JSON object per line (JSONL). No-op if debug logging is not configured.
  */
@@ -72,7 +128,7 @@ export async function appendInteractionLog(
   const logPath = resolveDebugLogPath();
   if (!logPath) return;
   await mkdir(path.dirname(logPath), { recursive: true });
-  const line =
-    JSON.stringify({ ts: new Date().toISOString(), ...record }) + "\n";
+  const safe = sanitizeInteractionLogRecord(record);
+  const line = JSON.stringify({ ts: new Date().toISOString(), ...safe }) + "\n";
   await appendFile(logPath, line, "utf8");
 }

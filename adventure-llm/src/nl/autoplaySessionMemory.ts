@@ -9,6 +9,11 @@ import {
   linesForAutoplayPlannerContextBody,
   mlxAutoplaySystemPrompt,
 } from "./adventureNlPrompts.js";
+import type { AdventureDatabase } from "../dat/types.js";
+import {
+  buildSituationalCandidateTokens,
+  formatSituationalCandidatesSection,
+} from "./situationalCandidates.js";
 import {
   interpretedToGetinLine,
   type AutoplayPlannerResponse,
@@ -213,6 +218,51 @@ export class AutoplaySessionMemory {
     const norm = transcript.replace(/\r\n/g, "\n");
     this.recentRawTail = norm.slice(-MAX_INTERNAL_RAW);
     this.refreshDerived(norm);
+  }
+
+  /**
+   * Prefix text for interactive NL interpret prompts: heuristic state, short turn log,
+   * situational parser-token candidates (parity with autoplay cues). Prepended to raw
+   * game output by the CLI; capped so {@link recentGameTextSliceForInterpretPrompt} keeps latest game text.
+   */
+  buildInteractiveInterpretPrefix(
+    db: AdventureDatabase,
+    options: { readonly compact: boolean },
+  ): string {
+    const maxTotal = options.compact ? 900 : 1400;
+    const lines: string[] = [
+      "### Interactive session context",
+      "(Heuristic — same class of signal as autoplay; Fortran output below is authoritative.)",
+      "",
+      `**Location hint:** ${this.locationHint || "(unknown)"}`,
+      this.inventory.length > 0
+        ? `**Inventory:** ${this.inventory.join("; ")}`
+        : "**Inventory:** (not detected)",
+    ];
+    if (this.objectNotes.length > 0) {
+      lines.push(`**Notes:** ${this.objectNotes.join(" ")}`);
+    }
+    const turnN = Math.min(this.turns.length, options.compact ? 4 : 8);
+    if (turnN > 0) {
+      lines.push("");
+      lines.push("**Recent moves:**");
+      for (const t of this.turns.slice(-turnN)) {
+        const tag = t.outcomeWasParserRejection ? " (parser rejected)" : "";
+        lines.push(`- \`${t.command}\` → ${t.outcomeExcerpt}${tag}`);
+      }
+    }
+    const situ = formatSituationalCandidatesSection(
+      buildSituationalCandidateTokens(db, this.recentRawTail),
+    );
+    if (situ.trim().length > 0) {
+      lines.push("");
+      lines.push(situ);
+    }
+    let out = lines.join("\n").trim();
+    if (out.length > maxTotal) {
+      out = `${out.slice(0, maxTotal - 1)}…`;
+    }
+    return out;
   }
 
   /**

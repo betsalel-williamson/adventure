@@ -7,12 +7,16 @@ import {
 import type { AdventureDatabase } from "../../dat/types.js";
 import {
   appendInteractionLog,
-  cacheKeyFor,
-  readCachedInterpreted,
   resolveCacheDir,
   writeCachedInterpreted,
 } from "../llmDebug.js";
-import { repairInterpretedCommand } from "../repairInterpreted.js";
+import { httpStatusEligibleForRetry, LlmTransportError } from "../llmErrors.js";
+import { interpretCacheKeyFromBuildOptions } from "../interpretCacheKey.js";
+import { loadCachedInterpretIfHit } from "../interpretDiskCache.js";
+import {
+  finalizeAutoplayPlannerResponse,
+  finalizeInterpretedCommand,
+} from "../textLlmInterpretPipeline.js";
 import {
   buildAutoplayPlannerPrompt,
   buildInterpretSystemAndUserPrompt,
@@ -53,6 +57,17 @@ function chatCompletionsUrl(baseUrl: string): string {
   return `${u}/v1/chat/completions`;
 }
 
+function sleepMs(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function resolveHttpRetryMaxAttempts(): number {
+  const v = process.env.ADVENTURE_LLM_HTTP_RETRY_ATTEMPTS?.trim();
+  if (v === undefined || v === "") return 1;
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 1 && n <= 5 ? Math.floor(n) : 1;
+}
+
 async function postChatCompletion(
   url: string,
   apiKey: string | undefined,
@@ -77,33 +92,43 @@ async function postChatCompletion(
     body.response_format = responseFormat;
   }
 
-  const res = await fetch(url, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-  });
+  const maxAttempts = resolveHttpRetryMaxAttempts();
 
-  const text = await res.text();
-  if (!res.ok) {
-    const err = new Error(
-      `OpenAI-compatible HTTP ${res.status}: ${text}`,
-    ) as Error & {
-      status: number;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const res = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+    });
+
+    const text = await res.text();
+    if (!res.ok) {
+      const snippet = text.length > 400 ? `${text.slice(0, 400)}…` : text;
+      if (httpStatusEligibleForRetry(res.status) && attempt < maxAttempts) {
+        await sleepMs(400 * attempt);
+        continue;
+      }
+      throw new LlmTransportError(
+        `OpenAI-compatible HTTP ${res.status}: ${snippet}`,
+        { status: res.status, bodySnippet: snippet },
+      );
+    }
+
+    const json = JSON.parse(text) as {
+      choices?: Array<{ message?: { content?: string } }>;
     };
-    err.status = res.status;
-    throw err;
+    const content = json.choices?.[0]?.message?.content;
+    if (typeof content !== "string" || content.length === 0) {
+      throw new LlmTransportError(
+        "OpenAI-compatible response missing choices[0].message.content",
+      );
+    }
+    return content;
   }
 
-  const json = JSON.parse(text) as {
-    choices?: Array<{ message?: { content?: string } }>;
-  };
-  const content = json.choices?.[0]?.message?.content;
-  if (typeof content !== "string" || content.length === 0) {
-    throw new Error(
-      "OpenAI-compatible response missing choices[0].message.content",
-    );
-  }
-  return content;
+  throw new LlmTransportError(
+    "OpenAI-compatible: exhausted HTTP retries unexpectedly",
+  );
 }
 
 /**
@@ -135,38 +160,32 @@ export class HttpOpenAiCompatibleTextLlm implements TextLlm {
     options: InterpretPlayerInputOptions,
   ): Promise<InterpretedCommand> {
     const cacheDir = resolveCacheDir();
-    const cacheKey = cacheKeyFor(userText, this.modelId, this.providerId);
-
-    if (cacheDir) {
-      const cached = await readCachedInterpreted(cacheDir, cacheKey);
-      if (cached) {
-        const parsed = InterpretedCommandSchema.safeParse(cached);
-        if (parsed.success) {
-          const repaired = repairInterpretedCommand(
-            userText,
-            parsed.data,
-            options.recentGameText,
-          );
-          await appendInteractionLog({
-            event: "text_llm_cache_hit",
-            provider: this.providerId,
-            userText,
-            model: this.modelId,
-            cacheKey,
-            parsed: parsed.data,
-            repaired,
-          });
-          return repaired;
-        }
-      }
-    }
-
-    process.stderr.write("adventure-llm: translating with text LLM…\n");
-
     const { compact, structuredDashboard } = resolveInterpretPromptBuildOptions(
       this.providerId,
       options.promptStyle,
     );
+    const cacheKey = interpretCacheKeyFromBuildOptions({
+      userText,
+      modelId: this.modelId,
+      providerId: this.providerId,
+      recentGameText: options.recentGameText,
+      compact,
+      structuredDashboard,
+    });
+
+    const cacheHit = await loadCachedInterpretIfHit({
+      cacheDir,
+      cacheKey,
+      db,
+      userText,
+      recentGameText: options.recentGameText,
+      providerId: this.providerId,
+      modelId: this.modelId,
+    });
+    if (cacheHit) return cacheHit;
+
+    process.stderr.write("adventure-llm: translating with text LLM…\n");
+
     const prompt = buildInterpretSystemAndUserPrompt(
       db,
       userText,
@@ -209,7 +228,8 @@ export class HttpOpenAiCompatibleTextLlm implements TextLlm {
     const rawCmd = InterpretedCommandSchema.parse(
       coerceInterpretedCommandJson(parsedJson),
     );
-    const cmd = repairInterpretedCommand(
+    const cmd = finalizeInterpretedCommand(
+      db,
       userText,
       rawCmd,
       options.recentGameText,
@@ -279,21 +299,11 @@ export class HttpOpenAiCompatibleTextLlm implements TextLlm {
     const raw = AutoplayPlannerResponseSchema.parse(
       coerceAutoplayPlannerJson(parsedUnknown),
     );
-    const continuePlaying = raw.continuePlaying ?? true;
-    const repaired = repairInterpretedCommand(
-      "autoplay",
-      {
-        primaryToken: raw.primaryToken,
-        secondaryToken: raw.secondaryToken,
-        confidence: raw.confidence,
-      },
+    const out = finalizeAutoplayPlannerResponse(
+      db,
+      raw,
       options.recentGameTextForRepair,
     );
-
-    const out: AutoplayPlannerResponse = {
-      ...repaired,
-      continuePlaying,
-    };
 
     await appendInteractionLog({
       event: "text_llm_autoplay_response",

@@ -11,8 +11,10 @@ import {
   mlxAutoplaySystemPrompt,
   mlxAutoplaySystemPromptForVariant,
   resolveCompactPrompts,
+  resolveFastInterpretPrompt,
   resolveInterpretPromptBuildOptions,
   resolveInterpretPromptExamples,
+  recentGameTextSliceForInterpretPrompt,
   resolveMlxSystemPromptVariant,
   resolveStructuredDashboardPrompts,
   resolveVocabHintMaxWords,
@@ -252,6 +254,21 @@ describe("resolveInterpretPromptBuildOptions", () => {
   });
 });
 
+describe("recentGameTextSliceForInterpretPrompt", () => {
+  it("returns empty for missing or blank input", () => {
+    expect(recentGameTextSliceForInterpretPrompt(undefined, false)).toBe("");
+    expect(recentGameTextSliceForInterpretPrompt("  \n ", true)).toBe("");
+  });
+
+  it("takes tail using compact vs full caps", () => {
+    const long = "x".repeat(3000);
+    const full = recentGameTextSliceForInterpretPrompt(long, false);
+    const compact = recentGameTextSliceForInterpretPrompt(long, true);
+    expect(full.length).toBe(2500);
+    expect(compact.length).toBe(1200);
+  });
+});
+
 describe("resolveInterpretPromptExamples (ADVENTURE_LLM_INTERPRET_PROMPT_EXAMPLES)", () => {
   const prev = { ...process.env };
 
@@ -261,10 +278,18 @@ describe("resolveInterpretPromptExamples (ADVENTURE_LLM_INTERPRET_PROMPT_EXAMPLE
       `examples-no-ai-vocab-${Date.now()}.json`,
     );
     delete process.env.ADVENTURE_LLM_VOCAB_AI_CATEGORIES;
+    delete process.env.ADVENTURE_LLM_FAST_INTERPRET;
   });
 
   afterEach(() => {
     process.env = { ...prev };
+  });
+
+  it("ADVENTURE_LLM_FAST_INTERPRET=1 disables examples for mlx", () => {
+    delete process.env.ADVENTURE_LLM_INTERPRET_PROMPT_EXAMPLES;
+    process.env.ADVENTURE_LLM_FAST_INTERPRET = "1";
+    expect(resolveFastInterpretPrompt()).toBe(true);
+    expect(resolveInterpretPromptExamples("mlx")).toBe(false);
   });
 
   it("defaults off when env unset and provider omitted", () => {

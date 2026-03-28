@@ -9,12 +9,15 @@ import type { AdventureDatabase } from "../../dat/types.js";
 import { resolvedGeminiTextModel } from "../geminiModels.js";
 import {
   appendInteractionLog,
-  cacheKeyFor,
-  readCachedInterpreted,
   resolveCacheDir,
   writeCachedInterpreted,
 } from "../llmDebug.js";
-import { repairInterpretedCommand } from "../repairInterpreted.js";
+import { interpretCacheKeyFromBuildOptions } from "../interpretCacheKey.js";
+import { loadCachedInterpretIfHit } from "../interpretDiskCache.js";
+import {
+  finalizeAutoplayPlannerResponse,
+  finalizeInterpretedCommand,
+} from "../textLlmInterpretPipeline.js";
 import {
   coerceAutoplayPlannerJson,
   coerceInterpretedCommandJson,
@@ -25,10 +28,6 @@ import {
   resolveInterpretPromptBuildOptions,
 } from "../adventureNlPrompts.js";
 import { vocabTokensForLlmEnums } from "../gameVocabEnums.js";
-import {
-  coerceAutoplayPlannerToVocab,
-  coerceInterpretedCommandToVocab,
-} from "../coerceToVocab.js";
 import type {
   InterpretPlayerInputOptions,
   PlannerUserPromptInput,
@@ -60,32 +59,29 @@ export class GoogleGenerativeAiTextLlm implements TextLlm {
     options: InterpretPlayerInputOptions,
   ): Promise<InterpretedCommand> {
     const cacheDir = resolveCacheDir();
-    const cacheKey = cacheKeyFor(userText, this.modelId, this.providerId);
+    const { compact, structuredDashboard } = resolveInterpretPromptBuildOptions(
+      this.providerId,
+      options.promptStyle,
+    );
+    const cacheKey = interpretCacheKeyFromBuildOptions({
+      userText,
+      modelId: this.modelId,
+      providerId: this.providerId,
+      recentGameText: options.recentGameText,
+      compact,
+      structuredDashboard,
+    });
 
-    if (cacheDir) {
-      const cached = await readCachedInterpreted(cacheDir, cacheKey);
-      if (cached) {
-        const parsed = InterpretedCommandSchema.safeParse(cached);
-        if (parsed.success) {
-          const vocab = coerceInterpretedCommandToVocab(db, parsed.data);
-          const repaired = repairInterpretedCommand(
-            userText,
-            vocab,
-            options.recentGameText,
-          );
-          await appendInteractionLog({
-            event: "text_llm_cache_hit",
-            provider: this.providerId,
-            userText,
-            model: this.modelId,
-            cacheKey,
-            parsed: parsed.data,
-            repaired,
-          });
-          return repaired;
-        }
-      }
-    }
+    const cacheHit = await loadCachedInterpretIfHit({
+      cacheDir,
+      cacheKey,
+      db,
+      userText,
+      recentGameText: options.recentGameText,
+      providerId: this.providerId,
+      modelId: this.modelId,
+    });
+    if (cacheHit) return cacheHit;
 
     process.stderr.write("adventure-llm: translating with text LLM…\n");
 
@@ -117,10 +113,6 @@ export class GoogleGenerativeAiTextLlm implements TextLlm {
       },
     });
 
-    const { compact, structuredDashboard } = resolveInterpretPromptBuildOptions(
-      this.providerId,
-      options.promptStyle,
-    );
     const prompt = buildInterpretSystemAndUserPrompt(
       db,
       userText,
@@ -145,10 +137,10 @@ export class GoogleGenerativeAiTextLlm implements TextLlm {
     const rawCmd = InterpretedCommandSchema.parse(
       coerceInterpretedCommandJson(parsedJson),
     );
-    const vocabCmd = coerceInterpretedCommandToVocab(db, rawCmd);
-    const cmd = repairInterpretedCommand(
+    const cmd = finalizeInterpretedCommand(
+      db,
       userText,
-      vocabCmd,
+      rawCmd,
       options.recentGameText,
     );
 
@@ -231,22 +223,11 @@ export class GoogleGenerativeAiTextLlm implements TextLlm {
     const raw = AutoplayPlannerResponseSchema.parse(
       coerceAutoplayPlannerJson(parsedUnknown),
     );
-    const coerced = coerceAutoplayPlannerToVocab(db, raw);
-    const continuePlaying = coerced.continuePlaying ?? true;
-    const repaired = repairInterpretedCommand(
-      "autoplay",
-      {
-        primaryToken: coerced.primaryToken,
-        secondaryToken: coerced.secondaryToken,
-        confidence: coerced.confidence,
-      },
+    const out = finalizeAutoplayPlannerResponse(
+      db,
+      raw,
       options.recentGameTextForRepair,
     );
-
-    const out: AutoplayPlannerResponse = {
-      ...repaired,
-      continuePlaying,
-    };
 
     await appendInteractionLog({
       event: "text_llm_autoplay_response",

@@ -7,6 +7,7 @@ import {
   cacheFilePath,
   cacheKeyFor,
   readCachedInterpreted,
+  sanitizeInteractionLogRecord,
   writeCachedInterpreted,
 } from "./llmDebug.js";
 
@@ -50,6 +51,27 @@ describe("llmDebug", () => {
       expect(cacheFilePath(dir, key)).toMatch(/\.json$/);
     } finally {
       await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("sanitizeInteractionLogRecord truncates long prompt fields", () => {
+    const prevMax = process.env.ADVENTURE_LLM_DEBUG_MAX_PROMPT_CHARS;
+    process.env.ADVENTURE_LLM_DEBUG_MAX_PROMPT_CHARS = "40";
+    try {
+      const long = "x".repeat(100);
+      const row = sanitizeInteractionLogRecord({
+        event: "t",
+        prompt: long,
+        userText: "ok",
+      }) as { prompt: string };
+      expect(row.prompt.length).toBeLessThan(long.length);
+      expect(row.prompt).toContain("truncated");
+    } finally {
+      if (prevMax === undefined) {
+        delete process.env.ADVENTURE_LLM_DEBUG_MAX_PROMPT_CHARS;
+      } else {
+        process.env.ADVENTURE_LLM_DEBUG_MAX_PROMPT_CHARS = prevMax;
+      }
     }
   });
 

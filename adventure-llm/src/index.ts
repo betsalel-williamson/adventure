@@ -67,6 +67,9 @@ export {
   resolveCompactPrompts,
   resolveStructuredDashboardPrompts,
   resolveVocabHintMaxWords,
+  resolveFastInterpretPrompt,
+  recentGameTextSliceForInterpretPrompt,
+  recentGameCharsCapForInterpret,
   MLX_SYSTEM_PROMPT_VARIANTS,
   resolveMlxSystemPromptVariant,
   mlxAutoplayPlannerInstructionsBlock,
@@ -143,9 +146,19 @@ export {
 export {
   appendInteractionLog,
   cacheKeyFor,
-  resolveCacheDir,
+  interpretCacheSchemaVersion,
+  DEFAULT_INTERPRET_CACHE_SCHEMA_VERSION,
+  interpretCacheKeyMaterialHash,
   resolveDebugLogPath,
+  resolveCacheDir,
+  sanitizeInteractionLogRecord,
 } from "./nl/llmDebug.js";
+export { interpretCacheKeyFromBuildOptions } from "./nl/interpretCacheKey.js";
+export {
+  LlmTransportError,
+  httpStatusEligibleForRetry,
+  isLlmTransportError,
+} from "./nl/llmErrors.js";
 export {
   locationImageCacheKey,
   getOrCreateLocationImage,

@@ -11,7 +11,7 @@ FFLAGS ?= -O2 -Wall $(EXTRA_FFLAGS)
 TARGET := adventure
 SRC := adventure.f
 
-.PHONY: all clean run dependency-check dependency-check-quick
+.PHONY: all clean run run-classic run-llm run-autoplay install-llm dependency-check dependency-check-quick
 
 all: $(TARGET)
 
@@ -21,9 +21,38 @@ $(TARGET): $(SRC)
 clean:
 	rm -f $(TARGET)
 
-# Run from the project root so OPEN(1,FILE='ADVENTURE.DAT') finds adventure.dat.
+# -----------------------------------------------------------------------------
+# Run modes (from repo root so OPEN(1,FILE='ADVENTURE.DAT') finds adventure.dat)
+# -----------------------------------------------------------------------------
+#
+#   make run            — Classic Fortran TTY only (./adventure). No Node.
+#   make run-classic    — Same as `make run`.
+#
+#   make install-llm    — One-time: npm install in adventure-llm (needed before run-llm / run-autoplay).
+#   make run-llm        — Interactive NL: builds adventure-llm then runs the CLI (natural language at >).
+#   make run-autoplay   — Self-acting: builds adventure-llm then runs with --autoplay (LLM drives moves).
+#
+# Configure LLM env in adventure-llm/.env (see adventure-llm/.env.example). Pass CLI flags after --:
+#   cd adventure-llm && npm start -- --classic
+# -----------------------------------------------------------------------------
+
+# Classic Fortran only.
 run: $(TARGET)
 	./$(TARGET)
+
+run-classic: run
+
+# One-time or refresh of Node dependencies for adventure-llm.
+install-llm:
+	cd adventure-llm && npm install --no-audit --no-fund
+
+# Interactive natural language (requires install-llm once, and LLM credentials in adventure-llm/.env).
+run-llm: $(TARGET)
+	cd adventure-llm && npm run build && npm start
+
+# Autoplay: LLM plans each move (--autoplay). Cannot combine with --classic.
+run-autoplay: $(TARGET)
+	cd adventure-llm && npm run build && npm start -- --autoplay
 
 # OWASP Dependency-Check (install: brew install dependency-check).
 # Run from repo root; requires npm install in adventure-llm first.

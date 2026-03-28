@@ -27,6 +27,7 @@ import {
 } from "../nl/adventureTextLlm.js";
 import {
   resolveCompactPrompts,
+  resolveInterpretPromptBuildOptions,
   resolveStructuredDashboardPrompts,
   resolveVocabHintMaxWords,
 } from "../nl/adventureNlPrompts.js";
@@ -114,6 +115,12 @@ function resolveAutoplayContextChars(): number {
   if (v === undefined || v === "") return 6000;
   const n = Number(v);
   return Number.isFinite(n) && n >= 2000 ? Math.floor(n) : 6000;
+}
+
+/** Default on: heuristic session block + situational tokens for interactive NL (set ADVENTURE_LLM_INTERACTIVE_SESSION=0 to disable). */
+function resolveInteractiveSessionMemoryEnabled(): boolean {
+  const v = process.env.ADVENTURE_LLM_INTERACTIVE_SESSION?.trim().toLowerCase();
+  return v !== "0" && v !== "false" && v !== "no";
 }
 
 /** Instructions screen: `ADVENTURE_LLM_INSTRUCTIONS=y` or `n` (default `n`). */
@@ -422,6 +429,25 @@ async function main(): Promise<void> {
     process.stderr.write(`adventure-llm: response cache → ${cacheDir}\n`);
   }
 
+  const useInteractiveSession = resolveInteractiveSessionMemoryEnabled();
+  const interactiveMemory = new AutoplaySessionMemory();
+  let lastSentGetin = "";
+
+  const buildInteractiveRecentForLlm = (
+    baseRecent: string | undefined,
+  ): string | undefined => {
+    if (!useInteractiveSession) return baseRecent;
+    const { compact } = resolveInterpretPromptBuildOptions(
+      textLlm!.providerId,
+      undefined,
+    );
+    const prefix = interactiveMemory.buildInteractiveInterpretPrefix(db, {
+      compact,
+    });
+    if (!prefix) return baseRecent;
+    return `${prefix}\n\n---\n\n${baseRecent ?? ""}`;
+  };
+
   const rl = readline.createInterface({ input, output: process.stderr });
 
   const interpretPlayerLineToGetin = async (
@@ -435,7 +461,9 @@ async function main(): Promise<void> {
         userText: user,
         parsed: fromIntent,
       });
-      return interpretedToGetinLine(fromIntent);
+      const scripted = interpretedToGetinLine(fromIntent);
+      lastSentGetin = scripted;
+      return scripted;
     }
     const interpreted = await interpretWithTextLlm(user, db, textLlm!, {
       recentGameText,
@@ -443,13 +471,17 @@ async function main(): Promise<void> {
     const firstLine = interpretedToGetinLine(interpreted);
     const swapped = swapInterpretedTokens(interpreted);
     const retryLine = swapped ? interpretedToGetinLine(swapped) : undefined;
+    let out: ScriptedGetinLine;
     if (
       retryLine !== undefined &&
       retryLine.trimEnd() !== firstLine.trimEnd()
     ) {
-      return { line: firstLine, retryIfRejected: retryLine };
+      out = { line: firstLine, retryIfRejected: retryLine };
+    } else {
+      out = firstLine;
     }
-    return firstLine;
+    lastSentGetin = scriptedGetinLineString(out);
+    return out;
   };
 
   try {
@@ -458,10 +490,22 @@ async function main(): Promise<void> {
       getInstructionsAnswer: async () =>
         rl.question("Would you like instructions? (y/n) "),
       getFirstCommandLine: async (ctx) => {
+        if (useInteractiveSession) {
+          interactiveMemory.seedOpening(ctx.transcriptSoFar);
+        }
         const user = await rl.question("> ");
-        return interpretPlayerLineToGetin(user, ctx.transcriptSoFar);
+        return interpretPlayerLineToGetin(
+          user,
+          buildInteractiveRecentForLlm(ctx.transcriptSoFar),
+        );
       },
       getContinueLine: async (ctx) => {
+        if (useInteractiveSession && lastSentGetin.length > 0) {
+          interactiveMemory.recordCommandOutcome(
+            lastSentGetin,
+            ctx.gameOutputSinceLastCommand,
+          );
+        }
         const line = await rl.question("> ");
         const t = line.trim();
         if (t === ".quit" || t === ":q") {
@@ -474,7 +518,10 @@ async function main(): Promise<void> {
         if (t.length === 0) {
           return line;
         }
-        return interpretPlayerLineToGetin(line, ctx.gameOutputSinceLastCommand);
+        return interpretPlayerLineToGetin(
+          line,
+          buildInteractiveRecentForLlm(ctx.gameOutputSinceLastCommand),
+        );
       },
     });
   } catch (err) {

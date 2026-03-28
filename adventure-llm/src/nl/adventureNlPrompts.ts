@@ -35,9 +35,16 @@ export type BuildInterpretPromptOptions = {
  * - **Unset:** on for **`providerId === "mlx"`** only (eval-backed default for small Gemma); off for
  *   other providers or when `providerId` is omitted
  */
+/** When true, interpret prompts omit few-shot EXAMPLES (lower latency). */
+export function resolveFastInterpretPrompt(): boolean {
+  const v = process.env.ADVENTURE_LLM_FAST_INTERPRET?.trim().toLowerCase();
+  return v === "1" || v === "true" || v === "yes";
+}
+
 export function resolveInterpretPromptExamples(
   providerId?: TextLlmProviderId,
 ): boolean {
+  if (resolveFastInterpretPrompt()) return false;
   const v =
     process.env.ADVENTURE_LLM_INTERPRET_PROMPT_EXAMPLES?.trim().toLowerCase();
   if (v === "1" || v === "true" || v === "yes") return true;
@@ -194,6 +201,25 @@ export function mlxAutoplaySystemPrompt(compact: boolean): string {
 const RECENT_GAME_CHARS_FULL = 2500;
 const RECENT_GAME_CHARS_COMPACT = 1200;
 
+/** Same caps as embedded recent-game text in {@link buildInterpretSystemAndUserPrompt}. */
+export function recentGameCharsCapForInterpret(compact: boolean): number {
+  return compact ? RECENT_GAME_CHARS_COMPACT : RECENT_GAME_CHARS_FULL;
+}
+
+/**
+ * Tail slice of `recentGameText` actually embedded in the interpret prompt (for cache keys).
+ * Must match the `recentSlice` logic in {@link buildInterpretSystemAndUserPrompt}.
+ */
+export function recentGameTextSliceForInterpretPrompt(
+  recentGameText: string | undefined,
+  compact: boolean,
+): string {
+  const recentCap = recentGameCharsCapForInterpret(compact);
+  return recentGameText && recentGameText.trim().length > 0
+    ? recentGameText.trim().slice(-recentCap)
+    : "";
+}
+
 /**
  * When unset: compact prompts default **on** for MLX only (smaller local models).
  * Set `ADVENTURE_LLM_COMPACT_PROMPTS=0` to use full prompts on MLX, or `=1` to force compact on any provider.
@@ -308,13 +334,10 @@ export function buildInterpretSystemAndUserPrompt(
     compact && helpFromDat.length > 0
       ? `HELP excerpt (adventure.dat RTEXT ${HELP_RTEXT_MESSAGE_ID}, truncated):\n${helpFromDat.slice(0, INTERPRET_COMPACT_HELP_RTEXT_MAX_CHARS)}${helpFromDat.length > INTERPRET_COMPACT_HELP_RTEXT_MAX_CHARS ? "…" : ""}\n\n`
       : "";
-  const recentCap = compact
-    ? RECENT_GAME_CHARS_COMPACT
-    : RECENT_GAME_CHARS_FULL;
-  const recentSlice =
-    recentGameText && recentGameText.trim().length > 0
-      ? recentGameText.trim().slice(-recentCap)
-      : "";
+  const recentSlice = recentGameTextSliceForInterpretPrompt(
+    recentGameText,
+    compact,
+  );
   const role = compact
     ? ADVENTURE_LLM_INTERPRET_ROLE_COMPACT
     : ADVENTURE_LLM_INTERPRET_ROLE;

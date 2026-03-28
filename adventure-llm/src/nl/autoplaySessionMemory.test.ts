@@ -1,4 +1,7 @@
 import { describe, expect, it } from "vitest";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { loadDatFile } from "../dat/loadDat.js";
 import { interpretedToGetinLine } from "./schema.js";
 import {
   AutoplaySessionMemory,
@@ -6,6 +9,11 @@ import {
   gameOutputLooksLikeParserRejection,
   normalizeGetinLineKey,
 } from "./autoplaySessionMemory.js";
+
+const datPath = path.join(
+  fileURLToPath(new URL(".", import.meta.url)),
+  "../../../adventure.dat",
+);
 
 describe("normalizeGetinLineKey", () => {
   it("matches interpretedToGetinLine for two-word commands", () => {
@@ -50,6 +58,19 @@ describe("AutoplaySessionMemory", () => {
     expect(p).toContain("YOU ARE INSIDE");
     expect(p).toContain("END OF A ROAD");
     expect(p).toContain("Turn log");
+  });
+
+  it("buildInteractiveInterpretPrefix includes session and candidates", () => {
+    const db = loadDatFile(datPath);
+    const m = new AutoplaySessionMemory();
+    m.seedOpening(
+      "YOU ARE STANDING AT THE END OF A ROAD BEFORE A SMALL BUILDING.\n",
+    );
+    m.recordCommandOutcome("EAST    ", "INSIDE THE BUILDING ARE KEYS.\n");
+    const prefix = m.buildInteractiveInterpretPrefix(db, { compact: true });
+    expect(prefix).toContain("Interactive session context");
+    expect(prefix).toContain("Recent moves:");
+    expect(prefix).toMatch(/EAST/i);
   });
 
   it("trims prompt when over budget", () => {
