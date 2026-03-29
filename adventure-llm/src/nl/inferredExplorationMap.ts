@@ -423,6 +423,28 @@ export function isGridMotionPrimary(primary: string): boolean {
   return Object.prototype.hasOwnProperty.call(MOTION_GRID_DELTA, primary);
 }
 
+/**
+ * Travel / simple motion verbs use GETIN column 1 only in this engine. A filled column 2
+ * with an object word (e.g. SOUTH + BOTTL) is almost always a planner mistake and must not
+ * appear as a combined FSM label or dedup key.
+ */
+const TELEPORT_TRAVEL_PRIMARIES_SINGLE_COLUMN: ReadonlySet<string> = new Set([
+  "ROAD",
+  "BUILD",
+  "LEAVE",
+  "ENTER",
+  "EXIT",
+  "LOOK",
+]);
+
+export function travelMotionPrimaryIgnoresSecondColumn(
+  primary: string,
+): boolean {
+  const p = primary.toUpperCase().trim();
+  if (isGridMotionPrimary(p)) return true;
+  return TELEPORT_TRAVEL_PRIMARIES_SINGLE_COLUMN.has(p);
+}
+
 /** One discovered room in the wrapper grid (fingerprint → heuristic coordinates). */
 export type InferredExplorationCellSnapshot = {
   readonly graphNodeId: string;
@@ -537,8 +559,12 @@ function normalizeGetinLineKeyForGraphDedup(command: string): string {
     10,
   );
   const primaryRaw = head.slice(0, 5).trimEnd();
-  const secondary = head.slice(5, 10).trimEnd().padEnd(5, " ");
   const primaryCanon = canonicalMotionPrimaryForDedup(primaryRaw);
+  const secondaryRaw = head.slice(5, 10).trimEnd();
+  const secondary =
+    travelMotionPrimaryIgnoresSecondColumn(primaryCanon) || secondaryRaw === ""
+      ? "     "
+      : secondaryRaw.padEnd(5, " ");
   return `${primaryCanon.padEnd(5, " ")}${secondary}`;
 }
 
@@ -702,8 +728,12 @@ export function isLegitimateGraphEdgePrimary(primary: string): boolean {
  * or with a short hint when column 1 is an object word (prefer TAKE/GET + object).
  */
 export function graphEdgeLabelFromCommand(command: string): string {
-  const base = fsmLabelFromGetinCommand(command);
   const primary = primaryFromGetinCommand(command);
+  let secondary = secondaryFromGetinCommand(command).trim();
+  if (secondary.length > 0 && travelMotionPrimaryIgnoresSecondColumn(primary)) {
+    secondary = "";
+  }
+  const base = secondary.length === 0 ? primary : `${primary} ${secondary}`;
   if (isLegitimateGraphEdgePrimary(primary)) return base;
   return `${base} (use TAKE/GET + object)`;
 }

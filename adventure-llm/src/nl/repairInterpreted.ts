@@ -20,6 +20,10 @@ function motionOnlyPrimarySet(): Set<string> {
     "OUT",
     "ENTER",
     "EXIT",
+    "ROAD",
+    "BUILD",
+    "LEAVE",
+    "LOOK",
   ];
   if (isDiagonalCompassMotionEnabled()) {
     base.push(...DIAGONAL_COMPASS_MOTION_TOKENS);
@@ -96,6 +100,16 @@ export function repairInterpretedCommand(
         confidence: cmd.confidence,
       };
     }
+  }
+
+  // Two travel/motion tokens (e.g. WEST + UP): GETIN is one command; keep primary only.
+  const motion = motionOnlyPrimarySet();
+  if (secondary !== undefined && motion.has(primary) && motion.has(secondary)) {
+    return {
+      primaryToken: primary,
+      secondaryToken: undefined,
+      confidence: cmd.confidence,
+    };
   }
 
   return {

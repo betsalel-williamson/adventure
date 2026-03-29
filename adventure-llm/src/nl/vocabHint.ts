@@ -168,7 +168,7 @@ function formatGroupedHint(
   const lines: string[] = [];
   const intro = options.compact
     ? "Tokens below are grouped by parser kind (five-letter ATAB words). Prefer motion/verb tokens from context."
-    : "Below, parser vocabulary from adventure.dat is grouped by kind (KTAB class). Use these five-letter tokens; put the verb or motion in primaryToken and the object or direction in secondaryToken when both apply.";
+    : "Below, parser vocabulary from adventure.dat is grouped by kind (KTAB class). Use these five-letter tokens; put motion/travel in primaryToken alone; put the object in secondaryToken only with verbs like TAKE or OPEN (not a second direction).";
   lines.push(intro);
   lines.push("");
 

@@ -477,7 +477,7 @@ function plannerHintForToken(db: AdventureDatabase, token: string): string {
   if (cls === CLASS_MOTION)
     return "travel / motion word (usually **primaryToken** only)";
   if (cls === CLASS_VERB)
-    return "parser verb (see game wording for object or direction)";
+    return "parser verb — use **secondaryToken** for object when required, not a second travel word";
   if (cls === CLASS_MISC) return "misc parser word";
   return "parser vocabulary token";
 }

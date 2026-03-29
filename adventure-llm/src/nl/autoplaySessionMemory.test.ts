@@ -534,4 +534,31 @@ describe("AutoplaySessionMemory", () => {
     );
     expect(m.getStructuredInventory()).toContain("LAMP");
   });
+
+  it("getStructuredInventory clears inferred items after Fortran INIT DONE (play again)", () => {
+    const m = new AutoplaySessionMemory();
+    m.seedOpening("YOU ARE INSIDE A BUILDING.\nTHERE ARE SOME KEYS HERE.\n");
+    const takeKeys = interpretedToGetinLine({
+      primaryToken: "TAKE",
+      secondaryToken: "KEYS",
+    });
+    m.recordCommandOutcome(takeKeys, "OK\n");
+    expect(m.getStructuredInventory()).toContain("KEYS");
+
+    const y = interpretedToGetinLine({ primaryToken: "Y" });
+    m.recordCommandOutcome(
+      y,
+      "INIT DONE\n\nYOU ARE STANDING AT THE END OF A ROAD BEFORE A SMALL BRICK\nBUILDING.\n",
+    );
+    expect(m.getStructuredInventory().length).toBe(0);
+
+    const takeLamp = interpretedToGetinLine({
+      primaryToken: "TAKE",
+      secondaryToken: "LAMP",
+    });
+    m.recordCommandOutcome(takeLamp, "OK\n");
+    const inv = m.getStructuredInventory();
+    expect(inv).toContain("LAMP");
+    expect(inv).not.toContain("KEYS");
+  });
 });

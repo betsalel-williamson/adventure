@@ -4,9 +4,45 @@
 
 import {
   blockBodyChronological,
+  effectiveTerminalEchoAfterStep,
   sortTranscriptBlocksChronological,
+  collapseTerminalGameTrailingNewlines,
 } from "./transcriptLayoutLogic.js";
-import { preloadTerminalSounds, typeTextIntoPre } from "./terminalTyper.js";
+import {
+  paceMsToTypingWpm,
+  preloadTerminalSounds,
+  TERMINAL_TYPING_PRE_ENTER_MS,
+  typeTextIntoInput,
+  wpmToCharDelayMs,
+} from "./terminalTyper.js";
+
+/** Autoplay inter-move delay presets (ms). Slowest 3000 → fastest 100. */
+const AUTOPLAY_PACE_PRESETS = Object.freeze([
+  { label: "Slowest", ms: 3000 },
+  { label: "Slow", ms: 1500 },
+  { label: "Normal", ms: 500 },
+  { label: "Fast", ms: 200 },
+  { label: "Fastest", ms: 100 },
+]);
+
+/**
+ * @param {unknown} ms
+ */
+function snapPaceMsToPreset(ms) {
+  const presetMs = AUTOPLAY_PACE_PRESETS.map((p) => p.ms);
+  const n = Number(ms);
+  if (!Number.isFinite(n)) return AUTOPLAY_PACE_PRESETS[2].ms;
+  let best = presetMs[0];
+  let bestD = Math.abs(n - best);
+  for (const p of presetMs) {
+    const d = Math.abs(n - p);
+    if (d < bestD) {
+      best = p;
+      bestD = d;
+    }
+  }
+  return best;
+}
 
 const transcriptEl = document.getElementById("transcript");
 const autoplayLogEl = document.getElementById("autoplay-log");
@@ -64,6 +100,38 @@ const copyPromptUserBtn = document.getElementById("copy-prompt-user");
 const copyPromptSystemBtn = document.getElementById("copy-prompt-system");
 const autoplayToggle = document.getElementById("autoplay-toggle");
 const autoplayPaceMsEl = document.getElementById("autoplay-pace-ms");
+
+function setAutoplayPaceSelectValue(ms) {
+  if (!autoplayPaceMsEl) return;
+  autoplayPaceMsEl.value = String(snapPaceMsToPreset(ms));
+}
+
+function initAutoplayPaceSelect() {
+  if (!autoplayPaceMsEl || autoplayPaceMsEl.tagName !== "SELECT") return;
+  autoplayPaceMsEl.replaceChildren();
+  for (const { label, ms } of AUTOPLAY_PACE_PRESETS) {
+    const opt = document.createElement("option");
+    opt.value = String(ms);
+    opt.textContent = label;
+    autoplayPaceMsEl.appendChild(opt);
+  }
+  autoplayPaceMsEl.value = String(AUTOPLAY_PACE_PRESETS[2].ms);
+}
+
+initAutoplayPaceSelect();
+
+function typingTimingFromPaceSelect() {
+  const raw = Number(autoplayPaceMsEl?.value);
+  const paceMs = snapPaceMsToPreset(
+    Number.isFinite(raw) ? raw : AUTOPLAY_PACE_PRESETS[2].ms,
+  );
+  const wpm = paceMsToTypingWpm(paceMs);
+  return {
+    charDelayMs: wpmToCharDelayMs(wpm),
+    finalPauseMs: TERMINAL_TYPING_PRE_ENTER_MS,
+  };
+}
+
 const autoplayMaxMovesEl = document.getElementById("autoplay-max-moves");
 const manualBanner = document.getElementById("manual-banner");
 const manualInput = document.getElementById("manual-input");
@@ -76,27 +144,6 @@ const manualError = document.getElementById("manual-error");
 const transcriptLayoutToggle = document.getElementById(
   "transcript-layout-toggle",
 );
-const manualControlsGroup = document.getElementById("manual-controls-group");
-const manualControlsSlotFooter = document.getElementById(
-  "manual-controls-slot-footer",
-);
-const manualControlsSlotCrt = document.getElementById(
-  "manual-controls-slot-crt",
-);
-const transcriptPanelHintRow = document.querySelector(
-  ".panel-hint-row--transcript",
-);
-const transcriptToolbarClassic = document.getElementById(
-  "transcript-toolbar-classic",
-);
-const crtBezelSlot = document.getElementById("crt-bezel-slot");
-const footerDashboardChunks = document.getElementById(
-  "footer-dashboard-chunks",
-);
-const manualInterpretContainer = document.getElementById(
-  "manual-interpret-container",
-);
-const footerControls = document.querySelector(".footer-controls");
 const textLlmWrap = document.getElementById("text-llm-wrap");
 const textLlmSelect = document.getElementById("text-llm-select");
 const mlxLoadOverlay = document.getElementById("mlx-load-overlay");
@@ -150,15 +197,12 @@ let transcriptBlocks = [];
 
 /**
  * Terminal layout: local echo lines shown after server text for `afterStep`, in send order.
- * @type {{ afterStep: number; line: string; seq: number; animate?: boolean }[]}
+ * @type {{ afterStep: number; line: string; seq: number; moveNumber?: number | null }[]}
  */
 let terminalEchoQueue = [];
 
 /** Monotonic sequence for stable echo ordering. */
 let terminalEchoSeq = 0;
-
-/** seq → full line to type (including `> ` and newline); cleared after animation. */
-const pendingEchoTypeTextBySeq = new Map();
 
 /** GETIN line for transcript step (from plan_applied), for block headers. */
 /** @type {Record<number, string>} */
@@ -171,7 +215,55 @@ const motionGridHintByStep = {};
 /** @type {boolean} */
 let waitingForManual = false;
 
+/** Serial autoplay: type each GETIN in the terminal prompt before appending transcript echo. */
+let autoplayTerminalPromptChain = Promise.resolve();
+
+/**
+ * Latest move whose Fortran output is held until typing + `>` echo complete (terminal + autoplay).
+ * Set synchronously on `plan_applied` so deltas can arrive while the prior move is still typing.
+ */
+let autoplayTranscriptHoldMove = null;
+
+/** Buffered `transcript_delta` text per step, in arrival order. */
+const autoplayTranscriptHoldBuffer = new Map();
+
+/**
+ * @param {string} text
+ * @param {number} step
+ */
+function bufferOrAddTranscriptChunk(text, step) {
+  const s = typeof step === "number" && Number.isFinite(step) ? step : 0;
+  if (
+    autoplayTranscriptHoldMove !== null &&
+    s === autoplayTranscriptHoldMove &&
+    isTerminalTranscriptLayout() &&
+    autoplayToggle.checked
+  ) {
+    const arr = autoplayTranscriptHoldBuffer.get(s) ?? [];
+    arr.push(text);
+    autoplayTranscriptHoldBuffer.set(s, arr);
+    return;
+  }
+  addTranscriptChunk(text, step);
+}
+
+/**
+ * @param {number} moveStep
+ */
+function flushAutoplayHeldTranscript(moveStep) {
+  const arr = autoplayTranscriptHoldBuffer.get(moveStep);
+  autoplayTranscriptHoldBuffer.delete(moveStep);
+  if (!arr || arr.length === 0) return;
+  addTranscriptChunk(arr.join(""), moveStep);
+}
+
+function clearAutoplayTranscriptHoldState() {
+  autoplayTranscriptHoldMove = null;
+  autoplayTranscriptHoldBuffer.clear();
+}
+
 const TRANSCRIPT_LAYOUT_KEY = "adventureTranscriptLayout";
+const TRANSCRIPT_SCROLL_BOTTOM_EPS_PX = 48;
 
 function isTerminalTranscriptLayout() {
   return document.body.classList.contains("transcript-layout--terminal");
@@ -191,51 +283,14 @@ function applyTranscriptLayout(mode) {
   }
   if (transcriptLayoutToggle) {
     transcriptLayoutToggle.checked = isTerminal;
-  }
-
-  const canRelocateBezel =
-    crtBezelSlot &&
-    transcriptToolbarClassic &&
-    footerDashboardChunks &&
-    transcriptPanelHintRow &&
-    footerControls &&
-    manualControlsSlotFooter;
-
-  if (canRelocateBezel) {
+    /* Keep the attribute in sync so copied DOM / accessibility tree match the live state. */
     if (isTerminal) {
-      crtBezelSlot.hidden = false;
-      crtBezelSlot.setAttribute("aria-hidden", "false");
-      crtBezelSlot.appendChild(transcriptToolbarClassic);
-      crtBezelSlot.appendChild(footerDashboardChunks);
-      if (manualInterpretContainer) {
-        crtBezelSlot.appendChild(manualInterpretContainer);
-      }
+      transcriptLayoutToggle.setAttribute("checked", "");
     } else {
-      crtBezelSlot.hidden = true;
-      crtBezelSlot.setAttribute("aria-hidden", "true");
-      transcriptPanelHintRow.appendChild(transcriptToolbarClassic);
-      footerControls.insertBefore(
-        footerDashboardChunks,
-        manualControlsSlotFooter,
-      );
-      if (manualControlsGroup && manualInterpretContainer) {
-        manualControlsGroup.insertBefore(
-          manualInterpretContainer,
-          manualControlsGroup.firstChild,
-        );
-      }
+      transcriptLayoutToggle.removeAttribute("checked");
     }
   }
 
-  if (
-    manualControlsGroup &&
-    manualControlsSlotFooter &&
-    manualControlsSlotCrt
-  ) {
-    (isTerminal ? manualControlsSlotCrt : manualControlsSlotFooter).appendChild(
-      manualControlsGroup,
-    );
-  }
   renderTranscriptFeed();
   if (isTerminal && !wasTerminal && manualInput && !manualInput.disabled) {
     preloadTerminalSounds();
@@ -283,32 +338,35 @@ function maxTranscriptStep() {
 
 /**
  * @param {string} line raw command (trimmed)
- * @param {{ animate?: boolean; afterStep?: number }} [options]
+ * @param {{ afterStep?: number; moveNumber?: number | null }} [options]
  *   `afterStep`: echo prints after the game block for this step (autoplay uses moveNumber − 1).
+ *   `moveNumber`: server move index for this GETIN; used to fix orphan tail echoes.
+ * Pace-based typing into the prompt applies only in autoplay (`plan_applied`); manual sends echo here immediately.
  */
 function appendTerminalCommandEcho(line, options = {}) {
   if (!isTerminalTranscriptLayout() || !line) return;
   terminalEchoSeq += 1;
   const seq = terminalEchoSeq;
-  const displayText = `> ${line.toUpperCase()}\n`;
-  if (options.animate) {
-    pendingEchoTypeTextBySeq.set(seq, displayText);
-  }
   const afterStep =
     typeof options.afterStep === "number" && Number.isFinite(options.afterStep)
       ? Math.max(0, Math.floor(options.afterStep))
       : maxTranscriptStep();
+  const moveNumber =
+    typeof options.moveNumber === "number" &&
+    Number.isFinite(options.moveNumber)
+      ? Math.floor(options.moveNumber)
+      : null;
   terminalEchoQueue.push({
     afterStep,
     line,
     seq,
-    animate: Boolean(options.animate),
+    moveNumber,
   });
 }
 
 /**
  * @param {DocumentFragment} frag
- * @param {{ line: string; seq: number; animate?: boolean }} e
+ * @param {{ line: string; seq: number }} e
  */
 function appendTerminalEchoPre(frag, e) {
   const wrap = document.createElement("div");
@@ -316,76 +374,59 @@ function appendTerminalEchoPre(frag, e) {
     "transcript-block transcript-block--terminal transcript-block--echo";
   const pre = document.createElement("pre");
   pre.className = "transcript-body transcript-terminal-echo-line";
-  if (e.animate && pendingEchoTypeTextBySeq.has(e.seq)) {
-    pre.dataset.terminalEchoAnimate = String(e.seq);
-    pre.textContent = "";
-  } else {
-    pre.textContent = `> ${e.line.toUpperCase()}\n`;
-  }
+  pre.textContent = `> ${e.line.toUpperCase()}\n`;
   wrap.appendChild(pre);
   frag.appendChild(wrap);
-}
-
-/**
- * Type pending echo lines (Unknown-style) after DOM mount.
- */
-async function runPendingTerminalEchoAnimations() {
-  if (!transcriptEl) return;
-  const pres = transcriptEl.querySelectorAll("pre[data-terminal-echo-animate]");
-  for (const pre of pres) {
-    const seqStr = pre.getAttribute("data-terminal-echo-animate");
-    pre.removeAttribute("data-terminal-echo-animate");
-    const seq = Number(seqStr);
-    const full = pendingEchoTypeTextBySeq.get(seq);
-    pendingEchoTypeTextBySeq.delete(seq);
-    const entry = terminalEchoQueue.find((x) => x.seq === seq);
-    if (entry) {
-      entry.animate = false;
-    }
-    if (typeof full === "string" && full.length > 0) {
-      await typeTextIntoPre(null, /** @type {HTMLPreElement} */ (pre), full, {
-        charDelayMs: 26,
-        finalPauseMs: 240,
-      });
-    }
-  }
 }
 
 function renderTranscriptFeed() {
   if (!transcriptEl) return;
   const terminal = isTerminalTranscriptLayout();
+  const prevScrollTop = transcriptEl.scrollTop;
+  const prevScrollHeight = transcriptEl.scrollHeight;
+  const wasAtBottom =
+    prevScrollHeight - prevScrollTop - transcriptEl.clientHeight <=
+    TRANSCRIPT_SCROLL_BOTTOM_EPS_PX;
 
   transcriptEl.replaceChildren();
   const frag = document.createDocumentFragment();
   if (terminal) {
     const sorted = sortTranscriptBlocksChronological(transcriptBlocks);
     const echoes = [...terminalEchoQueue].sort((a, b) => a.seq - b.seq);
-    /** @type {Map<number, { line: string; seq: number; animate?: boolean }[]>} */
-    const echoesByStep = new Map();
-    for (const e of echoes) {
-      const list = echoesByStep.get(e.afterStep) ?? [];
-      list.push(e);
-      echoesByStep.set(e.afterStep, list);
+    /** @type {Set<number>} */
+    const emittedEchoSeq = new Set();
+
+    /** First game block whose step is strictly greater than afterStep (chronology anchor). */
+    function firstBlockAfterEcho(afterStep) {
+      return sorted.find((x) => x.step > afterStep) ?? null;
     }
-    const renderedSteps = new Set();
+
     for (const b of sorted) {
+      for (const e of echoes) {
+        if (emittedEchoSeq.has(e.seq)) continue;
+        const afterEff = effectiveTerminalEchoAfterStep(
+          e,
+          sorted,
+          getinLineByStep,
+        );
+        const next = firstBlockAfterEcho(afterEff);
+        if (next !== null && next.step === b.step) {
+          appendTerminalEchoPre(frag, e);
+          emittedEchoSeq.add(e.seq);
+        }
+      }
       const wrap = document.createElement("div");
       wrap.className = "transcript-block transcript-block--terminal";
       const pre = document.createElement("pre");
       pre.className = "transcript-body transcript-terminal-game";
-      pre.textContent = blockBodyChronological(b);
+      pre.textContent = collapseTerminalGameTrailingNewlines(
+        blockBodyChronological(b),
+      );
       wrap.appendChild(pre);
       frag.appendChild(wrap);
-      renderedSteps.add(b.step);
-      const forStep = echoesByStep.get(b.step);
-      if (forStep) {
-        for (const echoEntry of forStep) {
-          appendTerminalEchoPre(frag, echoEntry);
-        }
-      }
     }
     for (const e of echoes) {
-      if (!renderedSteps.has(e.afterStep)) {
+      if (!emittedEchoSeq.has(e.seq)) {
         appendTerminalEchoPre(frag, e);
       }
     }
@@ -408,7 +449,14 @@ function renderTranscriptFeed() {
 
   requestAnimationFrame(() => {
     if (!transcriptEl) return;
-    if (!terminal) {
+    if (terminal) {
+      if (wasAtBottom || prevScrollHeight === 0) {
+        transcriptEl.scrollTop = transcriptEl.scrollHeight;
+      } else {
+        const delta = transcriptEl.scrollHeight - prevScrollHeight;
+        transcriptEl.scrollTop = prevScrollTop + delta;
+      }
+    } else {
       transcriptEl.scrollTop = 0;
     }
   });
@@ -459,7 +507,8 @@ function resetTranscriptFeed() {
   transcriptBlocks = [];
   terminalEchoQueue = [];
   terminalEchoSeq = 0;
-  pendingEchoTypeTextBySeq.clear();
+  autoplayTerminalPromptChain = Promise.resolve();
+  clearAutoplayTranscriptHoldState();
   for (const k of Object.keys(getinLineByStep)) {
     delete getinLineByStep[Number(k)];
   }
@@ -589,13 +638,14 @@ function scheduleSaveAutoplaySettings() {
 async function saveAutoplaySettingsNow() {
   clearManualError();
   try {
-    const paceMs = Number(autoplayPaceMsEl?.value);
+    const paceRaw = Number(autoplayPaceMsEl?.value);
+    const paceMs = snapPaceMsToPreset(paceRaw);
     const maxMoves = Number(autoplayMaxMovesEl?.value);
     const r = await fetch("/api/autoplay-settings", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        paceMs: Number.isFinite(paceMs) ? paceMs : undefined,
+        paceMs: Number.isFinite(paceRaw) ? paceMs : undefined,
         maxMoves: Number.isFinite(maxMoves) ? maxMoves : undefined,
       }),
     });
@@ -608,7 +658,7 @@ async function saveAutoplaySettingsNow() {
       "adventureAutoplaySettings",
       JSON.stringify({ paceMs: j.paceMs, maxMoves: j.maxMoves }),
     );
-    if (autoplayPaceMsEl) autoplayPaceMsEl.value = String(j.paceMs);
+    setAutoplayPaceSelectValue(j.paceMs);
     if (autoplayMaxMovesEl) autoplayMaxMovesEl.value = String(j.maxMoves);
     if (typeof j.paceMs === "number" && typeof j.maxMoves === "number") {
       applyLiveAutoplaySessionStatusFromPaceAndMax(j.paceMs, j.maxMoves);
@@ -619,7 +669,7 @@ async function saveAutoplaySettingsNow() {
 }
 
 if (autoplayPaceMsEl) {
-  autoplayPaceMsEl.addEventListener("input", scheduleSaveAutoplaySettings);
+  autoplayPaceMsEl.addEventListener("change", scheduleSaveAutoplaySettings);
 }
 if (autoplayMaxMovesEl) {
   autoplayMaxMovesEl.addEventListener("input", scheduleSaveAutoplaySettings);
@@ -665,11 +715,8 @@ async function submitManualCommand() {
     return;
   }
   if (isTerminalTranscriptLayout()) {
-    preloadTerminalSounds();
-    manualInput.value = "";
-    appendTerminalCommandEcho(line, { animate: true });
+    appendTerminalCommandEcho(line);
     renderTranscriptFeed();
-    await runPendingTerminalEchoAnimations();
   }
   if (manualInterpretToggle.checked) {
     await postManualCommand({ natural: line });
@@ -883,14 +930,14 @@ async function renderMermaidInto(src, container) {
     container.innerHTML = "";
     if (isMermaidParseErrorSvg(svg)) {
       container.textContent =
-        "(Could not render diagram in-browser. Use Copy Mermaid or open the source below.)";
+        "(Could not render diagram in-browser. Copy from the Mermaid source section below or open the source.)";
       return;
     }
     container.insertAdjacentHTML("beforeend", svg);
   } catch {
     if (gen !== mapMermaidRenderGeneration) return;
     container.textContent =
-      "(Could not render diagram in-browser. Use Copy Mermaid or open the source below.)";
+      "(Could not render diagram in-browser. Copy from the Mermaid source section below or open the source.)";
   }
 }
 
@@ -1094,7 +1141,7 @@ async function applyStoredAutoplaySettings() {
     const r = await fetch("/api/autoplay-settings");
     const j = r.ok ? await r.json() : {};
     if (autoplayPaceMsEl && typeof j.paceMs === "number") {
-      autoplayPaceMsEl.value = String(j.paceMs);
+      setAutoplayPaceSelectValue(j.paceMs);
     }
     if (autoplayMaxMovesEl && typeof j.maxMoves === "number") {
       autoplayMaxMovesEl.value = String(j.maxMoves);
@@ -1109,7 +1156,7 @@ async function applyStoredAutoplaySettings() {
     }
     const body = {};
     if (fromStore && typeof fromStore.paceMs === "number") {
-      body.paceMs = fromStore.paceMs;
+      body.paceMs = snapPaceMsToPreset(fromStore.paceMs);
     }
     if (fromStore && typeof fromStore.maxMoves === "number") {
       body.maxMoves = fromStore.maxMoves;
@@ -1122,7 +1169,7 @@ async function applyStoredAutoplaySettings() {
       });
       if (pr.ok) {
         const j2 = await pr.json();
-        if (autoplayPaceMsEl) autoplayPaceMsEl.value = String(j2.paceMs);
+        setAutoplayPaceSelectValue(j2.paceMs);
         if (autoplayMaxMovesEl) autoplayMaxMovesEl.value = String(j2.maxMoves);
       }
     }
@@ -1231,7 +1278,7 @@ es.addEventListener("autoplay_settings", (ev) => {
   applyLiveAutoplaySessionStatusFromPaceAndMax(d.paceMs, d.maxMoves);
   const active = document.activeElement;
   if (active === autoplayPaceMsEl || active === autoplayMaxMovesEl) return;
-  if (autoplayPaceMsEl) autoplayPaceMsEl.value = String(d.paceMs);
+  setAutoplayPaceSelectValue(d.paceMs);
   if (autoplayMaxMovesEl) autoplayMaxMovesEl.value = String(d.maxMoves);
 });
 
@@ -1378,6 +1425,8 @@ es.addEventListener("session_start", (ev) => {
 
 es.addEventListener("session_end", () => {
   activeSessionAutoplayMeta = null;
+  autoplayTerminalPromptChain = Promise.resolve();
+  clearAutoplayTranscriptHoldState();
   setSessionStatus("Session ended.");
   setPlannerThinking(false);
 });
@@ -1421,17 +1470,20 @@ es.addEventListener("transcript_delta", (ev) => {
   const d = parseData(ev.data);
   if (!d || typeof d.text !== "string") return;
   const step = typeof d.step === "number" ? d.step : 0;
-  addTranscriptChunk(d.text, step);
+  bufferOrAddTranscriptChunk(d.text, step);
 });
 
 es.addEventListener("plan_applied", (ev) => {
   const d = parseData(ev.data);
   if (!d?.plan) return;
   const p = d.plan;
+  const mnRaw = d.moveNumber;
   const mn =
-    typeof d.moveNumber === "number" && Number.isFinite(d.moveNumber)
-      ? d.moveNumber
-      : null;
+    typeof mnRaw === "number" && Number.isFinite(mnRaw)
+      ? mnRaw
+      : typeof mnRaw === "string" && /^\d+$/.test(mnRaw.trim())
+        ? Number(mnRaw.trim())
+        : null;
   const getin = typeof d.getinLine === "string" ? d.getinLine.trimEnd() : "";
   const parts = [
     mn !== null ? `moveNumber: ${mn}` : null,
@@ -1451,20 +1503,49 @@ es.addEventListener("plan_applied", (ev) => {
     needsRender = true;
   }
   if (isTerminalTranscriptLayout() && getin && autoplayToggle.checked) {
-    const echoAfterStep =
-      mn !== null && mn >= 1 ? mn - 1 : Math.max(0, maxTranscriptStep());
     preloadTerminalSounds();
-    appendTerminalCommandEcho(getin, {
-      animate: true,
-      afterStep: echoAfterStep,
+    if (mn !== null) {
+      autoplayTranscriptHoldMove = mn;
+    }
+    autoplayTerminalPromptChain = autoplayTerminalPromptChain.then(async () => {
+      const myMn = mn;
+      try {
+        if (!manualInput || !isTerminalTranscriptLayout()) {
+          if (myMn !== null) flushAutoplayHeldTranscript(myMn);
+          return;
+        }
+        await typeTextIntoInput(manualInput, getin.trim(), {
+          uppercase: true,
+          ...typingTimingFromPaceSelect(),
+        });
+        if (!isTerminalTranscriptLayout() || !autoplayToggle.checked) {
+          if (manualInput) manualInput.value = "";
+          if (myMn !== null) flushAutoplayHeldTranscript(myMn);
+          return;
+        }
+        const echoAfterStep =
+          myMn !== null && myMn >= 1
+            ? myMn - 1
+            : Math.max(0, maxTranscriptStep());
+        appendTerminalCommandEcho(getin, {
+          afterStep: echoAfterStep,
+          moveNumber: myMn,
+        });
+        if (myMn !== null) flushAutoplayHeldTranscript(myMn);
+        if (manualInput) manualInput.value = "";
+        renderTranscriptFeed();
+      } catch {
+        if (myMn !== null) flushAutoplayHeldTranscript(myMn);
+        if (manualInput) manualInput.value = "";
+      } finally {
+        if (myMn !== null && autoplayTranscriptHoldMove === myMn) {
+          autoplayTranscriptHoldMove = null;
+        }
+      }
     });
-    needsRender = true;
   }
   if (needsRender) {
     renderTranscriptFeed();
-    if (isTerminalTranscriptLayout() && getin && autoplayToggle.checked) {
-      void runPendingTerminalEchoAnimations();
-    }
   }
 });
 
@@ -1496,22 +1577,40 @@ es.onopen = () => {
  */
 function wireCopyPromptButton(btn, sourceEl) {
   if (!btn || !sourceEl) return;
-  const defaultLabel = btn.textContent || "Copy";
+  const iconEl = btn.querySelector(".dashboard-material-icon");
+  const defaultGlyph = iconEl?.textContent?.trim() ?? "";
+  const defaultText = iconEl ? null : btn.textContent?.trim() || "Copy";
   btn.addEventListener("click", (e) => {
     e.preventDefault();
     e.stopPropagation();
     const text = sourceEl.textContent ?? "";
     void navigator.clipboard.writeText(text).then(
       () => {
-        btn.textContent = "Copied";
+        if (iconEl && defaultGlyph) {
+          iconEl.textContent = "check";
+        } else {
+          btn.textContent = "Copied";
+        }
         setTimeout(() => {
-          btn.textContent = defaultLabel;
+          if (iconEl && defaultGlyph) {
+            iconEl.textContent = defaultGlyph;
+          } else {
+            btn.textContent = defaultText ?? "Copy";
+          }
         }, 1200);
       },
       () => {
-        btn.textContent = "Failed";
+        if (iconEl && defaultGlyph) {
+          iconEl.textContent = "error";
+        } else {
+          btn.textContent = "Failed";
+        }
         setTimeout(() => {
-          btn.textContent = defaultLabel;
+          if (iconEl && defaultGlyph) {
+            iconEl.textContent = defaultGlyph;
+          } else {
+            btn.textContent = defaultText ?? "Copy";
+          }
         }, 1200);
       },
     );

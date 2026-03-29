@@ -40,4 +40,19 @@ describe("finalizeAutoplayPlannerResponse", () => {
     expect(out.continuePlaying).toBe(false);
     expect(out.primaryToken).toBe("EAST");
   });
+
+  it("strips object secondary on travel primary after vocab repair", () => {
+    const db = loadDatFile(datPath);
+    const out = finalizeAutoplayPlannerResponse(
+      db,
+      {
+        primaryToken: "SOUTH",
+        secondaryToken: "BOTTL",
+        continuePlaying: true,
+      },
+      undefined,
+    );
+    expect(out.primaryToken).toBe("SOUTH");
+    expect(out.secondaryToken).toBeUndefined();
+  });
 });

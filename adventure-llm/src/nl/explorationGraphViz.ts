@@ -250,7 +250,7 @@ function emitDotDigraph(params: {
       '  node [shape=box, fontname="Courier", pin=true, fixedsize=false];',
     );
   } else {
-    lines.push('  rankdir="LR";');
+    lines.push('  rankdir="TB";');
     lines.push("  edge [dir=forward; arrowhead=vee];");
     lines.push('  node [shape=box, fontname="Courier"];');
   }
@@ -353,7 +353,7 @@ function arrowForKind(kind: DirectedEdgeKind): string {
 }
 
 /**
- * Mermaid flowchart LR with directed edges, self-loops, and current node highlight.
+ * Mermaid flowchart TD with directed edges, self-loops, and current node highlight.
  */
 export function inferredMapToMermaid(
   snap: InferredExplorationMapSnapshot,
@@ -392,7 +392,7 @@ export function inferredMapToMermaid(
     "%% Session-learned FSM: arrows follow from→to (standard directed flow).",
     "%% Solid = travel; dotted = reject or non-move action (TAKE, LOOK, …) at that node.",
     "%% Inferred grid: East=+x, North=+y, Up=+z — Mermaid layout is automatic; use DOT export for compass-aligned positions.",
-    "flowchart LR",
+    "flowchart TD",
   ];
 
   for (const raw of declOrder.slice(0, maxN)) {

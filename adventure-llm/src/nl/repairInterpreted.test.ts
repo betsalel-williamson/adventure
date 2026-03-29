@@ -46,4 +46,17 @@ describe("repairInterpretedCommand", () => {
     );
     expect(r.primaryToken).toBe("UP");
   });
+
+  it("drops secondary when both tokens are motion (e.g. WEST + UP)", () => {
+    const r = repairInterpretedCommand(
+      "autoplay",
+      { primaryToken: "WEST", secondaryToken: "UP" },
+      "",
+    );
+    expect(r).toEqual({
+      primaryToken: "WEST",
+      secondaryToken: undefined,
+      confidence: undefined,
+    });
+  });
 });

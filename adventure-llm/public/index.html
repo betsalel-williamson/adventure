@@ -10,6 +10,10 @@
       href="https://fonts.googleapis.com/css2?family=VT323&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=block"
+    />
     <link rel="stylesheet" href="/dashboard.css" />
   </head>
   <body>
@@ -101,8 +105,13 @@
                     id="copy-prompt-user"
                     class="copy-prompt-btn"
                     aria-label="Copy user context preview"
+                    title="Copy"
                   >
-                    Copy
+                    <span
+                      class="material-symbols-outlined dashboard-material-icon"
+                      aria-hidden="true"
+                      >content_copy</span
+                    >
                   </button>
                 </summary>
                 <pre id="prompt-user" class="mono small prompt"></pre>
@@ -115,8 +124,13 @@
                     id="copy-prompt-system"
                     class="copy-prompt-btn"
                     aria-label="Copy system preview"
+                    title="Copy"
                   >
-                    Copy
+                    <span
+                      class="material-symbols-outlined dashboard-material-icon"
+                      aria-hidden="true"
+                      >content_copy</span
+                    >
                   </button>
                 </summary>
                 <pre id="prompt-system" class="mono small prompt"></pre>
@@ -153,27 +167,15 @@
         >
           <div class="panel-hint-row panel-hint-row--transcript">
             <h2 class="transcript-panel-heading">Game transcript</h2>
-            <div
-              id="transcript-toolbar-classic"
-              class="transcript-toolbar-classic"
+            <button
+              type="button"
+              class="help-icon-btn crt-transcript-help-btn"
+              data-help-template="help-tpl-transcript"
+              data-help-title="Game transcript"
+              aria-label="About the game transcript"
             >
-              <label
-                class="toggle-label transcript-layout-toggle-label"
-                title="Chronological transcript with prompt inside the CRT; scroll back through full history. Add ?transcript=terminal or ?transcript=classic to the URL."
-              >
-                <input type="checkbox" id="transcript-layout-toggle" />
-                <span>Terminal layout</span>
-              </label>
-              <button
-                type="button"
-                class="help-icon-btn"
-                data-help-template="help-tpl-transcript"
-                data-help-title="Game transcript"
-                aria-label="About the game transcript"
-              >
-                ?
-              </button>
-            </div>
+              ?
+            </button>
           </div>
           <div class="crt-monitor-chassis">
             <div class="crt-terminal crt-terminal--integrated">
@@ -192,16 +194,109 @@
                     <div
                       id="manual-controls-slot-crt"
                       class="manual-controls-slot manual-controls-slot--crt"
-                    ></div>
+                    >
+                      <div id="manual-controls-group" class="manual-controls-group">
+                        <span class="transcript-terminal-input-wrap">
+                          <span class="transcript-terminal-prompt" aria-hidden="true"
+                            >&gt;&nbsp;</span
+                          >
+                          <input
+                            type="text"
+                            id="manual-input"
+                            class="manual-input"
+                            placeholder="Parser command or phrase"
+                            autocomplete="off"
+                            aria-label="Parser command or phrase"
+                            disabled
+                          />
+                        </span>
+                        <button type="button" id="manual-send" disabled>Send</button>
+                        <button
+                          type="button"
+                          id="manual-end-session"
+                          class="btn-quiet"
+                          disabled
+                        >
+                          End
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
-              <div
-                id="crt-bezel-slot"
-                class="crt-bezel-slot crt-bezel-slot--deck"
-                hidden
-                aria-hidden="true"
-              ></div>
+              <div class="crt-control-deck">
+                <div
+                  id="crt-bezel-slot"
+                  class="crt-bezel-slot crt-bezel-slot--deck"
+                >
+                  <div
+                    id="footer-dashboard-chunks"
+                    class="footer-dashboard-chunks crt-deck-dashboard-chunks"
+                  >
+                    <div
+                      id="text-llm-wrap"
+                      class="text-llm-wrap mlx-model-wrap hidden"
+                      aria-hidden="true"
+                    >
+                      <label class="text-llm-label mlx-model-label"
+                        >Text LLM
+                        <select
+                          id="text-llm-select"
+                          aria-label="Text LLM backend and model"
+                        ></select>
+                      </label>
+                    </div>
+                    <label
+                      class="autoplay-pace-label"
+                      title="Delay between autoplay moves. Slowest (3000ms) through fastest (100ms). Saved automatically; applies to the running session."
+                    >
+                      Pace
+                      <select
+                        id="autoplay-pace-ms"
+                        class="autoplay-pace-input"
+                        aria-label="Autoplay pace between moves"
+                      ></select>
+                    </label>
+                    <label
+                      class="autoplay-pace-label"
+                      title="Maximum GETIN lines for this session. Saved automatically; applies when the limit is checked each turn."
+                    >
+                      Max
+                      <input
+                        type="number"
+                        id="autoplay-max-moves"
+                        min="1"
+                        max="1000000"
+                        step="1"
+                        value="300"
+                        class="autoplay-pace-input"
+                      />
+                    </label>
+                    <label class="toggle-label">
+                      <input type="checkbox" id="autoplay-toggle" checked />
+                      <span>LLM autoplay</span>
+                    </label>
+                  </div>
+                  <div id="manual-interpret-container">
+                    <label
+                      class="toggle-label"
+                      title="When checked, your text is interpreted by the text LLM into parser tokens before sending."
+                    >
+                      <input type="checkbox" id="manual-interpret-toggle" />
+                      <span>Interpret with text LLM</span>
+                    </label>
+                  </div>
+                </div>
+                <div class="crt-layout-toggle-slot">
+                  <label
+                    class="toggle-label transcript-layout-toggle-label"
+                    title="Chronological transcript with prompt inside the CRT; scroll back through full history. Add ?transcript=terminal or ?transcript=classic to the URL."
+                  >
+                    <input type="checkbox" id="transcript-layout-toggle" />
+                    <span>Terminal layout</span>
+                  </label>
+                </div>
+              </div>
             </div>
           </div>
           <div class="panel-hint-row panel-hint-row--sub">
@@ -230,22 +325,20 @@
               aria-label="Inferred exploration map"
             >
               <div class="map-hero-head">
-                <div class="map-hero-title-row">
-                  <h2 class="map-hero-title">Exploration map</h2>
-                  <button
-                    type="button"
-                    class="help-icon-btn"
-                    data-help-template="help-tpl-exploration-map"
-                    data-help-title="Exploration map"
-                    aria-label="About the exploration map"
-                  >
-                    ?
-                  </button>
-                </div>
+                <h2 class="map-hero-title">Exploration map</h2>
                 <div class="map-xyz" aria-live="polite">
                   <span class="map-xyz-label">Position (x, y, z)</span>
                   <span id="map-coords" class="map-xyz-value">—</span>
                 </div>
+                <button
+                  type="button"
+                  class="help-icon-btn map-hero-help-btn"
+                  data-help-template="help-tpl-exploration-map"
+                  data-help-title="Exploration map"
+                  aria-label="About the exploration map"
+                >
+                  ?
+                </button>
               </div>
               <p class="map-hero-sub map-hero-sub--compact">
                 <label class="inline-z">
@@ -286,7 +379,11 @@
                     aria-label="Open Mermaid graph full screen"
                     title="View diagram full screen"
                   >
-                    Expand
+                    <span
+                      class="material-symbols-outlined dashboard-material-icon"
+                      aria-hidden="true"
+                      >open_in_full</span
+                    >
                   </button>
                   <button
                     type="button"
@@ -318,8 +415,13 @@
                     id="copy-mermaid"
                     class="copy-prompt-btn"
                     aria-label="Copy Mermaid source"
+                    title="Copy"
                   >
-                    Copy
+                    <span
+                      class="material-symbols-outlined dashboard-material-icon"
+                      aria-hidden="true"
+                      >content_copy</span
+                    >
                   </button>
                 </summary>
                 <pre id="map-mermaid-src" class="map-fsm-pre mono"></pre>
@@ -332,8 +434,13 @@
                     id="copy-dot"
                     class="copy-prompt-btn"
                     aria-label="Copy Graphviz DOT"
+                    title="Copy"
                   >
-                    Copy
+                    <span
+                      class="material-symbols-outlined dashboard-material-icon"
+                      aria-hidden="true"
+                      >content_copy</span
+                    >
                   </button>
                 </summary>
                 <pre id="map-dot-src" class="map-fsm-pre mono"></pre>
@@ -359,100 +466,6 @@
           >
         </div>
         <p id="manual-error" class="manual-error" role="alert"></p>
-        <div class="footer-controls" aria-label="Autoplay and manual command">
-          <div id="footer-dashboard-chunks" class="footer-dashboard-chunks">
-            <div
-              id="text-llm-wrap"
-              class="text-llm-wrap mlx-model-wrap hidden"
-              aria-hidden="true"
-            >
-              <label class="text-llm-label mlx-model-label"
-                >Text LLM
-                <select
-                  id="text-llm-select"
-                  aria-label="Text LLM backend and model"
-                ></select>
-              </label>
-            </div>
-            <label
-              class="autoplay-pace-label"
-              title="Delay between moves (ms). Saved automatically; applies to the running autoplay session."
-            >
-              Pace
-              <input
-                type="number"
-                id="autoplay-pace-ms"
-                min="0"
-                max="3600000"
-                step="100"
-                value="2000"
-                class="autoplay-pace-input"
-              />
-              <span class="autoplay-pace-unit">ms</span>
-            </label>
-            <label
-              class="autoplay-pace-label"
-              title="Maximum GETIN lines for this session. Saved automatically; applies when the limit is checked each turn."
-            >
-              Max
-              <input
-                type="number"
-                id="autoplay-max-moves"
-                min="1"
-                max="1000000"
-                step="1"
-                value="300"
-                class="autoplay-pace-input"
-              />
-            </label>
-            <label class="toggle-label">
-              <input type="checkbox" id="autoplay-toggle" checked />
-              <span>LLM autoplay</span>
-            </label>
-          </div>
-          <div
-            id="manual-controls-slot-footer"
-            class="manual-controls-slot manual-controls-slot--footer"
-          >
-            <div id="manual-controls-group" class="manual-controls-group">
-              <div id="manual-interpret-container">
-                <label
-                  class="toggle-label"
-                  title="When checked, your text is interpreted by the text LLM into parser tokens before sending."
-                >
-                  <input type="checkbox" id="manual-interpret-toggle" />
-                  <span>Interpret with text LLM</span>
-                </label>
-              </div>
-              <span class="transcript-terminal-input-wrap">
-                <span class="transcript-terminal-prompt" aria-hidden="true"
-                  >&gt;&nbsp;</span
-                >
-                <span class="transcript-terminal-caret" aria-hidden="true"
-                  >■</span
-                >
-                <input
-                  type="text"
-                  id="manual-input"
-                  class="manual-input"
-                  placeholder="Parser command or phrase"
-                  autocomplete="off"
-                  aria-label="Parser command or phrase"
-                  disabled
-                />
-              </span>
-              <button type="button" id="manual-send" disabled>Send</button>
-              <button
-                type="button"
-                id="manual-end-session"
-                class="btn-quiet"
-                disabled
-              >
-                End
-              </button>
-            </div>
-          </div>
-        </div>
       </div>
     </footer>
 
@@ -599,8 +612,8 @@
     <template id="help-tpl-planner-prompt">
       <div class="help-dialog-prose">
         <p>
-          Truncated previews of what was sent to the planner. Expand each
-          section for the full text; use Copy to grab it for debugging.
+          Truncated previews of what was sent to the planner. Open each
+          section for the full text; use the copy icon to grab it for debugging.
         </p>
       </div>
     </template>

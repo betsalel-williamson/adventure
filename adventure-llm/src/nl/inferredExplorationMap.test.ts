@@ -64,6 +64,16 @@ describe("graphEdgeLabelFromCommand", () => {
       "KEYS KEY (use TAKE/GET + object)",
     );
   });
+
+  it("drops spurious object secondary on travel GETIN (packed ten columns)", () => {
+    expect(graphEdgeLabelFromCommand("SOUTHBOTTL")).toBe("SOUTH");
+    expect(graphEdgeLabelFromCommand("NORTH KEYS")).toBe("NORTH");
+  });
+
+  it("keeps secondary for TAKE and EXAMI", () => {
+    expect(graphEdgeLabelFromCommand("TAKE KEYS")).toBe("TAKE KEYS");
+    expect(graphEdgeLabelFromCommand("EXAMI LAMP")).toBe("EXAMI LAMP");
+  });
 });
 
 describe("fsmLabelFromGetinCommand", () => {

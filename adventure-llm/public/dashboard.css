@@ -2,8 +2,8 @@
   box-sizing: border-box;
 }
 :root {
-  /* Space below grid content so it clears the fixed status-footer; keep modest to reduce dead vertical gap. */
-  --footer-clearance: 4rem;
+  /* Space below grid content so it clears the fixed status-footer (session line + errors only). */
+  --footer-clearance: 3rem;
 }
 body {
   font-family: system-ui, sans-serif;
@@ -159,7 +159,10 @@ h2 {
 /* Desktop: planner (left), game terminal (center, primary), map + FSM (right) */
 .layout-dashboard {
   display: grid;
-  grid-template-columns: minmax(13.5rem, 17.5rem) minmax(0, 1fr) minmax(17rem, min(30rem, 34vw));
+  grid-template-columns: minmax(13.5rem, 17.5rem) minmax(0, 1fr) minmax(
+      17rem,
+      min(30rem, 34vw)
+    );
   gap: 1rem 1.15rem;
   align-items: start;
   padding-bottom: var(--footer-clearance);
@@ -194,6 +197,37 @@ h2 {
 
 .side-left .panel:last-child {
   margin-bottom: 0;
+}
+
+.parser-verb-hints-intro {
+  margin: 0 0 0.45rem;
+  line-height: 1.35;
+}
+
+.parser-verb-hints {
+  max-height: min(40vh, 18rem);
+  min-height: 2.5rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin: 0;
+  padding: 0.35rem 0.4rem;
+  border-radius: 6px;
+  border: 1px solid #2f3545;
+  background: rgba(0, 0, 0, 0.22);
+  line-height: 1.45;
+  color: #d8dce6;
+  -webkit-overflow-scrolling: touch;
+}
+
+.parser-verb-hints .parser-verb-hint-line {
+  margin: 0;
+  padding: 0.12rem 0;
+  border-bottom: 1px solid rgba(80, 90, 110, 0.35);
+  color: #d8dce6;
+}
+
+.parser-verb-hints .parser-verb-hint-line:last-child {
+  border-bottom: none;
 }
 
 @media (min-width: 1101px) {
@@ -292,6 +326,12 @@ h2 {
     min-height: 0;
     max-height: none;
   }
+  .transcript-panel--hero .crt-monitor-chassis {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
   .transcript-panel--hero .crt-terminal {
     flex: 1 1 auto;
     min-height: 0;
@@ -304,9 +344,10 @@ h2 {
     display: flex;
     flex-direction: column;
   }
+  /* min-height: 0 so the prompt row stays inside the tube (overflow:hidden would clip it). */
   .transcript-panel--hero .crt-terminal-screen .transcript-feed--crt {
     flex: 1 1 auto;
-    min-height: max(14rem, 24lh);
+    min-height: 0;
   }
   .side-left-column {
     position: sticky;
@@ -377,6 +418,12 @@ h2 {
   .transcript-feed--crt {
     max-height: min(50vh, 50dvh, 22rem);
     min-height: 10rem;
+  }
+  body.transcript-layout--terminal .transcript-feed--crt {
+    max-height: none;
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-width: none;
   }
   .autoplay-log-feed {
     max-height: min(28vh, 28dvh, 12rem);
@@ -453,11 +500,13 @@ h2 {
   display: none;
 }
 
-.footer-controls {
+.footer-dashboard-chunks {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.4rem 0.5rem;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 .text-llm-wrap,
 .mlx-model-wrap {
@@ -534,9 +583,11 @@ h2 {
   border-radius: 6px;
   color: #e8e8ec;
 }
-.autoplay-pace-unit {
-  font-size: 0.68rem;
-  color: #6b7280;
+select.autoplay-pace-input {
+  width: auto;
+  min-width: 6.75rem;
+  max-width: 100%;
+  cursor: pointer;
 }
 .manual-input {
   flex: 1 1 10rem;
@@ -551,7 +602,7 @@ h2 {
 .manual-input:disabled {
   opacity: 0.5;
 }
-.footer-controls button {
+.manual-controls-group button {
   padding: 0.35rem 0.55rem;
   font-size: 0.75rem;
   border-radius: 6px;
@@ -561,11 +612,11 @@ h2 {
   cursor: pointer;
   flex-shrink: 0;
 }
-.footer-controls button:disabled {
+.manual-controls-group button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
-.footer-controls button:not(:disabled):hover {
+.manual-controls-group button:not(:disabled):hover {
   background: #363d52;
 }
 .btn-quiet {
@@ -597,11 +648,10 @@ h2 {
 
 .mermaid-fullscreen-open-btn {
   flex-shrink: 0;
-  padding: 0.2rem 0.45rem;
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.1rem 0.35rem;
   border-radius: 5px;
   border: 1px solid #4a5570;
   background: #2c3344;
@@ -756,16 +806,20 @@ h2 {
 .map-hero-head {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.75rem 1.5rem;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.75rem 1rem;
   margin-bottom: 0.35rem;
 }
-.map-hero-title-row {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 0.35rem;
+.map-hero-head > .map-hero-title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.map-hero-head > .map-xyz {
+  flex-shrink: 0;
+}
+.map-hero-head > .map-hero-help-btn {
+  flex-shrink: 0;
 }
 .map-hero-title {
   font-size: 1.2rem;
@@ -962,7 +1016,8 @@ h2 {
 }
 .map-fsm-title-row .map-fsm-title {
   margin: 0;
-  flex: 0 1 auto;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 .map-fsm-title {
   font-size: 0.95rem;
@@ -1031,6 +1086,60 @@ h2 {
     0 4px 28px rgba(0, 30, 15, 0.45);
 }
 
+/* Transcript column: CRT + shared control deck (same DOM in classic vs terminal; styling differs). */
+.crt-monitor-chassis {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+body:not(.transcript-layout--terminal) .panel-hint-row--transcript .crt-transcript-help-btn {
+  opacity: 0.92;
+}
+
+/* Deck: options (column 1) + terminal layout toggle (column 2, same cell in both modes) */
+.crt-control-deck {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  column-gap: 0.75rem;
+  row-gap: 0.45rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.crt-bezel-slot.crt-bezel-slot--deck {
+  grid-column: 1;
+  min-width: 0;
+}
+
+.crt-layout-toggle-slot {
+  grid-column: 2;
+  justify-self: end;
+  align-self: end;
+}
+
+body:not(.transcript-layout--terminal) .crt-control-deck {
+  flex-shrink: 0;
+  margin-top: 0.35rem;
+  padding: 0.45rem 0.55rem 0.55rem;
+  background: #181a20;
+  border: 1px solid #353842;
+  border-radius: 0 0 8px 8px;
+}
+
+body:not(.transcript-layout--terminal) .crt-bezel-slot--deck {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.4rem 0.65rem;
+}
+
+body:not(.transcript-layout--terminal) .crt-bezel-slot .footer-dashboard-chunks,
+body:not(.transcript-layout--terminal) .crt-bezel-slot #manual-interpret-container {
+  display: contents;
+}
+
 /* Center column: faux CRT housing (tube tilt, scanlines, vignette, subtle barrel via SVG filter). */
 .crt-terminal {
   perspective: 1100px;
@@ -1097,6 +1206,669 @@ h2 {
   box-sizing: border-box;
 }
 
+/* Classic: room above the prompt/command row when scrolled to the end (all breakpoints). */
+body:not(.transcript-layout--terminal) .crt-terminal-screen .transcript-feed--crt {
+  padding-bottom: max(1.35rem, 3lh);
+  scroll-padding-bottom: max(1.35rem, 3lh);
+}
+
+/* Terminal layout: feed scrolls vertically with scrollbars hidden (chronological text grows downward) */
+.transcript-terminal-column {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  flex: 1 1 auto;
+}
+
+body.transcript-layout--terminal .crt-terminal-screen .transcript-feed--crt {
+  flex: 1 1 auto;
+  /* Shrink inside the column so the prompt row stays visible; a large min-height
+     plus overflow:hidden on .transcript-terminal-column clipped the input. */
+  min-height: 0;
+  max-height: none;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+body.transcript-layout--terminal .crt-terminal-screen .transcript-feed--crt::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+.transcript-terminal-prompt-shell {
+  flex: 0 0 auto;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+  padding: 0.45rem 0.5rem 0.55rem;
+  border-top: 1px solid rgba(50, 140, 80, 0.35);
+  background: transparent;
+  font-family: "VT323", "IBM Plex Mono", ui-monospace, monospace;
+  font-size: clamp(0.95rem, 2.2cqw, 1.15rem);
+  line-height: 1.35;
+}
+
+.transcript-terminal-input-wrap {
+  display: inline-flex;
+  flex: 1 1 14rem;
+  align-items: center;
+  min-width: 0;
+  gap: 0;
+}
+
+body:not(.transcript-layout--terminal) .transcript-terminal-prompt {
+  display: none;
+}
+
+.transcript-terminal-prompt {
+  flex: 0 0 auto;
+  color: #7ddf98;
+  text-shadow: 0 0 6px rgba(120, 220, 150, 0.35);
+  user-select: none;
+  font-family: "VT323", monospace;
+  margin: 0;
+  padding: 0;
+}
+
+.manual-controls-slot--crt {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.manual-controls-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.55rem;
+}
+
+/* Classic: same prompt row as terminal, dashboard-style type (phosphor only in terminal mode).
+   Avoid z-index above the feed: with CRT transforms it can cover the bottom scrollport of the transcript. */
+body:not(.transcript-layout--terminal) .transcript-terminal-prompt-shell {
+  position: relative;
+  z-index: 0;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  border-top: 1px solid rgba(80, 200, 120, 0.28);
+  background: rgba(6, 10, 8, 0.92);
+}
+
+body:not(.transcript-layout--terminal)
+  .transcript-terminal-prompt-shell
+  .manual-input {
+  color: #e8e8ec;
+}
+
+body.transcript-layout--terminal
+  .manual-controls-group
+  .transcript-terminal-input-wrap {
+  flex: 1 1 14rem;
+  min-width: 0;
+  border-bottom: 1px solid rgba(91, 248, 112, 0.35);
+  padding-bottom: 0.15rem;
+}
+
+/* No text-shadow on the input: WebKit often fails to paint value text with glow. */
+body.transcript-layout--terminal .manual-controls-group .manual-input {
+  flex: 1 1 0%;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  color: #5bf870;
+  -webkit-text-fill-color: #5bf870;
+  caret-color: #5bf870;
+  font-family: "VT323", ui-monospace, monospace;
+  font-size: 1.12rem;
+  font-size: clamp(1rem, 2.5cqw, 1.3rem);
+  line-height: 1.35;
+  text-transform: uppercase;
+  text-shadow: none;
+  padding: 0.2rem 0.15rem 0.05rem;
+  box-shadow: none;
+  opacity: 1;
+}
+
+body.transcript-layout--terminal
+  .manual-controls-group
+  .manual-input:-webkit-autofill,
+body.transcript-layout--terminal
+  .manual-controls-group
+  .manual-input:-webkit-autofill:hover,
+body.transcript-layout--terminal
+  .manual-controls-group
+  .manual-input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #5bf870;
+  caret-color: #5bf870;
+  transition: background-color 99999s ease-out;
+  -webkit-box-shadow: 0 0 0 100px #030805 inset;
+  box-shadow: 0 0 0 100px #030805 inset;
+}
+
+body.transcript-layout--terminal .manual-controls-group .manual-input:disabled {
+  opacity: 0.5;
+  color: rgba(91, 248, 112, 0.55);
+  -webkit-text-fill-color: rgba(91, 248, 112, 0.55);
+}
+
+body.transcript-layout--terminal
+  .manual-controls-group
+  .transcript-terminal-input-wrap:focus-within {
+  border-bottom-color: rgba(91, 248, 112, 0.75);
+}
+
+body.transcript-layout--terminal .manual-controls-group .manual-input:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+body.transcript-layout--terminal .manual-controls-group .toggle-label {
+  color: rgba(180, 220, 195, 0.9);
+}
+
+body.transcript-layout--terminal .manual-controls-group .btn-quiet,
+body.transcript-layout--terminal .manual-controls-group #manual-send {
+  font-family: inherit;
+  font-size: 0.95em;
+}
+
+.transcript-block--terminal {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* --- Terminal layout: full retro monitor (sample-code/Unknown #monitor + #crt look) --- */
+body.transcript-layout--terminal
+  .transcript-panel.transcript-panel--crt.transcript-panel--hero {
+  background: linear-gradient(165deg, #45423d 0%, #3c3935 45%, #34312e 100%);
+  border-color: #2a2826;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 6px 28px rgba(0, 0, 0, 0.5),
+    0 0 80px -30px rgba(35, 140, 75, 0.35);
+}
+
+body.transcript-layout--terminal .transcript-panel-heading {
+  margin: 0 0 0.25rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(210, 205, 195, 0.45);
+}
+
+body.transcript-layout--terminal .transcript-layout-toggle-label {
+  color: #b8b4ac;
+}
+
+/* Outer shell: thin margin only; the monitor is one piece (glass + bottom deck). */
+body.transcript-layout--terminal .crt-monitor-chassis {
+  margin: 0 0 0.65rem;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* Single front panel: tube on top, control deck below (no separate box above the CRT). */
+body.transcript-layout--terminal .crt-terminal.crt-terminal--integrated {
+  perspective: none;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: linear-gradient(180deg, #2c2a28 0%, #1e1d1b 100%);
+  box-shadow:
+    0 4px 22px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* One bottom bar: options (left) + terminal layout toggle (bottom-right) */
+body.transcript-layout--terminal .crt-control-deck {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0.5rem 0.55rem 0.6rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.55);
+  border-radius: 0 0 11px 11px;
+  background: linear-gradient(180deg, #242220 0%, #181716 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    inset 0 12px 24px rgba(0, 0, 0, 0.35);
+}
+
+body.transcript-layout--terminal .crt-bezel-slot.crt-bezel-slot--deck {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: flex-start;
+  align-content: flex-start;
+  gap: 0.5rem 1rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+body.transcript-layout--terminal .crt-bezel-slot .footer-dashboard-chunks,
+body.transcript-layout--terminal .crt-bezel-slot #manual-interpret-container {
+  display: contents;
+}
+
+body.transcript-layout--terminal .crt-layout-toggle-slot {
+  padding-left: 0.35rem;
+  border-left: 1px solid rgba(0, 0, 0, 0.35);
+}
+
+/* Toggle + red LED (LED is ::before; order: LED, switch, caption) */
+body.transcript-layout--terminal .crt-control-deck .toggle-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.32rem;
+  font-size: 0.52rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #b5aea4;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.8);
+  max-width: 5.5rem;
+  text-align: center;
+  line-height: 1.2;
+}
+
+body.transcript-layout--terminal .crt-control-deck .toggle-label::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: radial-gradient(circle at 35% 30%, #3a2222, #1a0a0a 70%);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.95);
+  order: 0;
+}
+
+body.transcript-layout--terminal
+  .crt-control-deck
+  .toggle-label:has(input:checked)::before {
+  background: radial-gradient(circle at 35% 30%, #ffb0b0, #e02020 45%, #600808 100%);
+  box-shadow:
+    0 0 5px #ff3b3b,
+    0 0 14px rgba(255, 60, 60, 0.65),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.45);
+}
+
+body.transcript-layout--terminal .crt-control-deck .toggle-label input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 2.4rem;
+  height: 1.2rem;
+  margin: 0;
+  order: 1;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #121110 0%, #0a0908 100%);
+  border: 1px solid #000;
+  box-shadow:
+    inset 0 2px 5px rgba(0, 0, 0, 0.85),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+}
+
+body.transcript-layout--terminal
+  .crt-control-deck
+  .toggle-label
+  input[type="checkbox"]::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: calc(50% - 4px);
+  height: calc(100% - 4px);
+  border-radius: 1px;
+  background: linear-gradient(180deg, #c4c0b8 0%, #7a7672 50%, #504c48 100%);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  transition: transform 0.14s ease;
+}
+
+body.transcript-layout--terminal
+  .crt-control-deck
+  .toggle-label
+  input[type="checkbox"]:checked::before {
+  transform: translateX(100%);
+}
+
+body.transcript-layout--terminal .crt-control-deck .toggle-label > span {
+  order: 2;
+}
+
+body.transcript-layout--terminal .crt-control-deck .autoplay-pace-label {
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.25rem 0.4rem 0.35rem;
+  background: #1c1a18;
+  border-radius: 3px;
+  border: 1px solid #0a0908;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5);
+  font-size: 0.52rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #a8a298;
+}
+
+body.transcript-layout--terminal .crt-control-deck .autoplay-pace-input {
+  width: auto;
+  min-width: 6.25rem;
+  max-width: min(100%, 9.5rem);
+  background: #0c0b0a;
+  border: 1px solid #252220;
+  color: #d4c878;
+  text-align: center;
+}
+
+body.transcript-layout--terminal .crt-control-deck .text-llm-wrap {
+  flex: 1 1 100%;
+  justify-content: center;
+}
+
+body.transcript-layout--terminal .crt-control-deck .text-llm-label,
+body.transcript-layout--terminal .crt-control-deck .mlx-model-label {
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.52rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #9a958c;
+}
+
+body.transcript-layout--terminal .crt-control-deck .mlx-model-label select,
+body.transcript-layout--terminal .crt-control-deck .text-llm-label select {
+  max-width: min(100%, 22rem);
+  background: #0c0b0a;
+  border-color: #2a2826;
+  color: #d8d4cc;
+}
+
+body.transcript-layout--terminal .panel-hint-row--transcript .crt-transcript-help-btn {
+  width: 1.55rem;
+  height: 1.55rem;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #5a5652 0%, #383634 100%);
+  border: 1px solid #121110;
+  color: #f0ebe4;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+body.transcript-layout--terminal .panel-hint-row--transcript .crt-transcript-help-btn:hover {
+  background: linear-gradient(180deg, #66625e 0%, #403e3c 100%);
+}
+
+/* Simple front-on CRT: glass fills space above the deck */
+body.transcript-layout--terminal .crt-terminal--integrated .crt-terminal-screen {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  transform: none;
+  filter: none;
+  animation: none;
+  border-radius: 0;
+  box-shadow:
+    inset 0 0 0 4px #1a1a1c,
+    inset 0 0 0 6px #0d0d0f,
+    inset 0 0 40px rgba(0, 0, 0, 0.5);
+}
+
+body.transcript-layout--terminal .crt-terminal-screen::before {
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.08) 50%,
+    rgba(0, 0, 0, 0.2) 50%
+  );
+  background-size: 100% 4px;
+  mix-blend-mode: multiply;
+  opacity: 0.85;
+}
+
+body.transcript-layout--terminal .crt-terminal-screen::after {
+  animation: none;
+  background: radial-gradient(
+    ellipse 100% 88% at 50% 45%,
+    transparent 40%,
+    rgba(0, 0, 0, 0.22) 78%,
+    rgba(0, 0, 0, 0.48) 100%
+  );
+}
+
+.crt-terminal-scanline-sweep {
+  display: none;
+}
+
+body.transcript-layout--terminal .crt-terminal-scanline-sweep {
+  display: none !important;
+}
+
+/* Phosphor field behind scroll area + prompt; above CRT scanline overlays */
+body.transcript-layout--terminal .transcript-terminal-column {
+  position: relative;
+  z-index: 6;
+  flex: 1 1 auto;
+  min-height: 0;
+  background: radial-gradient(
+    ellipse 100% 80% at 50% 42%,
+    #0a3220 0%,
+    #05180e 55%,
+    #020806 100%
+  );
+  border-radius: 10px 10px 0 0;
+  overflow: hidden;
+  box-shadow: inset 0 0 100px rgba(0, 25, 14, 0.65);
+}
+
+body.transcript-layout--terminal .crt-terminal-screen .transcript-feed--crt,
+body.transcript-layout--terminal #transcript.transcript-feed--crt {
+  display: block;
+  gap: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  font-family: "VT323", monospace;
+  font-size: clamp(1.05rem, 2.6cqw, 1.4rem);
+  line-height: 1.15;
+  color: #5bf870;
+  text-transform: uppercase;
+  text-shadow:
+    0 0 5px rgba(200, 255, 210, 0.35),
+    0 0 14px rgba(50, 200, 90, 0.25);
+  padding: 1.1rem 1.15rem 0.85rem;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+body.transcript-layout--terminal
+  #transcript.transcript-feed--crt::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+body.transcript-layout--terminal
+  .transcript-panel--crt
+  .transcript-block--terminal {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0;
+  box-shadow: none !important;
+  margin: 0 0 0.12em;
+  padding: 0;
+}
+
+body.transcript-layout--terminal .transcript-block--terminal:last-child {
+  margin-bottom: 0;
+}
+
+body.transcript-layout--terminal
+  .transcript-panel--crt
+  .transcript-block--terminal
+  .transcript-step {
+  font-family: "VT323", monospace;
+  font-size: clamp(0.95rem, 2.2cqw, 1.15rem);
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  color: #6adb88;
+  background: transparent !important;
+  border: none !important;
+  border-bottom: none;
+  padding: 0;
+  margin: 0 0 0.15em;
+  text-shadow: 0 0 6px rgba(100, 240, 150, 0.3);
+}
+
+body.transcript-layout--terminal
+  .transcript-panel--crt
+  .transcript-block--terminal
+  .transcript-body {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  color: #5bf870;
+  margin: 0;
+  padding: 0;
+  min-height: 0;
+  background: transparent !important;
+  background-image: none !important;
+  border: none !important;
+  border-radius: 0;
+  box-shadow: none !important;
+  text-shadow: inherit;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  overflow: hidden;
+}
+
+body.transcript-layout--terminal .transcript-block--echo {
+  margin: 0 0 0.12em;
+  padding: 0;
+}
+
+body.transcript-layout--terminal .transcript-terminal-echo-line {
+  margin: 0;
+  padding: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  overflow: hidden;
+  color: #5bf870;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  text-shadow: inherit;
+  background: transparent !important;
+}
+
+body.transcript-layout--terminal .transcript-terminal-prompt-shell {
+  background: transparent;
+  border-top: 1px solid rgba(45, 110, 70, 0.35);
+  font-family: "VT323", monospace;
+  font-size: clamp(1rem, 2.5cqw, 1.3rem);
+  text-transform: uppercase;
+  text-shadow: 0 0 5px rgba(180, 255, 200, 0.25);
+}
+
+body.transcript-layout--terminal .transcript-terminal-prompt {
+  color: #5bf870;
+  text-shadow: 0 0 6px rgba(91, 248, 112, 0.5);
+}
+
+body.transcript-layout--terminal
+  .manual-controls-group
+  .manual-input::placeholder {
+  color: rgba(91, 248, 112, 0.35);
+  text-transform: uppercase;
+}
+
+body.transcript-layout--terminal
+  .crt-terminal-screen
+  .transcript-feed--crt::selection,
+body.transcript-layout--terminal
+  .crt-terminal-screen
+  .transcript-feed--crt
+  *::selection {
+  background: #5bf870;
+  color: #05180e;
+  text-shadow: none;
+}
+
+body.transcript-layout--terminal .manual-controls-group .toggle-label,
+body.transcript-layout--terminal .manual-controls-group .btn-quiet,
+body.transcript-layout--terminal .manual-controls-group #manual-send {
+  color: #8ee0a8;
+  text-shadow: 0 0 4px rgba(100, 220, 140, 0.2);
+}
+
+@keyframes terminal-scanline-sweep {
+  0% {
+    bottom: 100%;
+  }
+  80% {
+    bottom: 100%;
+  }
+  100% {
+    bottom: -25%;
+  }
+}
+
+/* Title + ? on one line; heading grows so the help control sits at the end (top-right of the row). */
+.panel-hint-row--transcript {
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  gap: 0.35rem 0.75rem;
+}
+
+.panel-hint-row--transcript h2 {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.panel-hint-row--transcript .crt-transcript-help-btn {
+  flex: 0 0 auto;
+}
+
 @keyframes crt-screen-flicker {
   0%,
   100% {
@@ -1144,6 +1916,10 @@ h2 {
   .crt-terminal-screen::after {
     animation: none;
     opacity: 0.85;
+  }
+  body.transcript-layout--terminal .crt-terminal-scanline-sweep {
+    animation: none;
+    opacity: 0;
   }
 }
 .transcript-panel--crt .panel-hint-row h2 {
@@ -1335,7 +2111,12 @@ h2 {
   text-shadow:
     0 0 7px rgba(60, 255, 120, 0.35),
     0 0 1px rgba(100, 255, 160, 0.88);
-  background: radial-gradient(ellipse 120% 80% at 50% 0%, rgba(30, 80, 50, 0.25) 0%, transparent 55%),
+  background:
+    radial-gradient(
+      ellipse 120% 80% at 50% 0%,
+      rgba(30, 80, 50, 0.25) 0%,
+      transparent 55%
+    ),
     #050807;
 }
 
@@ -1405,7 +2186,7 @@ details summary {
 }
 /* Flex layout hides native disclosure markers; restore tree affordance with a chevron. */
 .prompt-summary::before {
-  content: '▸';
+  content: "▸";
   display: inline-block;
   flex-shrink: 0;
   margin-right: 0.4rem;
@@ -1423,8 +2204,10 @@ details[open] > .prompt-summary::before {
 }
 .copy-prompt-btn {
   flex-shrink: 0;
-  padding: 0.2rem 0.45rem;
-  font-size: 0.72rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.1rem 0.35rem;
   border-radius: 4px;
   border: 1px solid #4a5570;
   background: #2c3344;
@@ -1433,4 +2216,10 @@ details[open] > .prompt-summary::before {
 }
 .copy-prompt-btn:hover {
   background: #363d52;
+}
+.copy-prompt-btn .dashboard-material-icon,
+.mermaid-fullscreen-open-btn .dashboard-material-icon {
+  font-size: 0.8rem;
+  line-height: 1;
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 20;
 }

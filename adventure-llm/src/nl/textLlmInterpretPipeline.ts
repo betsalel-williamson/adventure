@@ -3,8 +3,20 @@ import {
   coerceAutoplayPlannerToVocab,
   coerceInterpretedCommandToVocab,
 } from "./coerceToVocab.js";
+import { travelMotionPrimaryIgnoresSecondColumn } from "./inferredExplorationMap.js";
 import { repairInterpretedCommand } from "./repairInterpreted.js";
 import type { AutoplayPlannerResponse, InterpretedCommand } from "./schema.js";
+
+/** Motion/travel primaries do not use GETIN column 2; strip hallucinated object secondaries. */
+function stripSpuriousAutoplayTravelSecondary(
+  cmd: InterpretedCommand,
+): InterpretedCommand {
+  const p = cmd.primaryToken.toUpperCase().slice(0, 5).trimEnd();
+  const s = cmd.secondaryToken?.trim();
+  if (!s || s.length === 0) return cmd;
+  if (!travelMotionPrimaryIgnoresSecondColumn(p)) return cmd;
+  return { ...cmd, secondaryToken: undefined };
+}
 
 /**
  * Shared post-parse path for interpret: snap tokens to ATAB (+ QUIT), then repair heuristics.
@@ -38,5 +50,6 @@ export function finalizeAutoplayPlannerResponse(
     },
     recentGameTextForRepair,
   );
-  return { ...repaired, continuePlaying };
+  const cleaned = stripSpuriousAutoplayTravelSecondary(repaired);
+  return { ...cleaned, continuePlaying };
 }

@@ -200,6 +200,19 @@ export function detectAlternatingLocationCommandLoop(
   };
 }
 
+/**
+ * After death + "play again", Fortran jumps to label 1100 and prints `INIT DONE`
+ * before re-seeding the world. Inventory heuristics must ignore transcript and
+ * TAKE history from before that point.
+ */
+function transcriptAfterLastFortranInit(text: string): string {
+  const lower = text.toLowerCase();
+  const marker = "init done";
+  const idx = lower.lastIndexOf(marker);
+  if (idx < 0) return text;
+  return text.slice(idx + marker.length).replace(/^[\s\r\n]*/, "");
+}
+
 function extractInventoryFromText(text: string): string[] {
   const u = text.toUpperCase();
   const out: string[] = [];
@@ -432,6 +445,11 @@ function inventorySignature(items: readonly string[]): string {
 export class AutoplaySessionMemory {
   private recentRawTail = "";
   private turns: AutoplayTurnRecord[] = [];
+  /**
+   * Only turns from this index onward contribute to {@link inferCarriedInventoryFromTurnHistory}.
+   * Advanced when Fortran prints INIT DONE (full game re-init after restart).
+   */
+  private inventoryTurnStart = 0;
   /** Structured inventory lines parsed from the transcript (Fortran text is authoritative). */
   private inventory: string[] = [];
   private locationHint = "";
@@ -658,6 +676,10 @@ export class AutoplaySessionMemory {
     });
     if (this.turns.length > 400) {
       this.turns.shift();
+      this.inventoryTurnStart = Math.max(0, this.inventoryTurnStart - 1);
+    }
+    if (/\bINIT\s+DONE\b/i.test(norm)) {
+      this.inventoryTurnStart = this.turns.length;
     }
     const cmdLine = formatPlayerCommandLineForTranscript(command);
     const withCommand = cmdLine.length > 0 ? `${cmdLine}\n${norm}` : norm;
@@ -875,8 +897,11 @@ export class AutoplaySessionMemory {
   }
 
   private refreshDerived(text: string): void {
-    const fromText = extractInventoryFromText(text);
-    const fromTurns = inferCarriedInventoryFromTurnHistory(this.turns);
+    const tailForInventory = transcriptAfterLastFortranInit(text);
+    const fromText = extractInventoryFromText(tailForInventory);
+    const fromTurns = inferCarriedInventoryFromTurnHistory(
+      this.turns.slice(this.inventoryTurnStart),
+    );
     this.inventory = fromText.length > 0 ? fromText : fromTurns;
     const loc = extractLocationHint(text);
     if (loc) this.locationHint = loc;

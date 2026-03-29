@@ -28,7 +28,7 @@ describe("explorationGraphViz", () => {
     const snap = m.toSnapshot();
     expect(snap.directedEdges.length).toBeGreaterThanOrEqual(2);
     const mer = inferredMapToMermaid(snap);
-    expect(mer).toContain("flowchart LR");
+    expect(mer).toContain("flowchart TD");
     expect(mer).toContain("-->");
     expect(mer).toMatch(/\["OPEN FOREST"\]/);
     expect(mer).not.toMatch(/YOU ARE IN OPEN FOREST/);

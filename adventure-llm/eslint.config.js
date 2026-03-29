@@ -23,7 +23,7 @@ export default tseslint.config(
     files: ["public/**/*.js"],
     languageOptions: {
       globals: globals.browser,
-      sourceType: "script",
+      sourceType: "module",
     },
   },
 );
