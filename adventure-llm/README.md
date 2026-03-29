@@ -2,6 +2,8 @@
 
 TypeScript tooling for Colossal Cave Adventure: parses unchanged `adventure.dat`, runs the Fortran game as a behavioral oracle, and adds optional Gemini-based natural language mapping plus optional location imagery hooks.
 
+![AdventureLLM autoplay web dashboard: transcript, planner/heuristic state, map, session FSM](../docs/adventure-llm-dashboard.png)
+
 ## Requirements
 
 - Node 20+
@@ -26,7 +28,7 @@ npm run build && npm run web
 
 Or from the repo root: **`make run-autoplay-web`**.
 
-Open **http://127.0.0.1:8787/** (override port with **`ADVENTURE_LLM_WEB_PORT`**). The page opens an **SSE** connection to **`/events`**, which starts one autoplay session: game text streams into the transcript panel, **Thinking…** shows while the planner runs, and the **inferred map** (wrapper grid), **parsed inventory**, and **truncated planner prompts** update each turn. Static files live under `adventure-llm/public/`.
+Open **http://127.0.0.1:8787/** (override port with **`ADVENTURE_LLM_WEB_PORT`**). Step-by-step demo script: **[`../DEMO.md`](../DEMO.md)**. REST and SSE reference: **[`../API_DOCUMENTATION.md`](../API_DOCUMENTATION.md)**. The page opens an **SSE** connection to **`/events`**, which starts one autoplay session: game text streams into the transcript panel, **Thinking…** shows while the planner runs, and the **inferred map** (wrapper grid), **parsed inventory**, and **truncated planner prompts** update each turn. Static files live under `adventure-llm/public/`.
 
 The browser UI is split into small **ES modules** (see **Layout** below): `app.js` binds the DOM and wires listeners; **`dashboardApi.js`** centralizes `fetch` to `/api/*`; **`dashboardState.js`** holds session state; **`dashboardEventStream.js`** registers SSE handlers; **`transcriptView.js`**, **`mapView.js`**, and **`dashboardWidgets.js`** own transcript, map/mermaid, and shared widgets. **`defaultPorts()`** / **`resolveDashboardElements(doc)`** in **`dashboardEnv.js`** keep environment access in one place for tests. Pure helpers (**`autoplayPace.js`**, **`sseJson.js`**, **`transcriptLayoutLogic.js`**) are covered by **Node** Vitest; DOM-oriented pieces use **`src/**/\*.dom.test.ts`** (happy-dom). HTTP handlers for the same routes are also exercised from **`src/cli/webDashboard.test.ts`\*\*.
 
@@ -158,3 +160,7 @@ After the first NL-mapped move, further lines are sent as **classic typed comman
 **Self-acting mode:** with `GEMINI_API_KEY` set, run **`npm start -- --autoplay`**. Gemini plans each move from session memory (event log, heuristic inventory/location hints) plus recent game output and vocabulary; the process streams like normal play, with a configurable pause between moves so you can read the screen. Use **`ADVENTURE_LLM_INSTRUCTIONS`**, **`ADVENTURE_LLM_AUTOPLAY_*`** in `.env` as needed (see table above). Not compatible with **`--classic`**.
 
 You can still run `./adventure` directly from the repository root if you prefer.
+
+## Credits
+
+The CRT monitor styling in the autoplay web dashboard (scanlines, vignette, barrel distortion, and related effects) is credited to [CRT terminal in CSS/JS](https://codesandbox.io/p/sandbox/crt-terminal-in-css-js-tlijm?file=%2Findex.html) on CodeSandbox.

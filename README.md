@@ -1,5 +1,70 @@
 # adventure
 
+**Classic Colossal Cave Adventure, restored for modern Fortran, plus optional
+TypeScript + LLM tooling** that can drive autoplay and stream a local web
+dashboard (transcript, inferred map, session diagram).
+
+![AdventureLLM autoplay web dashboard: transcript, state panels, map, and Mermaid FSM](docs/adventure-llm-dashboard.png)
+
+## The problem
+
+The original game is a landmark of computing history, but running it in a
+classroom or demo setting often means a plain terminal — hard for newcomers to
+see structure, state, or how an AI agent reasons move-by-move.
+
+## The solution
+
+This repository ships a **buildable Fortran port** (same `adventure.dat`
+mechanics) and, in [`adventure-llm/`](adventure-llm/), an **optional layer** that
+uses the compiled game as an oracle: scripted GETIN-compatible play, optional
+natural-language mapping, and a **local autoplay dashboard** with SSE updates.
+
+## Tech stack
+
+- **Fortran 77** — game engine (`gfortran`, `make`)
+- **TypeScript / Node 20+** — `adventure-llm` CLI, tests (Vitest), local HTTP
+  dashboard (static ES modules)
+- **Optional LLMs** — Google Gemini, local MLX Gemma, or OpenAI-compatible HTTP
+  (see [`adventure-llm/.env.example`](adventure-llm/.env.example))
+
+## Quick start
+
+**Classic game only** (no Node):
+
+```sh
+git clone https://github.com/betsalel-williamson/adventure.git
+cd adventure
+make
+./adventure
+```
+
+**Autoplay web dashboard** (needs Node + LLM env configured):
+
+```sh
+make install-llm
+make run-autoplay-web
+```
+
+Open [http://127.0.0.1:8787/](http://127.0.0.1:8787/) — see
+[`DEMO.md`](DEMO.md) for a judge-oriented walkthrough.
+
+## Docs & community
+
+| Doc | Purpose |
+| --- | ------- |
+| [`DEMO.md`](DEMO.md) | Step-by-step demo script |
+| [`API_DOCUMENTATION.md`](API_DOCUMENTATION.md) | Dashboard HTTP + SSE |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | How to contribute, PR checks |
+| [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) | Contributor Covenant |
+| [`ROADMAP.md`](ROADMAP.md) | Near- and long-term direction |
+| [`LICENSE`](LICENSE) | MIT |
+
+## Team
+
+*(Hackathon or course submission: add names and roles here.)*
+
+---
+
 The original Fortran version of Adventure by Will Crowther, restored to
 functionality when compiled with a modern Fortran compiler.  For a history of
 this program, see the
