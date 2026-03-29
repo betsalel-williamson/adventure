@@ -86,6 +86,20 @@ flowchart TB
 6. **`planAfterAutoplayGuards`** — Ordered substitutions before sending GETIN: parser-rejection escape → **redundant TAKE/GET when already carrying** → oscillation → stagnation → repeated LOOK/EXAMI in same cell.
 7. **Pacing and length** — `ADVENTURE_LLM_AUTOPLAY_PACE_MS`, `ADVENTURE_LLM_AUTOPLAY_MAX_MOVES`, `ADVENTURE_LLM_AUTOPLAY_CONTEXT_CHARS`; the **autoplay web dashboard** passes **`AutoplayRunOverrides`** with **`getPaceMs` / `getMaxMoves`** so **`POST /api/autoplay-settings`** updates apply **between moves** without restarting the session; the UI auto-saves on change and the server broadcasts **`autoplay_settings`** over SSE.
 
+### Autoplay web dashboard (browser)
+
+The dashboard is served as static ES modules under [`adventure-llm/public/`](../../adventure-llm/public/). The entry script [`app.js`](../../adventure-llm/public/app.js) calls **`bindDashboardElements(resolveDashboardElements(document))`**, builds **`createDashboardApi(defaultPorts())`**, and registers SSE via **`registerDashboardEventHandlers`** in [`dashboardEventStream.js`](../../adventure-llm/public/dashboardEventStream.js). Mutable session fields live in the exported **`state`** object from [`dashboardState.js`](../../adventure-llm/public/dashboardState.js) (tests can use **`createDashboardState()`** for an isolated bag). **Ports** (`fetch`, `EventSource`, `localStorage`, `location`, `requestAnimationFrame`) are taken from **`defaultPorts()`** in [`dashboardEnv.js`](../../adventure-llm/public/dashboardEnv.js) so harnesses can substitute fakes.
+
+| Module | Responsibility |
+|--------|------------------|
+| **`dashboardApi.js`** | All `fetch` calls to `/api/*` |
+| **`transcriptView.js`** | Transcript layout, chunks, terminal echo queue |
+| **`mapView.js`** | Map slice, Mermaid/DOT panel, snapshot application |
+| **`dashboardWidgets.js`** | Copy buttons, help dialogs, map scroll chrome, mermaid fullscreen |
+| **`autoplayPace.js`**, **`sseJson.js`**, **`transcriptLayoutLogic.js`** | Pure or mostly pure logic; tested from Node Vitest |
+
+**Verification:** `npm run check` in `adventure-llm` runs TypeScript and Vitest (including **`src/**/*.dom.test.ts`** with happy-dom where the DOM is required). Server-side dashboard HTTP behavior remains covered by [`webDashboard.test.ts`](../../adventure-llm/src/cli/webDashboard.test.ts).
+
 ### NL provider differences (pre-pipeline)
 
 | Provider | Typical constraint | Notes |
@@ -120,4 +134,4 @@ After generation, **post-processing is identical** (`finalizeInterpretedCommand`
 - [ADR0001: adventure-llm TextLlm providers](../decisions/ADR0001-adventure-llm-text-llm-providers.md) — NL pipeline and cache decisions.
 - Guideline: [autoplay-planner-context](../../guidelines/adventure-llm/autoplay-planner-context.md) — prompt modes, candidate hygiene, guards, web pace overrides.
 - [`.work-items/adventure-llm/design.md`](../../.work-items/adventure-llm/design.md) — feature design (if maintained).
-- Key code: [`adventure-llm/src/index.ts`](../../adventure-llm/src/index.ts) (public exports), [`adventure-llm/src/cli/main.ts`](../../adventure-llm/src/cli/main.ts), [`adventure-llm/src/nl/`](../../adventure-llm/src/nl/).
+- Key code: [`adventure-llm/src/index.ts`](../../adventure-llm/src/index.ts) (public exports), [`adventure-llm/src/cli/main.ts`](../../adventure-llm/src/cli/main.ts), [`adventure-llm/src/cli/webDashboard.ts`](../../adventure-llm/src/cli/webDashboard.ts) (HTTP + SSE server for the dashboard), [`adventure-llm/src/nl/`](../../adventure-llm/src/nl/), [`adventure-llm/public/`](../../adventure-llm/public/) (browser dashboard modules).

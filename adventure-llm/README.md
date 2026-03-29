@@ -28,6 +28,8 @@ Or from the repo root: **`make run-autoplay-web`**.
 
 Open **http://127.0.0.1:8787/** (override port with **`ADVENTURE_LLM_WEB_PORT`**). The page opens an **SSE** connection to **`/events`**, which starts one autoplay session: game text streams into the transcript panel, **Thinking…** shows while the planner runs, and the **inferred map** (wrapper grid), **parsed inventory**, and **truncated planner prompts** update each turn. Static files live under `adventure-llm/public/`.
 
+The browser UI is split into small **ES modules** (see **Layout** below): `app.js` binds the DOM and wires listeners; **`dashboardApi.js`** centralizes `fetch` to `/api/*`; **`dashboardState.js`** holds session state; **`dashboardEventStream.js`** registers SSE handlers; **`transcriptView.js`**, **`mapView.js`**, and **`dashboardWidgets.js`** own transcript, map/mermaid, and shared widgets. **`defaultPorts()`** / **`resolveDashboardElements(doc)`** in **`dashboardEnv.js`** keep environment access in one place for tests. Pure helpers (**`autoplayPace.js`**, **`sseJson.js`**, **`transcriptLayoutLogic.js`**) are covered by **Node** Vitest; DOM-oriented pieces use **`src/**/\*.dom.test.ts`** (happy-dom). HTTP handlers for the same routes are also exercised from **`src/cli/webDashboard.test.ts`\*\*.
+
 The **Text LLM** dropdown (when at least one backend is configured in env) hot-swaps between **local MLX**, **OpenAI-compatible HTTP** (`ADVENTURE_LLM_HTTP_*`), and **Google Gemini** (`GEMINI_API_KEY`) without restarting the server. API keys and base URLs stay server-side; the UI only sends **`POST /api/text-llm`** with `{ providerId, modelId }` from allowlisted presets. **`ADVENTURE_LLM_HTTP_WEB_PRESETS`** (comma-separated) adds extra HTTP model names for that dropdown alongside **`ADVENTURE_LLM_HTTP_MODEL`**.
 
 ## OWASP Dependency-Check (SCA)
@@ -126,13 +128,14 @@ Then run `make dependency-check` from the repository root; the Makefile passes `
 
 ## Layout
 
-| Path                 | Role                                               |
-| -------------------- | -------------------------------------------------- |
-| `src/dat/loadDat.ts` | Loader for `adventure.dat` (Fortran section order) |
-| `src/engine/`        | Fortran subprocess oracle + helpers                |
-| `src/cli/getin.ts`   | GETIN-compatible tokenizer                         |
-| `src/nl/`            | Zod schema + Gemini JSON client                    |
-| `src/images/`        | Cache keys + optional image file helpers           |
+| Path                 | Role                                                                                                                                                                                                                 |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/dat/loadDat.ts` | Loader for `adventure.dat` (Fortran section order)                                                                                                                                                                   |
+| `src/engine/`        | Fortran subprocess oracle + helpers                                                                                                                                                                                  |
+| `src/cli/getin.ts`   | GETIN-compatible tokenizer                                                                                                                                                                                           |
+| `src/nl/`            | Zod schema + Gemini JSON client                                                                                                                                                                                      |
+| `src/images/`        | Cache keys + optional image file helpers                                                                                                                                                                             |
+| `public/`            | Autoplay dashboard static assets: **`app.js`** (entry), modular **`dashboard*.js`** / **`transcriptView.js`** / **`mapView.js`**, plus **`terminalTyper.js`**, **`transcriptLayoutLogic.js`**, CSS, and `index.html` |
 
 ## CLI
 
