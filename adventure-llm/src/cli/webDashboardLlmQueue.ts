@@ -4,6 +4,7 @@ import type {
   InterpretPlayerInputOptions,
   PlannerUserPromptInput,
   TextLlm,
+  TextLlmProviderId,
 } from "../nl/textLlmContract.js";
 import type {
   AutoplayPlannerResponse,
@@ -41,25 +42,35 @@ export function createLlmSequentialExecutor(): LlmSequentialExecutor {
 /**
  * Wraps a live TextLlm so interpret/plan/generate run through the global queue with log context.
  */
+export type QueuedTextLlmSelection = {
+  readonly providerId: () => TextLlmProviderId;
+  readonly modelId: () => string;
+};
+
 export function createQueuedTextLlm(
-  getInner: () => TextLlm,
+  getInner: () => TextLlm | Promise<TextLlm>,
   sessionId: string,
   executor: LlmSequentialExecutor,
+  selection: QueuedTextLlmSelection,
 ): TextLlm {
   const run = <T>(fn: () => Promise<T>) => executor.run(sessionId, fn);
+  const resolveInner = () => Promise.resolve(getInner());
   return {
     get providerId() {
-      return getInner().providerId;
+      return selection.providerId();
     },
     get modelId() {
-      return getInner().modelId;
+      return selection.modelId();
     },
     interpretPlayerInput(
       userText: string,
       db: AdventureDatabase,
       options: InterpretPlayerInputOptions,
     ): Promise<InterpretedCommand> {
-      return run(() => getInner().interpretPlayerInput(userText, db, options));
+      return run(async () => {
+        const inner = await resolveInner();
+        return inner.interpretPlayerInput(userText, db, options);
+      });
     },
     planAutoplay(
       db: AdventureDatabase,
@@ -69,10 +80,16 @@ export function createQueuedTextLlm(
         includeDatHelpInSystem?: boolean;
       },
     ): Promise<AutoplayPlannerResponse> {
-      return run(() => getInner().planAutoplay(db, options));
+      return run(async () => {
+        const inner = await resolveInner();
+        return inner.planAutoplay(db, options);
+      });
     },
     generateUnstructured(prompt: string): Promise<string> {
-      return run(() => getInner().generateUnstructured(prompt));
+      return run(async () => {
+        const inner = await resolveInner();
+        return inner.generateUnstructured(prompt);
+      });
     },
   };
 }

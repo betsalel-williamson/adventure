@@ -286,6 +286,13 @@ export function createAutoplayDashboardServer(
           const se = sessions.get(sessionId);
           if (se) se.broadcast(ev, p);
         },
+        detachSessionsFromPoolKey: (key) => {
+          for (const s of sessions.values()) {
+            if (s.poolAttachedKey === key) {
+              s.poolAttachedKey = null;
+            }
+          }
+        },
         beginMlxModelLoad,
         endMlxModelLoad,
         mlxSwapInFlight: {
@@ -367,16 +374,21 @@ export function createAutoplayDashboardServer(
 
     const textLlmSource = {
       current: createQueuedTextLlm(
-        () => {
+        async () => {
           if (!pool || !textLlmConfigured) {
             throw new Error("No text LLM configured");
           }
           const s = sessions.get(sessionId);
           if (!s) throw new Error("Session not found");
+          await pool.ensureSessionAttached(s);
           return pool.getClient(poolKey(s.textLlmProviderId, s.textLlmModelId));
         },
         sessionId,
         llmExecutor,
+        {
+          providerId: () => llmSel.textLlmProviderId,
+          modelId: () => llmSel.textLlmModelId,
+        },
       ),
     };
     let autoplayRunning: Promise<void> | null = null;

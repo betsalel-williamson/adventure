@@ -59,6 +59,8 @@ export type TextLlmPoolRuntime = {
     event: string,
     payload: unknown,
   ) => void;
+  /** Clear pool attachment for sessions still bound to an entry that is being unloaded. */
+  detachSessionsFromPoolKey: (poolKeyStr: string) => void;
   beginMlxModelLoad: (opts?: { canCancel?: boolean }) => void;
   endMlxModelLoad: () => void;
   mlxSwapInFlight: { current: MlxLmStdioTextLlm | null };
@@ -130,6 +132,17 @@ export class WebDashboardTextLlmPool {
     return best?.key ?? null;
   }
 
+  /** LRU among all loaded entries (used when every slot is still referenced). */
+  private pickForceEvictionVictim(): string | null {
+    let best: { key: string; t: number } | null = null;
+    for (const [key, e] of this.entries) {
+      if (!best || e.lastTouchedMs < best.t) {
+        best = { key, t: e.lastTouchedMs };
+      }
+    }
+    return best?.key ?? null;
+  }
+
   private async disposeClient(client: TextLlm): Promise<void> {
     if (client instanceof MlxLmStdioTextLlm) {
       await client.waitForIdle().catch(() => {
@@ -150,12 +163,14 @@ export class WebDashboardTextLlmPool {
 
   private async makeRoomForNewKeyIfNeeded(newKey: string): Promise<void> {
     while (this.entries.size >= this.maxEntries && !this.entries.has(newKey)) {
-      const victim = this.pickEvictionVictim();
+      const victim =
+        this.pickEvictionVictim() ?? this.pickForceEvictionVictim();
       if (!victim) {
         throw new Error(
-          `At most ${this.maxEntries} loaded text model(s) allowed (ADVENTURE_LLM_WEB_MAX_LOADED_MODELS). Close another dashboard session or pick a model that is already loaded.`,
+          `At most ${this.maxEntries} loaded text model(s) allowed (ADVENTURE_LLM_WEB_MAX_LOADED_MODELS).`,
         );
       }
+      this.rt.detachSessionsFromPoolKey(victim);
       await this.disposeEntryKey(victim);
     }
   }
@@ -268,6 +283,10 @@ export class WebDashboardTextLlmPool {
         return;
       }
 
+      const oldKey = s.poolAttachedKey;
+      await this.releaseRef(oldKey);
+      s.poolAttachedKey = null;
+
       await this.makeRoomForNewKeyIfNeeded(wantKey);
       const [pid, mid] = splitPoolKey(wantKey);
       const client = await this.instantiate(pid, mid, s);
@@ -276,7 +295,6 @@ export class WebDashboardTextLlmPool {
         refCount: 1,
         lastTouchedMs: Date.now(),
       });
-      await this.releaseRef(s.poolAttachedKey);
       s.poolAttachedKey = wantKey;
     });
   }
