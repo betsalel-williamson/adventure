@@ -54,16 +54,16 @@ flowchart TB
   Fortran --> Images
 ```
 
-| Component | Role |
-|-----------|------|
-| **`loadDat` / types** | Parses `IKIND` sections into runtime structures mirroring Fortran tables (`LLINE`, `TRAVEL`, `KTAB`/`ATAB`, …). |
-| **`subprocessEngine`** | Spawns `./adventure`, streams transcript, sends GETIN lines (including scripted retry on rejection). |
-| **`TextLlm`** | `interpretPlayerInput`, `planAutoplay`, `generateUnstructured`; implemented by Google SDK, HTTP chat completions, MLX worker. |
-| **`textLlmInterpretPipeline`** | After JSON parse + `coerceLlmJson`: `coerceToVocab` (ATAB + synthetic `QUIT`) then `repairInterpretedCommand` — **all providers**. |
-| **`interpretCacheKey` / `interpretDiskCache`** | Disk cache keys include schema version, model, provider, user text, compact/structured flags, and the **same recent-game tail** as the interpret prompt. |
-| **`AutoplaySessionMemory`** | Turn log, heuristic location/inventory, inferred exploration map, situational parser-token candidates, **`getObjectHintScopeText()`** (latest room block for **Items** / **Cand_Obj** / loot funnel; see [ADR0003](../decisions/ADR0003-scoped-object-hints-latest-room-block.md)), planner **guards** (rejected GETIN, oscillation, stagnation, redundant take-when-carrying, repeated LOOK/EXAMI); used heavily in autoplay and (by default) prepended for **interactive** NL. |
-| **`adventureNlPrompts`** | Shared interpret/autoplay prompt text, compact/structured layouts, vocab hints, optional interpret few-shots; **`resolveAutoplayPromptMode()`** selects **`explore`** (default) vs **`full`** autoplay planner copy (`ADVENTURE_LLM_AUTOPLAY_PROMPT_MODE`). |
-| **`locationImages`** | Optional imagery from Gemini; does not alter `adventure.dat` text. |
+| Component                                      | Role                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`loadDat` / types**                          | Parses `IKIND` sections into runtime structures mirroring Fortran tables (`LLINE`, `TRAVEL`, `KTAB`/`ATAB`, …).                                                                                                                                                                                                                                                                                                                                                                  |
+| **`subprocessEngine`**                         | Spawns `./adventure`, streams transcript, sends GETIN lines (including scripted retry on rejection).                                                                                                                                                                                                                                                                                                                                                                             |
+| **`TextLlm`**                                  | `interpretPlayerInput`, `planAutoplay`, `generateUnstructured`; implemented by Google SDK, HTTP chat completions, MLX worker.                                                                                                                                                                                                                                                                                                                                                    |
+| **`textLlmInterpretPipeline`**                 | After JSON parse + `coerceLlmJson`: `coerceToVocab` (ATAB + synthetic `QUIT`) then `repairInterpretedCommand` — **all providers**.                                                                                                                                                                                                                                                                                                                                               |
+| **`interpretCacheKey` / `interpretDiskCache`** | Disk cache keys include schema version, model, provider, user text, compact/structured flags, and the **same recent-game tail** as the interpret prompt.                                                                                                                                                                                                                                                                                                                         |
+| **`AutoplaySessionMemory`**                    | Turn log, heuristic location/inventory, inferred exploration map, situational parser-token candidates, **`getObjectHintScopeText()`** (latest room block for **Items** / **Cand_Obj** / loot funnel; see [ADR0003](../decisions/ADR0003-scoped-object-hints-latest-room-block.md)), planner **guards** (rejected GETIN, oscillation, stagnation, redundant take-when-carrying, repeated LOOK/EXAMI); used heavily in autoplay and (by default) prepended for **interactive** NL. |
+| **`adventureNlPrompts`**                       | Shared interpret/autoplay prompt text, compact/structured layouts, vocab hints, optional interpret few-shots; **`resolveAutoplayPromptMode()`** selects **`explore`** (default) vs **`full`** autoplay planner copy (`ADVENTURE_LLM_AUTOPLAY_PROMPT_MODE`).                                                                                                                                                                                                                      |
+| **`locationImages`**                           | Optional imagery from Gemini; does not alter `adventure.dat` text.                                                                                                                                                                                                                                                                                                                                                                                                               |
 
 ## Process view
 
@@ -90,23 +90,23 @@ flowchart TB
 
 The dashboard is served as static ES modules under [`adventure-llm/public/`](../../adventure-llm/public/). The entry script [`app.js`](../../adventure-llm/public/app.js) calls **`bindDashboardElements(resolveDashboardElements(document))`**, builds **`createDashboardApi(defaultPorts())`**, and registers SSE via **`registerDashboardEventHandlers`** in [`dashboardEventStream.js`](../../adventure-llm/public/dashboardEventStream.js). Mutable session fields live in the exported **`state`** object from [`dashboardState.js`](../../adventure-llm/public/dashboardState.js) (tests can use **`createDashboardState()`** for an isolated bag). **Ports** (`fetch`, `EventSource`, `localStorage`, `location`, `requestAnimationFrame`) are taken from **`defaultPorts()`** in [`dashboardEnv.js`](../../adventure-llm/public/dashboardEnv.js) so harnesses can substitute fakes.
 
-| Module | Responsibility |
-|--------|------------------|
-| **`dashboardApi.js`** | All `fetch` calls to `/api/*` |
-| **`transcriptView.js`** | Transcript layout, chunks, terminal echo queue |
-| **`mapView.js`** | Map slice, Mermaid/DOT panel, snapshot application |
-| **`dashboardWidgets.js`** | Copy buttons, help dialogs, map scroll chrome, mermaid fullscreen |
-| **`autoplayPace.js`**, **`sseJson.js`**, **`transcriptLayoutLogic.js`** | Pure or mostly pure logic; tested from Node Vitest |
+| Module                                                                  | Responsibility                                                    |
+| ----------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| **`dashboardApi.js`**                                                   | All `fetch` calls to `/api/*`                                     |
+| **`transcriptView.js`**                                                 | Transcript layout, chunks, terminal echo queue                    |
+| **`mapView.js`**                                                        | Map slice, Mermaid/DOT panel, snapshot application                |
+| **`dashboardWidgets.js`**                                               | Copy buttons, help dialogs, map scroll chrome, mermaid fullscreen |
+| **`autoplayPace.js`**, **`sseJson.js`**, **`transcriptLayoutLogic.js`** | Pure or mostly pure logic; tested from Node Vitest                |
 
-**Verification:** `npm run check` in `adventure-llm` runs TypeScript and Vitest (including **`src/**/*.dom.test.ts`** with happy-dom where the DOM is required). Server-side dashboard HTTP behavior remains covered by [`webDashboard.test.ts`](../../adventure-llm/src/cli/webDashboard.test.ts).
+**Verification:** `npm run check` in `adventure-llm` runs TypeScript and Vitest (including **`src/**/\*.dom.test.ts`** with happy-dom where the DOM is required). Server-side dashboard HTTP behavior remains covered by [`webDashboard.test.ts`](../../adventure-llm/src/cli/webDashboard.test.ts).
 
 ### NL provider differences (pre-pipeline)
 
-| Provider | Typical constraint | Notes |
-|----------|-------------------|--------|
-| **Google** | Native JSON `responseSchema` + full vocab enum | Structured output from API. |
-| **HTTP** | Optional `json_schema` strict mode (`ADVENTURE_LLM_HTTP_JSON_SCHEMA`); retries on transient HTTP errors (`ADVENTURE_LLM_HTTP_RETRY_ATTEMPTS`). |
-| **MLX** | Freeform text → `parseJsonObjectFromLlmText`; serialized requests via stdio worker | Temperature/stop strings via env; compact prompts default on. |
+| Provider   | Typical constraint                                                                                                                             | Notes                                                         |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| **Google** | Native JSON `responseSchema` + full vocab enum                                                                                                 | Structured output from API.                                   |
+| **HTTP**   | Optional `json_schema` strict mode (`ADVENTURE_LLM_HTTP_JSON_SCHEMA`); retries on transient HTTP errors (`ADVENTURE_LLM_HTTP_RETRY_ATTEMPTS`). |
+| **MLX**    | Freeform text → `parseJsonObjectFromLlmText`; serialized requests via stdio worker                                                             | Temperature/stop strings via env; compact prompts default on. |
 
 After generation, **post-processing is identical** (`finalizeInterpretedCommand` / `finalizeAutoplayPlannerResponse`).
 
@@ -136,3 +136,4 @@ After generation, **post-processing is identical** (`finalizeInterpretedCommand`
 - Guideline: [autoplay-planner-context](../../guidelines/adventure-llm/autoplay-planner-context.md) — prompt modes, candidate hygiene, object scope, guards, web pace overrides.
 - [`.work-items/adventure-llm/design.md`](../../.work-items/adventure-llm/design.md) — feature design (if maintained).
 - Key code: [`adventure-llm/src/index.ts`](../../adventure-llm/src/index.ts) (public exports), [`adventure-llm/src/cli/main.ts`](../../adventure-llm/src/cli/main.ts), [`adventure-llm/src/cli/webDashboard.ts`](../../adventure-llm/src/cli/webDashboard.ts) (HTTP + SSE server for the dashboard), [`adventure-llm/src/nl/`](../../adventure-llm/src/nl/), [`adventure-llm/public/`](../../adventure-llm/public/) (browser dashboard modules).
+- Source layout map: [`adventure-llm/docs/source-map.md`](../../adventure-llm/docs/source-map.md) — themes, file kinds, **`public/`** ↔ Vitest pairing, future reorg tiers.

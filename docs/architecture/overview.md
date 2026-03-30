@@ -6,13 +6,13 @@ This directory holds **project-level** architecture views for the Colossal Cave 
 
 ## Documents
 
-| Document | Scope |
-|----------|--------|
-| [adventure-engine.md](./adventure-engine.md) | **`adventure-llm`**: dat loading, subprocess driver, `TextLlm` providers, NL pipeline, cache, CLI interactive vs autoplay, autoplay prompt modes (`explore` / `full`), session memory + guards, web dashboard, imagery. |
-| [adventure-fortran-engine.md](./adventure-fortran-engine.md) | **`adventure.f`** and **`adventure.dat`** only: loader, in-memory model, GETIN / ATAB, turn loop. |
-| [ADR0001: adventure-llm TextLlm providers](../decisions/ADR0001-adventure-llm-text-llm-providers.md) | Decision record: unified post-parse pipeline, interpret cache keys, interactive session prefix, HTTP retries, debug truncation. |
+| Document                                                                                             | Scope                                                                                                                                                                                                                   |
+| ---------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [adventure-engine.md](./adventure-engine.md)                                                         | **`adventure-llm`**: dat loading, subprocess driver, `TextLlm` providers, NL pipeline, cache, CLI interactive vs autoplay, autoplay prompt modes (`explore` / `full`), session memory + guards, web dashboard, imagery. |
+| [adventure-fortran-engine.md](./adventure-fortran-engine.md)                                         | **`adventure.f`** and **`adventure.dat`** only: loader, in-memory model, GETIN / ATAB, turn loop.                                                                                                                       |
+| [ADR0001: adventure-llm TextLlm providers](../decisions/ADR0001-adventure-llm-text-llm-providers.md) | Decision record: unified post-parse pipeline, interpret cache keys, interactive session prefix, HTTP retries, debug truncation.                                                                                         |
 
 ## Source layout (high level)
 
 - **Fortran simulation**: [`adventure.f`](../../adventure.f), [`adventure.dat`](../../adventure.dat), built [`adventure`](../../adventure) binary.
-- **TypeScript package**: [`adventure-llm/`](../../adventure-llm/) — CLI, NL module (`src/nl/`), engine glue (`src/engine/`), DAT loader (`src/dat/`).
+- **TypeScript package**: [`adventure-llm/`](../../adventure-llm/) — CLI, NL module (`src/nl/`), engine glue (`src/engine/`), DAT loader (`src/dat/`). Dashboard browser code lives under [`adventure-llm/public/`](../../adventure-llm/public/); Vitest suites that import those modules currently sit at the **`src/` root** (for example `sseJson.test.ts`, `dashboardEventStream.dom.test.ts`) — see [`adventure-llm/docs/source-map.md`](../../adventure-llm/docs/source-map.md).
