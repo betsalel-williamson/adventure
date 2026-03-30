@@ -7,6 +7,7 @@ import {
   cacheFilePath,
   cacheKeyFor,
   readCachedInterpreted,
+  runWithWebDashboardLlmLogContext,
   sanitizeInteractionLogRecord,
   writeCachedInterpreted,
 } from "./llmDebug.js";
@@ -92,5 +93,33 @@ describe("llmDebug", () => {
     expect(row.ts).toMatch(/^\d{4}-/);
 
     await rm(dir, { recursive: true, force: true });
+  });
+
+  it("appendInteractionLog writes per-session JSONL when ADVENTURE_LLM_DEBUG and ALS context", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "adv-llm-sesslog-"));
+    const prevCwd = process.cwd();
+    process.chdir(dir);
+    process.env.ADVENTURE_LLM_DEBUG = "1";
+    delete process.env.ADVENTURE_LLM_DEBUG_LOG;
+    const sid = "aaaaaaaa-bbbb-4ccc-bddd-eeeeeeeeeeee";
+    try {
+      await runWithWebDashboardLlmLogContext(sid, async () => {
+        await appendInteractionLog({ event: "sess_test", n: 2 });
+      });
+      const logPath = path.join(dir, ".cache", "llm-sessions", `${sid}.jsonl`);
+      const text = await readFile(logPath, "utf8");
+      const row = JSON.parse(text.trim()) as {
+        event: string;
+        n: number;
+        sessionId: string;
+        ts: string;
+      };
+      expect(row.event).toBe("sess_test");
+      expect(row.n).toBe(2);
+      expect(row.sessionId).toBe(sid);
+    } finally {
+      process.chdir(prevCwd);
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 });

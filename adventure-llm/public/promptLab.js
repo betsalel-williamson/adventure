@@ -5,6 +5,8 @@
  */
 export function createPromptLab(ports, el) {
   const { fetch: f } = ports;
+  const cred = { credentials: "same-origin" };
+  const cf = (input, init = {}) => f(input, { ...cred, ...init });
 
   function patchToForm(patch) {
     if (!patch || typeof patch !== "object") return;
@@ -38,7 +40,7 @@ export function createPromptLab(ports, el) {
   }
 
   async function fetchPromptExperiment() {
-    const r = await f("/api/prompt-experiment");
+    const r = await cf("/api/prompt-experiment");
     if (!r.ok) return;
     const j = await r.json();
     if (j.patch) patchToForm(j.patch);
@@ -50,7 +52,7 @@ export function createPromptLab(ports, el) {
   }
 
   async function applyPromptPatch() {
-    const r = await f("/api/prompt-experiment", {
+    const r = await cf("/api/prompt-experiment", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(formToPatchBody()),
@@ -89,7 +91,7 @@ export function createPromptLab(ports, el) {
 
   async function refreshProjectList() {
     if (!el.promptProjectSelectEl) return;
-    const r = await f("/api/prompt-projects");
+    const r = await cf("/api/prompt-projects");
     if (!r.ok) return;
     const j = await r.json();
     const projects = Array.isArray(j.projects) ? j.projects : [];
@@ -115,7 +117,7 @@ export function createPromptLab(ports, el) {
 
   async function refreshLlmGenFields() {
     if (!el.llmGenFieldsEl || !el.llmGenProviderEl) return;
-    const r = await f("/api/llm-generation-params");
+    const r = await cf("/api/llm-generation-params");
     el.llmGenFieldsEl.replaceChildren();
     if (!r.ok) {
       el.llmGenProviderEl.textContent = "—";
@@ -153,7 +155,7 @@ export function createPromptLab(ports, el) {
       const n = Number(inp.value);
       if (Number.isFinite(n)) body[k] = n;
     });
-    const r = await f("/api/llm-generation-params", {
+    const r = await cf("/api/llm-generation-params", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -202,7 +204,7 @@ export function createPromptLab(ports, el) {
 
     el.promptProjectNewBtn?.addEventListener("click", () => {
       const name = globalThis.prompt?.("Project name", "Experiment") ?? "";
-      void f("/api/prompt-projects", {
+      void cf("/api/prompt-projects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: name.trim() || "Untitled" }),
@@ -230,7 +232,7 @@ export function createPromptLab(ports, el) {
         setStatus(el.promptProjectStatusEl, "Select a project first.", true);
         return;
       }
-      void f(`/api/prompt-projects/${encodeURIComponent(id)}/activate`, {
+      void cf(`/api/prompt-projects/${encodeURIComponent(id)}/activate`, {
         method: "POST",
       })
         .then(async (r) => {
@@ -266,7 +268,7 @@ export function createPromptLab(ports, el) {
         return;
       }
       void applyPromptPatch()
-        .then(() => f(`/api/prompt-projects/${encodeURIComponent(id)}`))
+        .then(() => cf(`/api/prompt-projects/${encodeURIComponent(id)}`))
         .then(async (r) => {
           if (!r.ok) throw new Error("fetch");
           const rec = await r.json();
@@ -276,7 +278,7 @@ export function createPromptLab(ports, el) {
             generationParams: {},
             updatedAt: new Date().toISOString(),
           };
-          const gr = await f("/api/llm-generation-params");
+          const gr = await cf("/api/llm-generation-params");
           if (gr.ok) {
             const gj = await gr.json();
             const pid = gj.providerId;
@@ -297,11 +299,14 @@ export function createPromptLab(ports, el) {
                 maxOutputTokens: vals.maxOutputTokens,
               };
           }
-          const pr = await f(`/api/prompt-projects/${encodeURIComponent(id)}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(next),
-          });
+          const pr = await cf(
+            `/api/prompt-projects/${encodeURIComponent(id)}`,
+            {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(next),
+            },
+          );
           if (!pr.ok) throw new Error("put");
           setStatus(el.promptProjectStatusEl, "Saved to disk.", false);
           await refreshProjectList();
@@ -312,7 +317,7 @@ export function createPromptLab(ports, el) {
     el.promptProjectDeleteBtn?.addEventListener("click", () => {
       const id = el.promptProjectSelectEl?.value?.trim();
       if (!id) return;
-      void f(`/api/prompt-projects/${encodeURIComponent(id)}`, {
+      void cf(`/api/prompt-projects/${encodeURIComponent(id)}`, {
         method: "DELETE",
       }).then(async (r) => {
         if (!r.ok) {

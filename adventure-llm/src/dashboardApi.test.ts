@@ -9,7 +9,9 @@ describe("createDashboardApi", () => {
     });
     const api = createDashboardApi({ fetch });
     await api.getAutoplayMode();
-    expect(fetch).toHaveBeenCalledWith("/api/autoplay-mode");
+    expect(fetch).toHaveBeenCalledWith("/api/autoplay-mode", {
+      credentials: "same-origin",
+    });
   });
 
   it("postAutoplayMode sends JSON body", async () => {
@@ -20,6 +22,7 @@ describe("createDashboardApi", () => {
     const api = createDashboardApi({ fetch });
     await api.postAutoplayMode(true);
     expect(fetch).toHaveBeenCalledWith("/api/autoplay-mode", {
+      credentials: "same-origin",
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ plannerEnabled: true }),
@@ -34,6 +37,7 @@ describe("createDashboardApi", () => {
     const api = createDashboardApi({ fetch });
     await api.postMlxModelCancel();
     expect(fetch).toHaveBeenCalledWith("/api/mlx-model/cancel", {
+      credentials: "same-origin",
       method: "POST",
     });
   });

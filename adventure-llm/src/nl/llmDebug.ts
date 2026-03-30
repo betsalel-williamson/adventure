@@ -1,7 +1,26 @@
 import { createHash } from "node:crypto";
+import { AsyncLocalStorage } from "node:async_hooks";
 import { mkdir, readFile, writeFile, appendFile } from "node:fs/promises";
 import path from "node:path";
 import type { InterpretedCommand } from "./schema.js";
+
+function isWebDashboardLogSessionId(s: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    s,
+  );
+}
+
+/** When set (web dashboard LLM queue), JSONL goes under `.cache/llm-sessions/<id>.jsonl` unless `ADVENTURE_LLM_DEBUG_LOG` is set. */
+const webDashboardLlmLogContext = new AsyncLocalStorage<{
+  sessionId: string;
+}>();
+
+export function runWithWebDashboardLlmLogContext<T>(
+  sessionId: string,
+  fn: () => Promise<T>,
+): Promise<T> {
+  return webDashboardLlmLogContext.run({ sessionId }, fn);
+}
 
 /** JSONL log path; set explicitly or enable with `ADVENTURE_LLM_DEBUG=1` (defaults under cwd `.cache/`). */
 export function resolveDebugLogPath(): string | null {
@@ -9,6 +28,15 @@ export function resolveDebugLogPath(): string | null {
   if (explicit) return path.resolve(explicit);
   const on = process.env.ADVENTURE_LLM_DEBUG?.trim();
   if (on === "1" || on?.toLowerCase() === "true") {
+    const store = webDashboardLlmLogContext.getStore();
+    if (store?.sessionId && isWebDashboardLogSessionId(store.sessionId)) {
+      return path.resolve(
+        process.cwd(),
+        ".cache",
+        "llm-sessions",
+        `${store.sessionId}.jsonl`,
+      );
+    }
     return path.resolve(process.cwd(), ".cache", "llm-interactions.jsonl");
   }
   return null;
@@ -128,7 +156,17 @@ export async function appendInteractionLog(
   const logPath = resolveDebugLogPath();
   if (!logPath) return;
   await mkdir(path.dirname(logPath), { recursive: true });
+  const store = webDashboardLlmLogContext.getStore();
+  const extra =
+    store?.sessionId !== undefined
+      ? { sessionId: store.sessionId }
+      : ({} as Record<string, unknown>);
   const safe = sanitizeInteractionLogRecord(record);
-  const line = JSON.stringify({ ts: new Date().toISOString(), ...safe }) + "\n";
+  const line =
+    JSON.stringify({
+      ts: new Date().toISOString(),
+      ...extra,
+      ...safe,
+    }) + "\n";
   await appendFile(logPath, line, "utf8");
 }

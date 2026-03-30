@@ -446,6 +446,12 @@ async function applyStoredAutoplaySettings() {
   }
 }
 
+{
+  const sr = await api.ensureSession();
+  if (!sr.ok) {
+    console.warn("adventure-llm: session bootstrap failed", sr.status);
+  }
+}
 await applyStoredAutoplaySettings();
 await loadParserVerbHints();
 void promptLab.fetchPromptExperiment();

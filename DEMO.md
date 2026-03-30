@@ -37,11 +37,16 @@ autoplay with a live map, inventory hints, and transcript.
    make run-autoplay-web
    ```
 
-5. **Open** [http://127.0.0.1:8787/](http://127.0.0.1:8787/) in a browser (or
-   the port shown in the terminal if you set `ADVENTURE_LLM_WEB_PORT`).
+5. **Open** [https://127.0.0.1:8787/](https://127.0.0.1:8787/) in a browser
+   (or **http://** if you use insecure HTTP; see
+   [`adventure-llm/README.md`](adventure-llm/README.md)), on the port shown in the
+   terminal if you set `ADVENTURE_LLM_WEB_PORT`.
+
+   Restarting the dashboard **starts new sessions**; nothing on disk restores a
+   prior run (game randomness applies). See **Sessions do not survive server
+   restarts** in [`adventure-llm/README.md`](adventure-llm/README.md).
 
 6. **What to point at during the demo**
-
    - The **transcript** fills as the game runs; watch for planner “thinking”
      states if shown.
    - The **inferred map** and **inventory** panels update as the session

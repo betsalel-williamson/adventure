@@ -5,20 +5,22 @@ The local web server is started with `npm run web` from `adventure-llm/` (or
 
 **Authentication:** none. Do not expose this server to untrusted networks.
 
+**Session lifecycle:** Dashboard state (cookie **`adventure_session`** → in-memory session object, Fortran subprocess, transcript, planner memory, UI-backed settings) exists **only while the `npm run web` process runs**. A server **restart** wipes all sessions; unknown cookie ids are replaced with **new** sessions—there is **no resume** or disk snapshot of game state. Colossal Cave also uses **randomness**, so a “fresh start” is not replay-equivalent to an old run. Optional **`ADVENTURE_LLM_DEBUG=1`** writes **`.cache/llm-sessions/<uuid>.jsonl`** for LLM auditing only, not for restoring a session.
+
 **Autoplay planner (behavior):** the server uses the same **`adventure-llm`** autoplay loop as the CLI: session memory, situation candidates, and planner guards. Heuristic **object** / **loot-funnel** cues follow the latest room-description block in the transcript (not the whole tail). See [`docs/architecture/adventure-engine.md`](docs/architecture/adventure-engine.md) and [`docs/decisions/ADR0003-scoped-object-hints-latest-room-block.md`](docs/decisions/ADR0003-scoped-object-hints-latest-room-block.md).
 
 ## Static UI
 
-| Method | Path | Notes |
-| ------ | ---- | ----- |
-| `GET` | `/` | Dashboard (`index.html`) |
-| `GET` | `/…` | Other files under `adventure-llm/public/` |
+| Method | Path | Notes                                     |
+| ------ | ---- | ----------------------------------------- |
+| `GET`  | `/`  | Dashboard (`index.html`)                  |
+| `GET`  | `/…` | Other files under `adventure-llm/public/` |
 
 ## Server-Sent Events
 
-| Method | Path | Purpose |
-| ------ | ---- | ------- |
-| `GET` | `/events` | `text/event-stream`; subscribing starts (or attaches to) one autoplay session |
+| Method | Path      | Purpose                                                                       |
+| ------ | --------- | ----------------------------------------------------------------------------- |
+| `GET`  | `/events` | `text/event-stream`; subscribing starts (or attaches to) one autoplay session |
 
 On connect, the server may emit initial events such as `autoplay_mode`,
 `autoplay_settings`, `manual_waiting`, `parser_verbs`, `text_llm`, `mlx_model`,
@@ -86,7 +88,10 @@ Body (both fields optional; omitted fields keep previous override or env default
 
 ```json
 {
-  "groups": [["NORTH", "N"], ["SOUTH", "S"]]
+  "groups": [
+    ["NORTH", "N"],
+    ["SOUTH", "S"]
+  ]
 }
 ```
 

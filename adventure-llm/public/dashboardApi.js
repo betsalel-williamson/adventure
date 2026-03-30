@@ -1,4 +1,5 @@
 const jsonHeaders = { "Content-Type": "application/json" };
+const cred = { credentials: "same-origin" };
 
 /**
  * @param {{ fetch: typeof fetch }} ports
@@ -6,34 +7,40 @@ const jsonHeaders = { "Content-Type": "application/json" };
 export function createDashboardApi(ports) {
   const { fetch: f } = ports;
   return {
-    getAutoplayMode: () => f("/api/autoplay-mode"),
+    ensureSession: () => f("/api/session", cred),
+    getAutoplayMode: () => f("/api/autoplay-mode", cred),
     postAutoplayMode: (plannerEnabled) =>
       f("/api/autoplay-mode", {
+        ...cred,
         method: "POST",
         headers: jsonHeaders,
         body: JSON.stringify({ plannerEnabled }),
       }),
-    getAutoplaySettings: () => f("/api/autoplay-settings"),
+    getAutoplaySettings: () => f("/api/autoplay-settings", cred),
     postAutoplaySettings: (body) =>
       f("/api/autoplay-settings", {
+        ...cred,
         method: "POST",
         headers: jsonHeaders,
         body: JSON.stringify(body),
       }),
     postManualCommand: (body) =>
       f("/api/manual-command", {
+        ...cred,
         method: "POST",
         headers: jsonHeaders,
         body: JSON.stringify(body),
       }),
-    getTextLlm: () => f("/api/text-llm"),
+    getTextLlm: () => f("/api/text-llm", cred),
     postTextLlm: (body) =>
       f("/api/text-llm", {
+        ...cred,
         method: "POST",
         headers: jsonHeaders,
         body: JSON.stringify(body),
       }),
-    fetchUrl: (url) => f(url),
-    postMlxModelCancel: () => f("/api/mlx-model/cancel", { method: "POST" }),
+    fetchUrl: (url) => f(url, cred),
+    postMlxModelCancel: () =>
+      f("/api/mlx-model/cancel", { ...cred, method: "POST" }),
   };
 }

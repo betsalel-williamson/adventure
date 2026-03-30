@@ -4,13 +4,16 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { createAutoplayDashboardServer } from "./webDashboard.js";
 
+const testHttpDashboard = () =>
+  createAutoplayDashboardServer({ secureCookies: false });
+
 describe("createAutoplayDashboardServer", () => {
   afterEach(() => {
     delete process.env.ADVENTURE_LLM_PROMPT_PROJECTS_DIR;
   });
 
   it("GET /api/text-llm returns backends and shape", async () => {
-    const server = createAutoplayDashboardServer();
+    const server = testHttpDashboard();
     await new Promise<void>((resolve) => {
       server.listen(0, "127.0.0.1", () => resolve());
     });
@@ -42,7 +45,7 @@ describe("createAutoplayDashboardServer", () => {
   });
 
   it("GET /api/mlx-model returns presets and shape", async () => {
-    const server = createAutoplayDashboardServer();
+    const server = testHttpDashboard();
     await new Promise<void>((resolve) => {
       server.listen(0, "127.0.0.1", () => resolve());
     });
@@ -71,7 +74,7 @@ describe("createAutoplayDashboardServer", () => {
   });
 
   it("POST /api/mlx-model/cancel returns 400 when no swap load is active", async () => {
-    const server = createAutoplayDashboardServer();
+    const server = testHttpDashboard();
     await new Promise<void>((resolve) => {
       server.listen(0, "127.0.0.1", () => resolve());
     });
@@ -89,7 +92,7 @@ describe("createAutoplayDashboardServer", () => {
   });
 
   it("serves index.html at GET /", async () => {
-    const server = createAutoplayDashboardServer();
+    const server = testHttpDashboard();
     await new Promise<void>((resolve) => {
       server.listen(0, "127.0.0.1", () => resolve());
     });
@@ -108,7 +111,7 @@ describe("createAutoplayDashboardServer", () => {
   });
 
   it("GET /api/parser-verbs returns synonym groups", async () => {
-    const server = createAutoplayDashboardServer();
+    const server = testHttpDashboard();
     await new Promise<void>((resolve) => {
       server.listen(0, "127.0.0.1", () => resolve());
     });
@@ -130,7 +133,7 @@ describe("createAutoplayDashboardServer", () => {
   });
 
   it("GET and POST /api/autoplay-settings round-trip", async () => {
-    const server = createAutoplayDashboardServer();
+    const server = testHttpDashboard();
     await new Promise<void>((resolve) => {
       server.listen(0, "127.0.0.1", () => resolve());
     });
@@ -161,7 +164,7 @@ describe("createAutoplayDashboardServer", () => {
   });
 
   it("GET/PATCH /api/prompt-experiment", async () => {
-    const server = createAutoplayDashboardServer();
+    const server = testHttpDashboard();
     await new Promise<void>((resolve) => {
       server.listen(0, "127.0.0.1", () => resolve());
     });
@@ -194,7 +197,7 @@ describe("createAutoplayDashboardServer", () => {
   it("POST /api/prompt-projects creates file in ADVENTURE_LLM_PROMPT_PROJECTS_DIR", async () => {
     const dir = mkdtempSync(path.join(tmpdir(), "adv-ppm-"));
     process.env.ADVENTURE_LLM_PROMPT_PROJECTS_DIR = dir;
-    const server = createAutoplayDashboardServer();
+    const server = testHttpDashboard();
     await new Promise<void>((resolve) => {
       server.listen(0, "127.0.0.1", () => resolve());
     });

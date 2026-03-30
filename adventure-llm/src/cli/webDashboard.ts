@@ -3,25 +3,24 @@
  * Local HTTP dashboard for autoplay: static HTML/JS + SSE stream of game text,
  * planner phases, heuristic map/inventory, prompt previews, and optional manual GETIN.
  */
+import { randomUUID } from "node:crypto";
 import { createReadStream, existsSync } from "node:fs";
 import { stat } from "node:fs/promises";
 import http from "node:http";
+import https from "node:https";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { config as loadEnv } from "dotenv";
 import { loadDatFile } from "../dat/loadDat.js";
 import {
-  createGoogleTextLlmFromEnv,
-  createHttpTextLlmFromEnv,
-  createMlxTextLlmFromEnv,
   interpretWithTextLlm,
-  mlxLmOptionsFromEnv,
   resolveTextLlmFromEnv,
 } from "../nl/adventureTextLlm.js";
-import { isAllowedGoogleWebModelId } from "../nl/googleWebModelPresets.js";
-import { isAllowedHttpWebModelId } from "../nl/httpWebPresets.js";
 import { shouldFallbackToClassicForLlmError } from "../nl/llmErrors.js";
-import { resolveDebugLogPath } from "../nl/llmDebug.js";
+import {
+  resolveDebugLogPath,
+  runWithWebDashboardLlmLogContext,
+} from "../nl/llmDebug.js";
 import {
   isAllowedMlxWebModelId,
   mlxWebModelPresetsList,
@@ -38,9 +37,6 @@ import type { TextLlm, TextLlmProviderId } from "../nl/textLlmContract.js";
 import {
   buildTextLlmBackendSnapshots,
   canSwapTextLlmFromBackends,
-  googleBackendAvailableFromEnv,
-  httpBackendAvailableFromEnv,
-  mlxBackendAvailableFromEnv,
 } from "../nl/textLlmWebBackends.js";
 import type { ScriptedGetinLine } from "../engine/subprocessEngine.js";
 import {
@@ -66,6 +62,26 @@ import {
   buildGenerationParamsSnapshot,
   snapshotGenerationMeta,
 } from "./webDashboardGeneration.js";
+import {
+  appendSessionSetCookieHeader,
+  formatSessionSetCookie,
+  isValidSessionId,
+  parseAdventureSessionCookie,
+} from "./webDashboardSession.js";
+import {
+  createLlmSequentialExecutor,
+  createQueuedTextLlm,
+} from "./webDashboardLlmQueue.js";
+import {
+  WebDashboardTextLlmPool,
+  poolKey,
+  resolveWebMaxLoadedModels,
+} from "./webDashboardTextLlmPool.js";
+import {
+  httpsServerOptionsFromTls,
+  isWebDashboardInsecureHttp,
+  resolveWebDashboardTls,
+} from "./webDashboardTls.js";
 
 const packageRoot = path.join(
   fileURLToPath(new URL(".", import.meta.url)),
@@ -137,6 +153,20 @@ function jsonResponse(
   res.end(JSON.stringify(body));
 }
 
+function jsonResponseWithSessionCookie(
+  res: http.ServerResponse,
+  status: number,
+  body: unknown,
+  cookie: { isNew: boolean; sessionId: string; secureCookies: boolean },
+): void {
+  if (cookie.isNew) {
+    appendSessionSetCookieHeader(res, cookie.sessionId, {
+      secure: cookie.secureCookies,
+    });
+  }
+  jsonResponse(res, status, body);
+}
+
 type ManualPending = {
   resolve: (
     v: ScriptedGetinLine | null | typeof AUTOPLAY_RESUME_PLANNER,
@@ -144,18 +174,42 @@ type ManualPending = {
   intervalId: ReturnType<typeof setInterval>;
 };
 
-export function createAutoplayDashboardServer(): http.Server {
-  const clients = new Set<http.ServerResponse>();
-  let autoplayRunning: Promise<void> | null = null;
-  let autoplayStartScheduled = false;
+export type DashboardCreateOptions = {
+  readonly secureCookies: boolean;
+  readonly httpsOptions?: https.ServerOptions;
+};
 
-  const broadcast = (event: string, payload: unknown): void => {
-    for (const res of clients) {
-      try {
-        sseWrite(res, event, payload);
-      } catch {
-        clients.delete(res);
-      }
+type DashboardSession = {
+  readonly id: string;
+  readonly clients: Set<http.ServerResponse>;
+  readonly broadcast: (event: string, payload: unknown) => void;
+  autoplayRunning: Promise<void> | null;
+  autoplayStartScheduled: boolean;
+  plannerAutoplayEnabled: boolean;
+  webAutoplayOverrides: AutoplayRunOverrides;
+  webPromptExperiment: PromptExperimentPatch;
+  activePromptProjectId: string | null;
+  readonly webAutoplayLiveOverrides: AutoplayRunOverrides;
+  latestTranscript: string;
+  engineLogLineBuffer: string;
+  manualPending: ManualPending | null;
+  manualPlannerGate: AutoplayManualPlannerGate;
+  sink: AutoplayUiSink;
+  readonly textLlmSource: { current: TextLlm };
+  textLlmProviderId: TextLlmProviderId;
+  textLlmModelId: string;
+  poolAttachedKey: string | null;
+};
+
+export function createAutoplayDashboardServer(
+  options: DashboardCreateOptions,
+): http.Server | https.Server {
+  const llmExecutor = createLlmSequentialExecutor();
+  const sessions = new Map<string, DashboardSession>();
+
+  const broadcastAll = (event: string, payload: unknown): void => {
+    for (const s of sessions.values()) {
+      s.broadcast(event, payload);
     }
   };
 
@@ -167,16 +221,18 @@ export function createAutoplayDashboardServer(): http.Server {
 
   let mlxLoadUiActive = false;
 
-  /** Set while `preloadWorker` runs for a new client during a model swap (cancellable). */
-  let mlxSwapInFlightNewClient: MlxLmStdioTextLlm | null = null;
-  let mlxLoadCancelled = false;
+  /** Set while `preloadWorker` runs for a new MLX client during a pool load (cancellable). */
+  const mlxUiRefs = {
+    swapInFlight: null as MlxLmStdioTextLlm | null,
+    loadCancelled: false,
+  };
 
   const beginMlxModelLoad = (opts?: { canCancel?: boolean }): void => {
     mlxLoadUiActive = true;
     mlxLoadBarrier = new Promise<void>((resolve) => {
       resolveMlxLoadBarrier = resolve;
     });
-    broadcast("mlx_loading", {
+    broadcastAll("mlx_loading", {
       loading: true,
       message: "Loading MLX model…",
       resetProgress: true,
@@ -189,7 +245,7 @@ export function createAutoplayDashboardServer(): http.Server {
     resolveMlxLoadBarrier?.();
     resolveMlxLoadBarrier = null;
     mlxLoadBarrier = Promise.resolve();
-    broadcast("mlx_loading", { loading: false });
+    broadcastAll("mlx_loading", { loading: false });
   };
 
   const awaitMlxModelReady = async (): Promise<void> => {
@@ -203,6 +259,7 @@ export function createAutoplayDashboardServer(): http.Server {
       release = resolve;
     });
     await previous;
+    await llmExecutor.flush();
     try {
       await fn();
     } finally {
@@ -210,170 +267,74 @@ export function createAutoplayDashboardServer(): http.Server {
     }
   };
 
-  /** Mutable when MLX web swaps models; null if no text model configured. */
-  const textLlmRef: { current: TextLlm } | null = (() => {
-    const base = resolveTextLlmFromEnv();
-    if (!base) return null;
-    if (base instanceof MlxLmStdioTextLlm) {
-      const replacement = new MlxLmStdioTextLlm({
-        ...mlxLmOptionsFromEnv(base.modelId),
-        onWorkerStderr: (chunk: string) => {
-          broadcast("mlx_load_progress", { chunk });
+  const envTextLlm = resolveTextLlmFromEnv();
+  const textLlmConfigured = envTextLlm !== null;
+  const defaultTextLlmSelection = envTextLlm
+    ? { providerId: envTextLlm.providerId, modelId: envTextLlm.modelId }
+    : null;
+  if (envTextLlm instanceof MlxLmStdioTextLlm) {
+    void envTextLlm.dispose().catch(() => {
+      /* ignore */
+    });
+  }
+
+  const pool: WebDashboardTextLlmPool | null = textLlmConfigured
+    ? new WebDashboardTextLlmPool(resolveWebMaxLoadedModels(), {
+        runSerialized: runMlxSwap,
+        broadcastAll,
+        broadcastOneSession: (sessionId, ev, p) => {
+          const se = sessions.get(sessionId);
+          if (se) se.broadcast(ev, p);
         },
-      });
-      void base.dispose().catch(() => {
-        /* ignore */
-      });
-      return { current: replacement };
-    }
-    return { current: base };
-  })();
+        beginMlxModelLoad,
+        endMlxModelLoad,
+        mlxSwapInFlight: {
+          get current() {
+            return mlxUiRefs.swapInFlight;
+          },
+          set current(v: MlxLmStdioTextLlm | null) {
+            mlxUiRefs.swapInFlight = v;
+          },
+        },
+        mlxLoadCancelled: {
+          get current() {
+            return mlxUiRefs.loadCancelled;
+          },
+          set current(v: boolean) {
+            mlxUiRefs.loadCancelled = v;
+          },
+        },
+      })
+    : null;
 
-  const broadcastTextLlmState = (): void => {
-    if (!textLlmRef) return;
-    const c = textLlmRef.current;
-    broadcast("text_llm", { providerId: c.providerId, modelId: c.modelId });
-    broadcast("mlx_model", { modelId: c.modelId, providerId: c.providerId });
-  };
+  if (pool !== null) {
+    process.stderr.write(
+      `adventure-llm: dashboard text model pool capacity: ${resolveWebMaxLoadedModels()} (ADVENTURE_LLM_WEB_MAX_LOADED_MODELS)\n`,
+    );
+  }
 
-  const swapTextLlmTo = async (
-    nextProvider: TextLlmProviderId,
-    nextModelId: string,
-  ): Promise<void> => {
-    if (!textLlmRef) {
-      throw new Error("No text model configured");
-    }
-    const prev = textLlmRef.current;
-    if (prev.providerId === nextProvider && prev.modelId === nextModelId) {
-      return;
-    }
-
-    if (nextProvider === "mlx") {
-      if (!mlxBackendAvailableFromEnv()) {
-        throw new Error("MLX not configured in environment");
-      }
-      if (!isAllowedMlxWebModelId(nextModelId)) {
-        throw new Error("Unknown or disallowed MLX model id");
-      }
-      await runMlxSwap(async () => {
-        beginMlxModelLoad({ canCancel: true });
-        mlxLoadCancelled = false;
-        try {
-          const oldClient = textLlmRef!.current;
-          if (oldClient instanceof MlxLmStdioTextLlm) {
-            await oldClient.waitForIdle();
-          }
-          process.stderr.write(
-            `adventure-llm: switching to MLX model ${nextModelId}…\n`,
-          );
-          const created = createMlxTextLlmFromEnv(nextModelId, {
-            onWorkerStderr: (chunk) =>
-              broadcast("mlx_load_progress", { chunk }),
-          });
-          mlxSwapInFlightNewClient = created;
-          try {
-            await created.preloadWorker();
-          } catch (loadErr) {
-            if (mlxLoadCancelled) {
-              broadcast("mlx_load_cancelled", {
-                providerId: textLlmRef!.current.providerId,
-                modelId: textLlmRef!.current.modelId,
-              });
-              broadcastTextLlmState();
-              return;
-            }
-            throw loadErr;
-          } finally {
-            mlxSwapInFlightNewClient = null;
-            mlxLoadCancelled = false;
-          }
-          if (oldClient instanceof MlxLmStdioTextLlm) {
-            await oldClient.dispose();
-          }
-          textLlmRef!.current = created;
-          broadcastTextLlmState();
-        } finally {
-          endMlxModelLoad();
-        }
-      });
-      return;
-    }
-
-    if (nextProvider === "http") {
-      if (!httpBackendAvailableFromEnv()) {
-        throw new Error("HTTP text model not configured");
-      }
-      if (!isAllowedHttpWebModelId(nextModelId)) {
-        throw new Error("Unknown or disallowed HTTP model id");
-      }
-      const nu = createHttpTextLlmFromEnv(nextModelId);
-      if (!nu) {
-        throw new Error("HTTP text model not configured");
-      }
-      await runMlxSwap(async () => {
-        const oc = textLlmRef!.current;
-        if (oc instanceof MlxLmStdioTextLlm) {
-          await oc.waitForIdle();
-          await oc.dispose();
-        }
-        textLlmRef!.current = nu;
-        broadcastTextLlmState();
-      });
-      return;
-    }
-
-    if (nextProvider === "google") {
-      if (!googleBackendAvailableFromEnv()) {
-        throw new Error("Gemini not configured");
-      }
-      if (!isAllowedGoogleWebModelId(nextModelId)) {
-        throw new Error("Unknown or disallowed Gemini model id");
-      }
-      const nu = createGoogleTextLlmFromEnv(nextModelId);
-      if (!nu) {
-        throw new Error("Gemini not configured");
-      }
-      await runMlxSwap(async () => {
-        const oc = textLlmRef!.current;
-        if (oc instanceof MlxLmStdioTextLlm) {
-          await oc.waitForIdle();
-          await oc.dispose();
-        }
-        textLlmRef!.current = nu;
-        broadcastTextLlmState();
-      });
-      return;
-    }
+  const broadcastSessionTextLlm = (s: DashboardSession): void => {
+    s.broadcast("text_llm", {
+      providerId: s.textLlmProviderId,
+      modelId: s.textLlmModelId,
+    });
+    s.broadcast("mlx_model", {
+      modelId: s.textLlmModelId,
+      providerId: s.textLlmProviderId,
+    });
   };
 
   const db = existsSync(datPath) ? loadDatFile(datPath) : null;
   const promptProjectsDir = resolvePromptProjectsDir(packageRoot);
 
-  let plannerAutoplayEnabled = true;
-  /** Optional overrides (set via POST /api/autoplay-settings); read live during autoplay. */
-  let webAutoplayOverrides: AutoplayRunOverrides = {};
-  /** Planner prompt experiment (PATCH /api/prompt-experiment); read each autoplay LLM call. */
-  let webPromptExperiment: PromptExperimentPatch =
-    defaultPromptExperimentPatch();
-  let activePromptProjectId: string | null = null;
-  /** Passed to {@link runAutoplaySessionWithTextLlm} so pace/max update without restarting the session. */
-  const webAutoplayLiveOverrides: AutoplayRunOverrides = {
-    getPaceMs: () =>
-      webAutoplayOverrides.paceMs !== undefined
-        ? webAutoplayOverrides.paceMs
-        : resolveAutoplayPaceMs(),
-    getMaxMoves: () =>
-      webAutoplayOverrides.maxMoves !== undefined
-        ? webAutoplayOverrides.maxMoves
-        : resolveAutoplayMaxMoves(),
-    getPlannerPromptExperiment: () => webPromptExperiment,
-  };
-
-  function applyProjectGenerationForCurrentClient(
+  async function applyProjectGenerationForSession(
+    s: DashboardSession,
     rec: PromptProjectRecord,
-  ): string | null {
-    if (!textLlmRef) return "No text LLM";
-    const pid = textLlmRef.current.providerId;
+  ): Promise<string | null> {
+    if (!pool || !textLlmConfigured) return "No text LLM";
+    await pool.ensureSessionAttached(s);
+    const client = pool.getClientForSession(s);
+    const pid = client.providerId;
     const raw =
       pid === "mlx"
         ? rec.generationParams.mlx
@@ -381,175 +342,439 @@ export function createAutoplayDashboardServer(): http.Server {
           ? rec.generationParams.http
           : rec.generationParams.google;
     if (!raw || typeof raw !== "object") return null;
-    return applyGenerationParamsPatch(textLlmRef.current, {
+    return applyGenerationParamsPatch(client, {
       ...raw,
     } as Record<string, unknown>);
   }
-  let latestTranscript = "";
-  /** Incomplete engine line for `log_line` (stdout+stderr chunks may split mid-line). */
-  let engineLogLineBuffer = "";
-  let manualPending: ManualPending | null = null;
 
-  const flushEngineLogBuffer = (step: number): void => {
-    if (engineLogLineBuffer.length === 0) return;
-    broadcast("log_line", {
-      line: engineLogLineBuffer,
-      step,
-      channel: "engine",
-    });
-    engineLogLineBuffer = "";
-  };
-
-  const manualPlannerGate: AutoplayManualPlannerGate = {
-    isPlannerEnabled: () => plannerAutoplayEnabled,
-    waitForManualLine: () =>
-      new Promise((resolve) => {
-        const intervalId = setInterval(() => {
-          if (plannerAutoplayEnabled) {
-            clearInterval(intervalId);
-            manualPending = null;
-            broadcast("manual_waiting", { waitingForManual: false });
-            resolve(AUTOPLAY_RESUME_PLANNER);
-          }
-        }, 200);
-        manualPending = {
-          resolve: (v) => {
-            clearInterval(intervalId);
-            manualPending = null;
-            broadcast("manual_waiting", { waitingForManual: false });
-            resolve(v);
-          },
-          intervalId,
-        };
-        broadcast("manual_waiting", { waitingForManual: true });
-      }),
-  };
-
-  const sink: AutoplayUiSink = {
-    forwardGameOutputToTerminal: false,
-    onSessionStart: (e) => {
-      engineLogLineBuffer = "";
-      broadcast("session_start", e);
-    },
-    onSessionEnd: () => {
-      flushEngineLogBuffer(0);
-      broadcast("session_end", {});
-    },
-    beforePlannerCall: awaitMlxModelReady,
-    onPlannerPhase: (e) => broadcast("planner_phase", e),
-    onPlannerPrompt: (e) => broadcast("planner_prompt", e),
-    onTranscriptChunk: (text, step) => {
-      latestTranscript += text;
-      broadcast("transcript_delta", { text, step });
-      engineLogLineBuffer += text;
-      let nl: number;
-      while ((nl = engineLogLineBuffer.indexOf("\n")) >= 0) {
-        const line = engineLogLineBuffer.slice(0, nl + 1);
-        engineLogLineBuffer = engineLogLineBuffer.slice(nl + 1);
-        broadcast("log_line", { line, step, channel: "engine" });
+  function createDashboardSession(sessionId: string): DashboardSession {
+    const clients = new Set<http.ServerResponse>();
+    const broadcastSession = (event: string, payload: unknown): void => {
+      for (const r of clients) {
+        try {
+          sseWrite(r, event, payload);
+        } catch {
+          clients.delete(r);
+        }
       }
-    },
-    onTurnEnd: (e) => {
-      latestTranscript = e.transcriptSoFar;
-      broadcast("turn_end", e);
-    },
-    onPlanApplied: (e) => broadcast("plan_applied", e),
-    onLogLine: (line, step) =>
-      broadcast("log_line", { line, step, channel: "planner" }),
-  };
+    };
+    const llmSel = {
+      textLlmProviderId: (defaultTextLlmSelection?.providerId ??
+        "mlx") as TextLlmProviderId,
+      textLlmModelId: defaultTextLlmSelection?.modelId ?? "",
+      poolAttachedKey: null as string | null,
+    };
 
-  const server = http.createServer(async (req, res) => {
+    const textLlmSource = {
+      current: createQueuedTextLlm(
+        () => {
+          if (!pool || !textLlmConfigured) {
+            throw new Error("No text LLM configured");
+          }
+          const s = sessions.get(sessionId);
+          if (!s) throw new Error("Session not found");
+          return pool.getClient(poolKey(s.textLlmProviderId, s.textLlmModelId));
+        },
+        sessionId,
+        llmExecutor,
+      ),
+    };
+    let autoplayRunning: Promise<void> | null = null;
+    let autoplayStartScheduled = false;
+    let plannerAutoplayEnabled = true;
+    let webAutoplayOverrides: AutoplayRunOverrides = {};
+    let webPromptExperiment: PromptExperimentPatch =
+      defaultPromptExperimentPatch();
+    let activePromptProjectId: string | null = null;
+    const webAutoplayLiveOverrides: AutoplayRunOverrides = {
+      getPaceMs: () =>
+        webAutoplayOverrides.paceMs !== undefined
+          ? webAutoplayOverrides.paceMs
+          : resolveAutoplayPaceMs(),
+      getMaxMoves: () =>
+        webAutoplayOverrides.maxMoves !== undefined
+          ? webAutoplayOverrides.maxMoves
+          : resolveAutoplayMaxMoves(),
+      getPlannerPromptExperiment: () => webPromptExperiment,
+    };
+    let latestTranscript = "";
+    let engineLogLineBuffer = "";
+    let manualPending: ManualPending | null = null;
+
+    const flushEngineLogBuffer = (step: number): void => {
+      if (engineLogLineBuffer.length === 0) return;
+      broadcastSession("log_line", {
+        line: engineLogLineBuffer,
+        step,
+        channel: "engine",
+      });
+      engineLogLineBuffer = "";
+    };
+
+    const manualPlannerGate: AutoplayManualPlannerGate = {
+      isPlannerEnabled: () => plannerAutoplayEnabled,
+      waitForManualLine: () =>
+        new Promise((resolve) => {
+          const intervalId = setInterval(() => {
+            if (plannerAutoplayEnabled) {
+              clearInterval(intervalId);
+              manualPending = null;
+              broadcastSession("manual_waiting", {
+                waitingForManual: false,
+              });
+              resolve(AUTOPLAY_RESUME_PLANNER);
+            }
+          }, 200);
+          manualPending = {
+            resolve: (v) => {
+              clearInterval(intervalId);
+              manualPending = null;
+              broadcastSession("manual_waiting", {
+                waitingForManual: false,
+              });
+              resolve(v);
+            },
+            intervalId,
+          };
+          broadcastSession("manual_waiting", { waitingForManual: true });
+        }),
+    };
+
+    const sink: AutoplayUiSink = {
+      forwardGameOutputToTerminal: false,
+      onSessionStart: (e) => {
+        engineLogLineBuffer = "";
+        broadcastSession("session_start", e);
+      },
+      onSessionEnd: () => {
+        flushEngineLogBuffer(0);
+        broadcastSession("session_end", {});
+      },
+      beforePlannerCall: awaitMlxModelReady,
+      onPlannerPhase: (e) => broadcastSession("planner_phase", e),
+      onPlannerPrompt: (e) => broadcastSession("planner_prompt", e),
+      onTranscriptChunk: (text, step) => {
+        latestTranscript += text;
+        broadcastSession("transcript_delta", { text, step });
+        engineLogLineBuffer += text;
+        let nl: number;
+        while ((nl = engineLogLineBuffer.indexOf("\n")) >= 0) {
+          const line = engineLogLineBuffer.slice(0, nl + 1);
+          engineLogLineBuffer = engineLogLineBuffer.slice(nl + 1);
+          broadcastSession("log_line", { line, step, channel: "engine" });
+        }
+      },
+      onTurnEnd: (e) => {
+        latestTranscript = e.transcriptSoFar;
+        broadcastSession("turn_end", e);
+      },
+      onPlanApplied: (e) => broadcastSession("plan_applied", e),
+      onLogLine: (line, step) =>
+        broadcastSession("log_line", { line, step, channel: "planner" }),
+    };
+
+    return {
+      id: sessionId,
+      clients,
+      broadcast: broadcastSession,
+      get autoplayRunning() {
+        return autoplayRunning;
+      },
+      set autoplayRunning(v) {
+        autoplayRunning = v;
+      },
+      get autoplayStartScheduled() {
+        return autoplayStartScheduled;
+      },
+      set autoplayStartScheduled(v) {
+        autoplayStartScheduled = v;
+      },
+      get plannerAutoplayEnabled() {
+        return plannerAutoplayEnabled;
+      },
+      set plannerAutoplayEnabled(v) {
+        plannerAutoplayEnabled = v;
+      },
+      get webAutoplayOverrides() {
+        return webAutoplayOverrides;
+      },
+      set webAutoplayOverrides(v) {
+        webAutoplayOverrides = v;
+      },
+      get webPromptExperiment() {
+        return webPromptExperiment;
+      },
+      set webPromptExperiment(v) {
+        webPromptExperiment = v;
+      },
+      get activePromptProjectId() {
+        return activePromptProjectId;
+      },
+      set activePromptProjectId(v) {
+        activePromptProjectId = v;
+      },
+      webAutoplayLiveOverrides,
+      get latestTranscript() {
+        return latestTranscript;
+      },
+      set latestTranscript(v) {
+        latestTranscript = v;
+      },
+      get engineLogLineBuffer() {
+        return engineLogLineBuffer;
+      },
+      set engineLogLineBuffer(v) {
+        engineLogLineBuffer = v;
+      },
+      get manualPending() {
+        return manualPending;
+      },
+      set manualPending(v) {
+        manualPending = v;
+      },
+      manualPlannerGate,
+      sink,
+      textLlmSource,
+      get textLlmProviderId(): TextLlmProviderId {
+        return llmSel.textLlmProviderId;
+      },
+      set textLlmProviderId(v: TextLlmProviderId) {
+        llmSel.textLlmProviderId = v;
+      },
+      get textLlmModelId(): string {
+        return llmSel.textLlmModelId;
+      },
+      set textLlmModelId(v: string) {
+        llmSel.textLlmModelId = v;
+      },
+      get poolAttachedKey(): string | null {
+        return llmSel.poolAttachedKey;
+      },
+      set poolAttachedKey(v: string | null) {
+        llmSel.poolAttachedKey = v;
+      },
+    };
+  }
+
+  function resolveDashboardSession(req: http.IncomingMessage): {
+    session: DashboardSession;
+    isNew: boolean;
+  } {
+    const c = parseAdventureSessionCookie(req.headers.cookie);
+    if (c !== null && isValidSessionId(c) && sessions.has(c)) {
+      return { session: sessions.get(c)!, isNew: false };
+    }
+    const id = randomUUID();
+    const session = createDashboardSession(id);
+    sessions.set(id, session);
+    return { session, isNew: true };
+  }
+
+  const cookieOpts = (sess: DashboardSession, isNew: boolean) => ({
+    isNew,
+    sessionId: sess.id,
+    secureCookies: options.secureCookies,
+  });
+
+  const requestListener: http.RequestListener = async (req, res) => {
     const url = new URL(
       req.url ?? "/",
       `http://${req.headers.host ?? "localhost"}`,
     );
     const pathname = url.pathname === "" ? "/" : url.pathname;
 
+    let sess: DashboardSession | undefined;
+    let newSession = false;
+    if (pathname.startsWith("/api/") || pathname === "/events") {
+      const r = resolveDashboardSession(req);
+      sess = r.session;
+      newSession = r.isNew;
+    }
+
+    if (pathname === "/api/session" && req.method === "GET") {
+      if (sess === undefined) {
+        const r = resolveDashboardSession(req);
+        sess = r.session;
+        newSession = r.isNew;
+      }
+      jsonResponseWithSessionCookie(
+        res,
+        200,
+        { ok: true },
+        cookieOpts(sess, newSession),
+      );
+      return;
+    }
+
     if (pathname === "/api/autoplay-mode" && req.method === "GET") {
-      jsonResponse(res, 200, {
-        plannerEnabled: plannerAutoplayEnabled,
-        waitingForManual: manualPending !== null,
-      });
+      if (sess === undefined) return;
+      jsonResponseWithSessionCookie(
+        res,
+        200,
+        {
+          plannerEnabled: sess.plannerAutoplayEnabled,
+          waitingForManual: sess.manualPending !== null,
+        },
+        cookieOpts(sess, newSession),
+      );
       return;
     }
 
     if (pathname === "/api/autoplay-mode" && req.method === "POST") {
+      if (sess === undefined) return;
       try {
         const body = (await readJsonBody(req)) as {
           plannerEnabled?: boolean;
         } | null;
         if (body === null || typeof body.plannerEnabled !== "boolean") {
-          jsonResponse(res, 400, {
-            error: "Expected { plannerEnabled: boolean }",
-          });
+          jsonResponseWithSessionCookie(
+            res,
+            400,
+            {
+              error: "Expected { plannerEnabled: boolean }",
+            },
+            cookieOpts(sess, newSession),
+          );
           return;
         }
-        plannerAutoplayEnabled = body.plannerEnabled;
-        broadcast("autoplay_mode", { plannerEnabled: plannerAutoplayEnabled });
-        jsonResponse(res, 200, { plannerEnabled: plannerAutoplayEnabled });
+        sess.plannerAutoplayEnabled = body.plannerEnabled;
+        sess.broadcast("autoplay_mode", {
+          plannerEnabled: sess.plannerAutoplayEnabled,
+        });
+        jsonResponseWithSessionCookie(
+          res,
+          200,
+          { plannerEnabled: sess.plannerAutoplayEnabled },
+          cookieOpts(sess, newSession),
+        );
       } catch {
-        jsonResponse(res, 400, { error: "Invalid JSON" });
+        jsonResponseWithSessionCookie(
+          res,
+          400,
+          { error: "Invalid JSON" },
+          cookieOpts(sess, newSession),
+        );
       }
       return;
     }
 
     if (pathname === "/api/autoplay-settings" && req.method === "GET") {
-      jsonResponse(res, 200, {
-        paceMs:
-          webAutoplayOverrides.paceMs !== undefined
-            ? webAutoplayOverrides.paceMs
-            : resolveAutoplayPaceMs(),
-        maxMoves:
-          webAutoplayOverrides.maxMoves !== undefined
-            ? webAutoplayOverrides.maxMoves
-            : resolveAutoplayMaxMoves(),
-      });
+      if (sess === undefined) return;
+      jsonResponseWithSessionCookie(
+        res,
+        200,
+        {
+          paceMs:
+            sess.webAutoplayOverrides.paceMs !== undefined
+              ? sess.webAutoplayOverrides.paceMs
+              : resolveAutoplayPaceMs(),
+          maxMoves:
+            sess.webAutoplayOverrides.maxMoves !== undefined
+              ? sess.webAutoplayOverrides.maxMoves
+              : resolveAutoplayMaxMoves(),
+        },
+        cookieOpts(sess, newSession),
+      );
       return;
     }
 
     if (pathname === "/api/prompt-experiment" && req.method === "GET") {
-      jsonResponse(res, 200, {
-        patch: webPromptExperiment,
-        activeProjectId: activePromptProjectId,
-        note: "Applies to autoplay planner only, not manual interpret.",
-      });
+      if (sess === undefined) return;
+      jsonResponseWithSessionCookie(
+        res,
+        200,
+        {
+          patch: sess.webPromptExperiment,
+          activeProjectId: sess.activePromptProjectId,
+          note: "Applies to autoplay planner only, not manual interpret.",
+        },
+        cookieOpts(sess, newSession),
+      );
       return;
     }
 
     if (pathname === "/api/prompt-experiment" && req.method === "PATCH") {
+      if (sess === undefined) return;
       try {
         const body = (await readJsonBody(req)) as Record<
           string,
           unknown
         > | null;
         if (body === null || typeof body !== "object" || Array.isArray(body)) {
-          jsonResponse(res, 400, { error: "Expected JSON object" });
+          jsonResponseWithSessionCookie(
+            res,
+            400,
+            { error: "Expected JSON object" },
+            cookieOpts(sess, newSession),
+          );
           return;
         }
-        webPromptExperiment = patchPromptExperimentPatch(
-          webPromptExperiment,
+        sess.webPromptExperiment = patchPromptExperimentPatch(
+          sess.webPromptExperiment,
           body,
         );
-        broadcast("prompt_experiment", { patch: webPromptExperiment });
-        jsonResponse(res, 200, { patch: webPromptExperiment });
+        sess.broadcast("prompt_experiment", {
+          patch: sess.webPromptExperiment,
+        });
+        jsonResponseWithSessionCookie(
+          res,
+          200,
+          { patch: sess.webPromptExperiment },
+          cookieOpts(sess, newSession),
+        );
       } catch {
-        jsonResponse(res, 400, { error: "Invalid JSON" });
+        jsonResponseWithSessionCookie(
+          res,
+          400,
+          { error: "Invalid JSON" },
+          cookieOpts(sess, newSession),
+        );
       }
       return;
     }
 
     if (pathname === "/api/llm-generation-params" && req.method === "GET") {
-      if (!textLlmRef) {
-        jsonResponse(res, 503, { error: "No text LLM configured" });
+      if (sess === undefined) return;
+      if (!pool || !textLlmConfigured) {
+        jsonResponseWithSessionCookie(
+          res,
+          503,
+          { error: "No text LLM configured" },
+          cookieOpts(sess, newSession),
+        );
         return;
       }
-      jsonResponse(res, 200, snapshotGenerationMeta(textLlmRef.current));
+      try {
+        await pool.ensureSessionAttached(sess);
+        jsonResponseWithSessionCookie(
+          res,
+          200,
+          snapshotGenerationMeta(pool.getClientForSession(sess)),
+          cookieOpts(sess, newSession),
+        );
+      } catch (e) {
+        jsonResponseWithSessionCookie(
+          res,
+          500,
+          {
+            error:
+              e instanceof Error ? e.message : "Failed to attach text model",
+          },
+          cookieOpts(sess, newSession),
+        );
+      }
       return;
     }
 
     if (pathname === "/api/llm-generation-params" && req.method === "PATCH") {
-      if (!textLlmRef) {
-        jsonResponse(res, 503, { error: "No text LLM configured" });
+      if (sess === undefined) return;
+      if (!pool || !textLlmConfigured) {
+        jsonResponseWithSessionCookie(
+          res,
+          503,
+          { error: "No text LLM configured" },
+          cookieOpts(sess, newSession),
+        );
         return;
       }
       try {
@@ -558,17 +783,39 @@ export function createAutoplayDashboardServer(): http.Server {
           unknown
         > | null;
         if (body === null || typeof body !== "object" || Array.isArray(body)) {
-          jsonResponse(res, 400, { error: "Expected JSON object" });
+          jsonResponseWithSessionCookie(
+            res,
+            400,
+            { error: "Expected JSON object" },
+            cookieOpts(sess, newSession),
+          );
           return;
         }
-        const err = applyGenerationParamsPatch(textLlmRef.current, body);
+        await pool.ensureSessionAttached(sess);
+        const client = pool.getClientForSession(sess);
+        const err = applyGenerationParamsPatch(client, body);
         if (err) {
-          jsonResponse(res, 400, { error: err });
+          jsonResponseWithSessionCookie(
+            res,
+            400,
+            { error: err },
+            cookieOpts(sess, newSession),
+          );
           return;
         }
-        jsonResponse(res, 200, snapshotGenerationMeta(textLlmRef.current));
+        jsonResponseWithSessionCookie(
+          res,
+          200,
+          snapshotGenerationMeta(client),
+          cookieOpts(sess, newSession),
+        );
       } catch {
-        jsonResponse(res, 400, { error: "Invalid JSON" });
+        jsonResponseWithSessionCookie(
+          res,
+          400,
+          { error: "Invalid JSON" },
+          cookieOpts(sess, newSession),
+        );
       }
       return;
     }
@@ -576,28 +823,46 @@ export function createAutoplayDashboardServer(): http.Server {
     const promptProjectActivateMatch =
       /^\/api\/prompt-projects\/([^/]+)\/activate$/.exec(pathname);
     if (promptProjectActivateMatch && req.method === "POST") {
+      if (sess === undefined) return;
       const idAct = promptProjectActivateMatch[1]!;
-      readPromptProject(promptProjectsDir, idAct).then((rec) => {
+      const s = sess;
+      const ns = newSession;
+      readPromptProject(promptProjectsDir, idAct).then(async (rec) => {
         if (!rec) {
-          jsonResponse(res, 404, { error: "Project not found" });
+          jsonResponseWithSessionCookie(
+            res,
+            404,
+            { error: "Project not found" },
+            cookieOpts(s, ns),
+          );
           return;
         }
-        webPromptExperiment = {
+        s.webPromptExperiment = {
           ...defaultPromptExperimentPatch(),
           ...rec.promptExperiment,
         };
-        activePromptProjectId = idAct;
-        const gerr = applyProjectGenerationForCurrentClient(rec);
-        broadcast("prompt_project", { activeId: idAct, name: rec.name });
+        s.activePromptProjectId = idAct;
+        const gerr = await applyProjectGenerationForSession(s, rec);
+        s.broadcast("prompt_project", { activeId: idAct, name: rec.name });
         if (gerr && gerr !== "No text LLM") {
-          jsonResponse(res, 200, {
-            ok: true,
-            project: rec,
-            generationWarning: gerr,
-          });
+          jsonResponseWithSessionCookie(
+            res,
+            200,
+            {
+              ok: true,
+              project: rec,
+              generationWarning: gerr,
+            },
+            cookieOpts(s, ns),
+          );
           return;
         }
-        jsonResponse(res, 200, { ok: true, project: rec });
+        jsonResponseWithSessionCookie(
+          res,
+          200,
+          { ok: true, project: rec },
+          cookieOpts(s, ns),
+        );
       });
       return;
     }
@@ -606,17 +871,28 @@ export function createAutoplayDashboardServer(): http.Server {
       pathname,
     );
     if (pathname === "/api/prompt-projects" && req.method === "GET") {
+      if (sess === undefined) return;
+      const s = sess;
+      const ns = newSession;
       listPromptProjects(promptProjectsDir).then((list) => {
-        jsonResponse(res, 200, {
-          projects: list,
-          activeId: activePromptProjectId,
-        });
+        jsonResponseWithSessionCookie(
+          res,
+          200,
+          {
+            projects: list,
+            activeId: s.activePromptProjectId,
+          },
+          cookieOpts(s, ns),
+        );
       });
       return;
     }
 
     if (pathname === "/api/prompt-projects" && req.method === "POST") {
-      readJsonBody(req).then((rawBody) => {
+      if (sess === undefined) return;
+      const s = sess;
+      const ns = newSession;
+      readJsonBody(req).then(async (rawBody) => {
         try {
           const body = rawBody as Record<string, unknown> | null;
           const name =
@@ -633,6 +909,16 @@ export function createAutoplayDashboardServer(): http.Server {
               : undefined;
           const now = new Date().toISOString();
           const idNew = newPromptProjectId();
+          let genSnap = buildGenerationParamsSnapshot(null);
+          if (
+            pool &&
+            textLlmConfigured &&
+            s.poolAttachedKey === poolKey(s.textLlmProviderId, s.textLlmModelId)
+          ) {
+            genSnap = buildGenerationParamsSnapshot(
+              pool.getClientForSession(s),
+            );
+          }
           const rec: PromptProjectRecord = {
             schemaVersion: 1,
             id: idNew,
@@ -640,10 +926,8 @@ export function createAutoplayDashboardServer(): http.Server {
             ...(description ? { description } : {}),
             createdAt: now,
             updatedAt: now,
-            promptExperiment: { ...webPromptExperiment },
-            generationParams: buildGenerationParamsSnapshot(
-              textLlmRef?.current ?? null,
-            ),
+            promptExperiment: { ...s.webPromptExperiment },
+            generationParams: genSnap,
             subsystemToggles: {
               inventory: false,
               graph: false,
@@ -653,43 +937,69 @@ export function createAutoplayDashboardServer(): http.Server {
           };
           writePromptProject(promptProjectsDir, rec)
             .then(() => {
-              jsonResponse(res, 201, rec);
+              jsonResponseWithSessionCookie(res, 201, rec, cookieOpts(s, ns));
             })
             .catch((e) => {
-              jsonResponse(res, 500, {
-                error: e instanceof Error ? e.message : "Write failed",
-              });
+              jsonResponseWithSessionCookie(
+                res,
+                500,
+                {
+                  error: e instanceof Error ? e.message : "Write failed",
+                },
+                cookieOpts(s, ns),
+              );
             });
         } catch (e) {
-          jsonResponse(res, 400, {
-            error: e instanceof Error ? e.message : "Invalid",
-          });
+          jsonResponseWithSessionCookie(
+            res,
+            400,
+            {
+              error: e instanceof Error ? e.message : "Invalid",
+            },
+            cookieOpts(s, ns),
+          );
         }
       });
       return;
     }
 
     if (promptProjectOneMatch && req.method === "GET") {
+      if (sess === undefined) return;
       const idG = promptProjectOneMatch[1]!;
+      const s = sess;
+      const ns = newSession;
       readPromptProject(promptProjectsDir, idG).then((rec) => {
         if (!rec) {
-          jsonResponse(res, 404, { error: "Not found" });
+          jsonResponseWithSessionCookie(
+            res,
+            404,
+            { error: "Not found" },
+            cookieOpts(s, ns),
+          );
           return;
         }
-        jsonResponse(res, 200, rec);
+        jsonResponseWithSessionCookie(res, 200, rec, cookieOpts(s, ns));
       });
       return;
     }
 
     if (promptProjectOneMatch && req.method === "PUT") {
+      if (sess === undefined) return;
       const idU = promptProjectOneMatch[1]!;
+      const s = sess;
+      const ns = newSession;
       readJsonBody(req).then((rawBody) => {
         try {
           const body = rawBody as PromptProjectRecord | null;
           if (body === null || body.schemaVersion !== 1 || body.id !== idU) {
-            jsonResponse(res, 400, {
-              error: "Expected full project JSON with matching id",
-            });
+            jsonResponseWithSessionCookie(
+              res,
+              400,
+              {
+                error: "Expected full project JSON with matching id",
+              },
+              cookieOpts(s, ns),
+            );
             return;
           }
           const updated: PromptProjectRecord = {
@@ -697,156 +1007,267 @@ export function createAutoplayDashboardServer(): http.Server {
             updatedAt: new Date().toISOString(),
           };
           writePromptProject(promptProjectsDir, updated)
-            .then(() => jsonResponse(res, 200, updated))
+            .then(() =>
+              jsonResponseWithSessionCookie(
+                res,
+                200,
+                updated,
+                cookieOpts(s, ns),
+              ),
+            )
             .catch((e) => {
-              jsonResponse(res, 500, {
-                error: e instanceof Error ? e.message : "Write failed",
-              });
+              jsonResponseWithSessionCookie(
+                res,
+                500,
+                {
+                  error: e instanceof Error ? e.message : "Write failed",
+                },
+                cookieOpts(s, ns),
+              );
             });
         } catch (e) {
-          jsonResponse(res, 400, {
-            error: e instanceof Error ? e.message : "Invalid",
-          });
+          jsonResponseWithSessionCookie(
+            res,
+            400,
+            {
+              error: e instanceof Error ? e.message : "Invalid",
+            },
+            cookieOpts(s, ns),
+          );
         }
       });
       return;
     }
 
     if (promptProjectOneMatch && req.method === "DELETE") {
+      if (sess === undefined) return;
       const idD = promptProjectOneMatch[1]!;
+      const s = sess;
+      const ns = newSession;
       deletePromptProject(promptProjectsDir, idD).then((ok) => {
         if (!ok) {
-          jsonResponse(res, 404, { error: "Not found" });
+          jsonResponseWithSessionCookie(
+            res,
+            404,
+            { error: "Not found" },
+            cookieOpts(s, ns),
+          );
           return;
         }
-        if (activePromptProjectId === idD) activePromptProjectId = null;
-        jsonResponse(res, 200, { ok: true });
+        if (s.activePromptProjectId === idD) s.activePromptProjectId = null;
+        jsonResponseWithSessionCookie(
+          res,
+          200,
+          { ok: true },
+          cookieOpts(s, ns),
+        );
       });
       return;
     }
 
     if (pathname === "/api/parser-verbs" && req.method === "GET") {
+      if (sess === undefined) return;
       if (!db) {
-        jsonResponse(res, 503, { error: "adventure.dat not available" });
+        jsonResponseWithSessionCookie(
+          res,
+          503,
+          { error: "adventure.dat not available" },
+          cookieOpts(sess, newSession),
+        );
         return;
       }
       const groups = buildVerbSynonymGroups(db);
-      jsonResponse(res, 200, {
-        groups: groups.map((g) => g.tokens),
-      });
+      jsonResponseWithSessionCookie(
+        res,
+        200,
+        {
+          groups: groups.map((g) => g.tokens),
+        },
+        cookieOpts(sess, newSession),
+      );
       return;
     }
 
     if (pathname === "/api/autoplay-settings" && req.method === "POST") {
+      if (sess === undefined) return;
       try {
         const body = (await readJsonBody(req)) as {
           paceMs?: unknown;
           maxMoves?: unknown;
         } | null;
         if (body === null || typeof body !== "object") {
-          jsonResponse(res, 400, { error: "Expected JSON object" });
+          jsonResponseWithSessionCookie(
+            res,
+            400,
+            { error: "Expected JSON object" },
+            cookieOpts(sess, newSession),
+          );
           return;
         }
         if (body.paceMs !== undefined) {
           const n = Number(body.paceMs);
           if (!Number.isFinite(n) || n < 0 || n > 3_600_000) {
-            jsonResponse(res, 400, { error: "paceMs must be 0..3600000" });
+            jsonResponseWithSessionCookie(
+              res,
+              400,
+              { error: "paceMs must be 0..3600000" },
+              cookieOpts(sess, newSession),
+            );
             return;
           }
-          webAutoplayOverrides = {
-            ...webAutoplayOverrides,
+          sess.webAutoplayOverrides = {
+            ...sess.webAutoplayOverrides,
             paceMs: Math.floor(n),
           };
         }
         if (body.maxMoves !== undefined) {
           const n = Number(body.maxMoves);
           if (!Number.isFinite(n) || n < 1 || n > 1_000_000) {
-            jsonResponse(res, 400, { error: "maxMoves must be 1..1000000" });
+            jsonResponseWithSessionCookie(
+              res,
+              400,
+              { error: "maxMoves must be 1..1000000" },
+              cookieOpts(sess, newSession),
+            );
             return;
           }
-          webAutoplayOverrides = {
-            ...webAutoplayOverrides,
+          sess.webAutoplayOverrides = {
+            ...sess.webAutoplayOverrides,
             maxMoves: Math.floor(n),
           };
         }
         const outPace =
-          webAutoplayOverrides.paceMs !== undefined
-            ? webAutoplayOverrides.paceMs
+          sess.webAutoplayOverrides.paceMs !== undefined
+            ? sess.webAutoplayOverrides.paceMs
             : resolveAutoplayPaceMs();
         const outMax =
-          webAutoplayOverrides.maxMoves !== undefined
-            ? webAutoplayOverrides.maxMoves
+          sess.webAutoplayOverrides.maxMoves !== undefined
+            ? sess.webAutoplayOverrides.maxMoves
             : resolveAutoplayMaxMoves();
-        broadcast("autoplay_settings", { paceMs: outPace, maxMoves: outMax });
-        jsonResponse(res, 200, { paceMs: outPace, maxMoves: outMax });
+        sess.broadcast("autoplay_settings", {
+          paceMs: outPace,
+          maxMoves: outMax,
+        });
+        jsonResponseWithSessionCookie(
+          res,
+          200,
+          { paceMs: outPace, maxMoves: outMax },
+          cookieOpts(sess, newSession),
+        );
       } catch {
-        jsonResponse(res, 400, { error: "Invalid JSON" });
+        jsonResponseWithSessionCookie(
+          res,
+          400,
+          { error: "Invalid JSON" },
+          cookieOpts(sess, newSession),
+        );
       }
       return;
     }
 
     if (pathname === "/api/text-llm" && req.method === "GET") {
+      if (sess === undefined) return;
       const backends = buildTextLlmBackendSnapshots();
-      if (!textLlmRef) {
-        jsonResponse(res, 200, {
-          current: null,
-          backends,
-          canSwap: false,
-        });
+      if (!pool || !textLlmConfigured) {
+        jsonResponseWithSessionCookie(
+          res,
+          200,
+          {
+            current: null,
+            backends,
+            canSwap: false,
+          },
+          cookieOpts(sess, newSession),
+        );
         return;
       }
-      const c = textLlmRef.current;
-      jsonResponse(res, 200, {
-        current: { providerId: c.providerId, modelId: c.modelId },
-        backends,
-        canSwap: canSwapTextLlmFromBackends(backends),
-      });
+      jsonResponseWithSessionCookie(
+        res,
+        200,
+        {
+          current: {
+            providerId: sess.textLlmProviderId,
+            modelId: sess.textLlmModelId,
+          },
+          backends,
+          canSwap: canSwapTextLlmFromBackends(backends),
+        },
+        cookieOpts(sess, newSession),
+      );
       return;
     }
 
     if (pathname === "/api/mlx-model" && req.method === "GET") {
+      if (sess === undefined) return;
       const backends = buildTextLlmBackendSnapshots();
-      if (!textLlmRef) {
-        jsonResponse(res, 200, {
-          canSwap: false,
-          modelId: "",
-          presets: [...mlxWebModelPresetsList()],
-        });
+      if (!pool || !textLlmConfigured) {
+        jsonResponseWithSessionCookie(
+          res,
+          200,
+          {
+            canSwap: false,
+            modelId: "",
+            presets: [...mlxWebModelPresetsList()],
+          },
+          cookieOpts(sess, newSession),
+        );
         return;
       }
       const canSwap =
-        textLlmRef.current.providerId === "mlx" &&
+        sess.textLlmProviderId === "mlx" &&
         canSwapTextLlmFromBackends(backends);
-      jsonResponse(res, 200, {
-        canSwap,
-        modelId: textLlmRef.current.modelId,
-        presets: [...mlxWebModelPresetsList()],
-      });
+      jsonResponseWithSessionCookie(
+        res,
+        200,
+        {
+          canSwap,
+          modelId: sess.textLlmModelId,
+          presets: [...mlxWebModelPresetsList()],
+        },
+        cookieOpts(sess, newSession),
+      );
       return;
     }
 
     if (pathname === "/api/mlx-model/cancel" && req.method === "POST") {
-      if (mlxSwapInFlightNewClient === null) {
-        jsonResponse(res, 400, {
-          error: "No cancellable model load in progress (swap only)",
-        });
+      if (sess === undefined) return;
+      if (mlxUiRefs.swapInFlight === null) {
+        jsonResponseWithSessionCookie(
+          res,
+          400,
+          {
+            error: "No cancellable model load in progress (swap only)",
+          },
+          cookieOpts(sess, newSession),
+        );
         return;
       }
-      mlxLoadCancelled = true;
-      const toDispose = mlxSwapInFlightNewClient;
-      mlxSwapInFlightNewClient = null;
+      mlxUiRefs.loadCancelled = true;
+      const toDispose = mlxUiRefs.swapInFlight;
+      mlxUiRefs.swapInFlight = null;
       try {
         await toDispose.dispose();
       } catch {
         /* dispose may throw if already torn down */
       }
-      jsonResponse(res, 200, { ok: true, cancelled: true });
+      jsonResponseWithSessionCookie(
+        res,
+        200,
+        { ok: true, cancelled: true },
+        cookieOpts(sess, newSession),
+      );
       return;
     }
 
     if (pathname === "/api/text-llm" && req.method === "POST") {
-      if (!textLlmRef) {
-        jsonResponse(res, 503, { error: "No text model configured" });
+      if (sess === undefined) return;
+      if (!pool || !textLlmConfigured) {
+        jsonResponseWithSessionCookie(
+          res,
+          503,
+          { error: "No text model configured" },
+          cookieOpts(sess, newSession),
+        );
         return;
       }
       try {
@@ -866,29 +1287,53 @@ export function createAutoplayDashboardServer(): http.Server {
           mid === "" ||
           (pid !== "mlx" && pid !== "http" && pid !== "google")
         ) {
-          jsonResponse(res, 400, {
-            error:
-              'Expected { providerId: "mlx"|"http"|"google", modelId: string }',
-          });
+          jsonResponseWithSessionCookie(
+            res,
+            400,
+            {
+              error:
+                'Expected { providerId: "mlx"|"http"|"google", modelId: string }',
+            },
+            cookieOpts(sess, newSession),
+          );
           return;
         }
-        await swapTextLlmTo(pid, mid);
-        jsonResponse(res, 200, {
-          providerId: textLlmRef.current.providerId,
-          modelId: textLlmRef.current.modelId,
-        });
+        await pool.switchSessionModel(sess, pid, mid);
+        broadcastSessionTextLlm(sess);
+        jsonResponseWithSessionCookie(
+          res,
+          200,
+          {
+            providerId: sess.textLlmProviderId,
+            modelId: sess.textLlmModelId,
+          },
+          cookieOpts(sess, newSession),
+        );
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Model swap failed";
         const clientErr =
-          /not configured|Unknown or disallowed|Expected \{/.test(msg);
-        jsonResponse(res, clientErr ? 400 : 500, { error: msg });
+          /not configured|Unknown or disallowed|Expected \{|At most \d+ loaded text model\(s\) allowed/.test(
+            msg,
+          );
+        jsonResponseWithSessionCookie(
+          res,
+          clientErr ? 400 : 500,
+          { error: msg },
+          cookieOpts(sess, newSession),
+        );
       }
       return;
     }
 
     if (pathname === "/api/mlx-model" && req.method === "POST") {
-      if (!textLlmRef) {
-        jsonResponse(res, 503, { error: "No text model configured" });
+      if (sess === undefined) return;
+      if (!pool || !textLlmConfigured) {
+        jsonResponseWithSessionCookie(
+          res,
+          503,
+          { error: "No text model configured" },
+          cookieOpts(sess, newSession),
+        );
         return;
       }
       try {
@@ -897,32 +1342,62 @@ export function createAutoplayDashboardServer(): http.Server {
           body !== null && typeof body.modelId === "string" ? body.modelId : "";
         const nextId = raw.trim();
         if (nextId === "" || !isAllowedMlxWebModelId(nextId)) {
-          jsonResponse(res, 400, { error: "Unknown or disallowed modelId" });
+          jsonResponseWithSessionCookie(
+            res,
+            400,
+            { error: "Unknown or disallowed modelId" },
+            cookieOpts(sess, newSession),
+          );
           return;
         }
-        await swapTextLlmTo("mlx", nextId);
-        jsonResponse(res, 200, { modelId: textLlmRef.current.modelId });
+        await pool.switchSessionModel(sess, "mlx", nextId);
+        broadcastSessionTextLlm(sess);
+        jsonResponseWithSessionCookie(
+          res,
+          200,
+          { modelId: sess.textLlmModelId },
+          cookieOpts(sess, newSession),
+        );
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Model swap failed";
-        const clientErr = /not configured|Unknown or disallowed/.test(msg);
-        jsonResponse(res, clientErr ? 400 : 500, { error: msg });
+        const clientErr =
+          /not configured|Unknown or disallowed|At most \d+ loaded text model\(s\) allowed/.test(
+            msg,
+          );
+        jsonResponseWithSessionCookie(
+          res,
+          clientErr ? 400 : 500,
+          { error: msg },
+          cookieOpts(sess, newSession),
+        );
       }
       return;
     }
 
     if (pathname === "/api/manual-command" && req.method === "POST") {
-      if (!textLlmRef || !db) {
-        jsonResponse(res, 503, {
-          error: "Text model or adventure.dat not available",
-        });
+      if (sess === undefined) return;
+      if (!pool || !textLlmConfigured || !db) {
+        jsonResponseWithSessionCookie(
+          res,
+          503,
+          {
+            error: "Text model or adventure.dat not available",
+          },
+          cookieOpts(sess, newSession),
+        );
         return;
       }
-      const pend = manualPending;
+      const pend = sess.manualPending;
       if (pend === null) {
-        jsonResponse(res, 409, {
-          error:
-            "Not waiting for a manual command (enable manual mode and wait for the prompt)",
-        });
+        jsonResponseWithSessionCookie(
+          res,
+          409,
+          {
+            error:
+              "Not waiting for a manual command (enable manual mode and wait for the prompt)",
+          },
+          cookieOpts(sess, newSession),
+        );
         return;
       }
       try {
@@ -933,23 +1408,37 @@ export function createAutoplayDashboardServer(): http.Server {
           natural?: string;
         } | null;
         if (body === null) {
-          jsonResponse(res, 400, { error: "Expected JSON body" });
+          jsonResponseWithSessionCookie(
+            res,
+            400,
+            { error: "Expected JSON body" },
+            cookieOpts(sess, newSession),
+          );
           return;
         }
         if (body.endSession === true) {
           pend.resolve(null);
-          jsonResponse(res, 200, { ok: true, action: "endSession" });
+          jsonResponseWithSessionCookie(
+            res,
+            200,
+            { ok: true, action: "endSession" },
+            cookieOpts(sess, newSession),
+          );
           return;
         }
         if (typeof body.natural === "string" && body.natural.trim() !== "") {
-          const interpreted = await interpretWithTextLlm(
-            body.natural.trim(),
-            db,
-            textLlmRef.current,
-            {
-              recentGameText: latestTranscript.slice(-8000),
-            },
-          );
+          /* Pool attach uses runSerialized → llmExecutor.flush(); never await that inside llmExecutor.run (deadlock). */
+          await pool!.ensureSessionAttached(sess);
+          const interpreted = await llmExecutor.run(sess.id, async () => {
+            return interpretWithTextLlm(
+              body.natural!.trim(),
+              db,
+              pool!.getClientForSession(sess),
+              {
+                recentGameText: sess.latestTranscript.slice(-8000),
+              },
+            );
+          });
           const firstLine = interpretedToGetinLine(interpreted);
           const swapped = swapInterpretedTokens(interpreted);
           const retryLine = swapped
@@ -965,7 +1454,12 @@ export function createAutoplayDashboardServer(): http.Server {
             scripted = firstLine;
           }
           pend.resolve(scripted);
-          jsonResponse(res, 200, { ok: true, action: "natural" });
+          jsonResponseWithSessionCookie(
+            res,
+            200,
+            { ok: true, action: "natural" },
+            cookieOpts(sess, newSession),
+          );
           return;
         }
         if (
@@ -973,43 +1467,65 @@ export function createAutoplayDashboardServer(): http.Server {
           body.getinLine.trim() !== ""
         ) {
           pend.resolve(body.getinLine.trimEnd());
-          jsonResponse(res, 200, { ok: true, action: "getinLine" });
+          jsonResponseWithSessionCookie(
+            res,
+            200,
+            { ok: true, action: "getinLine" },
+            cookieOpts(sess, newSession),
+          );
           return;
         }
-        jsonResponse(res, 400, {
-          error:
-            'Provide endSession: true, getinLine: "EAST ...", or natural: "go east"',
-        });
+        jsonResponseWithSessionCookie(
+          res,
+          400,
+          {
+            error:
+              'Provide endSession: true, getinLine: "EAST ...", or natural: "go east"',
+          },
+          cookieOpts(sess, newSession),
+        );
       } catch (e) {
-        jsonResponse(res, 400, {
-          error: e instanceof Error ? e.message : "Request failed",
-        });
+        jsonResponseWithSessionCookie(
+          res,
+          400,
+          {
+            error: e instanceof Error ? e.message : "Request failed",
+          },
+          cookieOpts(sess, newSession),
+        );
       }
       return;
     }
 
     if (pathname === "/events" && req.method === "GET") {
-      res.writeHead(200, {
+      if (sess === undefined) return;
+      const evHeaders: Record<string, string | number | string[]> = {
         "Content-Type": "text/event-stream; charset=utf-8",
         "Cache-Control": "no-cache",
         Connection: "keep-alive",
-      });
+      };
+      if (newSession) {
+        evHeaders["Set-Cookie"] = formatSessionSetCookie(sess.id, {
+          secure: options.secureCookies,
+        });
+      }
+      res.writeHead(200, evHeaders);
       res.write(": connected\n\n");
       sseWrite(res, "autoplay_mode", {
-        plannerEnabled: plannerAutoplayEnabled,
+        plannerEnabled: sess.plannerAutoplayEnabled,
       });
       sseWrite(res, "autoplay_settings", {
         paceMs:
-          webAutoplayOverrides.paceMs !== undefined
-            ? webAutoplayOverrides.paceMs
+          sess.webAutoplayOverrides.paceMs !== undefined
+            ? sess.webAutoplayOverrides.paceMs
             : resolveAutoplayPaceMs(),
         maxMoves:
-          webAutoplayOverrides.maxMoves !== undefined
-            ? webAutoplayOverrides.maxMoves
+          sess.webAutoplayOverrides.maxMoves !== undefined
+            ? sess.webAutoplayOverrides.maxMoves
             : resolveAutoplayMaxMoves(),
       });
       sseWrite(res, "manual_waiting", {
-        waitingForManual: manualPending !== null,
+        waitingForManual: sess.manualPending !== null,
       });
       if (db) {
         sseWrite(res, "parser_verbs", {
@@ -1018,31 +1534,42 @@ export function createAutoplayDashboardServer(): http.Server {
       } else {
         sseWrite(res, "parser_verbs", { groups: [], datAvailable: false });
       }
-      if (textLlmRef) {
-        const cur = textLlmRef.current;
+      if (pool && textLlmConfigured) {
+        try {
+          await pool.ensureSessionAttached(sess);
+        } catch (e) {
+          const msg =
+            e instanceof Error ? e.message : "Failed to load text model";
+          sseWrite(res, "session_error", { message: msg });
+          sess.clients.add(res);
+          req.on("close", () => {
+            sess!.clients.delete(res);
+          });
+          return;
+        }
         sseWrite(res, "text_llm", {
-          providerId: cur.providerId,
-          modelId: cur.modelId,
+          providerId: sess.textLlmProviderId,
+          modelId: sess.textLlmModelId,
         });
         sseWrite(res, "mlx_model", {
-          modelId: cur.modelId,
-          providerId: cur.providerId,
+          modelId: sess.textLlmModelId,
+          providerId: sess.textLlmProviderId,
         });
-        if (cur.providerId === "mlx" && mlxLoadUiActive) {
+        if (sess.textLlmProviderId === "mlx" && mlxLoadUiActive) {
           sseWrite(res, "mlx_loading", {
             loading: true,
             message: "Loading MLX model…",
             resetProgress: true,
-            canCancel: mlxSwapInFlightNewClient !== null,
+            canCancel: mlxUiRefs.swapInFlight !== null,
           });
         }
       }
-      clients.add(res);
+      sess.clients.add(res);
       req.on("close", () => {
-        clients.delete(res);
+        sess!.clients.delete(res);
       });
 
-      if (!textLlmRef) {
+      if (!pool || !textLlmConfigured) {
         sseWrite(res, "session_error", {
           message:
             "No text model configured (GEMINI_API_KEY, ADVENTURE_LLM_HTTP_MODEL, or MLX). See adventure-llm/.env.example.",
@@ -1057,58 +1584,64 @@ export function createAutoplayDashboardServer(): http.Server {
         return;
       }
 
-      if (!autoplayRunning && !autoplayStartScheduled) {
-        autoplayStartScheduled = true;
-        autoplayRunning = (async () => {
+      if (!sess.autoplayRunning && !sess.autoplayStartScheduled) {
+        sess.autoplayStartScheduled = true;
+        const sid = sess.id;
+        const sref = sess;
+        sess.autoplayRunning = (async () => {
           try {
-            if (textLlmRef.current instanceof MlxLmStdioTextLlm) {
-              beginMlxModelLoad();
-              try {
-                await ensureMlxWorkerReady(textLlmRef.current);
-              } finally {
-                endMlxModelLoad();
+            await runWithWebDashboardLlmLogContext(sid, async () => {
+              await pool!.ensureSessionAttached(sref);
+              const sessionClient = pool!.getClientForSession(sref);
+              if (sessionClient instanceof MlxLmStdioTextLlm) {
+                beginMlxModelLoad();
+                try {
+                  await ensureMlxWorkerReady(sessionClient);
+                } finally {
+                  endMlxModelLoad();
+                }
+              } else {
+                await ensureMlxWorkerReady(sessionClient);
               }
-            } else {
-              await ensureMlxWorkerReady(textLlmRef.current);
-            }
-            await runAutoplaySessionWithTextLlm(
-              textLlmRef,
-              { repoRoot, datPath },
-              sink,
-              manualPlannerGate,
-              webAutoplayLiveOverrides,
-            );
+              await runAutoplaySessionWithTextLlm(
+                sref.textLlmSource,
+                { repoRoot, datPath },
+                sref.sink,
+                sref.manualPlannerGate,
+                sref.webAutoplayLiveOverrides,
+              );
+            });
           } catch (err) {
             const msg =
               err instanceof Error
                 ? err.message
                 : `autoplay failed: ${String(err)}`;
-            broadcast("session_error", { message: msg });
+            sref.broadcast("session_error", { message: msg });
             if (
-              shouldFallbackToClassicForLlmError(
-                err,
-                textLlmRef.current.providerId,
-              )
+              shouldFallbackToClassicForLlmError(err, sref.textLlmProviderId)
             ) {
-              broadcast("log_line", {
+              sref.broadcast("log_line", {
                 line: "adventure-llm: text model unavailable (quota, rate limit, network, or service error).\n",
                 step: 0,
                 channel: "planner",
               });
             }
           } finally {
-            autoplayRunning = null;
-            autoplayStartScheduled = false;
+            sref.autoplayRunning = null;
+            sref.autoplayStartScheduled = false;
           }
         })();
       }
       return;
     }
 
-    const filePath = path.join(
-      publicDir,
-      pathname === "/" ? "index.html" : pathname.slice(1),
-    );
+    const staticRelative =
+      pathname === "/"
+        ? "index.html"
+        : pathname === "/favicon.ico"
+          ? "favicon.svg"
+          : pathname.slice(1);
+    const filePath = path.join(publicDir, staticRelative);
     if (!filePath.startsWith(publicDir)) {
       res.writeHead(403).end();
       return;
@@ -1132,27 +1665,68 @@ export function createAutoplayDashboardServer(): http.Server {
       base === "app.js" ||
       base === "dashboard.css" ||
       base === "promptLab.js";
-    res.writeHead(200, {
+    const staticHeaders: Record<string, string | number | string[]> = {
       "Content-Type": MIME[ext] ?? "application/octet-stream",
       ...(noCacheDashboardAsset ? { "Cache-Control": "no-store" } : {}),
-    });
+    };
+    if (base === "index.html") {
+      const r = resolveDashboardSession(req);
+      if (r.isNew) {
+        staticHeaders["Set-Cookie"] = formatSessionSetCookie(r.session.id, {
+          secure: options.secureCookies,
+        });
+      }
+    }
+    res.writeHead(200, staticHeaders);
     createReadStream(filePath).pipe(res);
-  });
+  };
 
-  return server;
+  if (options.httpsOptions) {
+    return https.createServer(options.httpsOptions, requestListener);
+  }
+  return http.createServer(requestListener);
 }
 
 async function main(): Promise<void> {
-  const logPath = resolveDebugLogPath();
-  if (logPath) {
-    process.stderr.write(`adventure-llm: interaction log → ${logPath}\n`);
+  const dbg = process.env.ADVENTURE_LLM_DEBUG?.trim();
+  const dbgOn = dbg === "1" || dbg?.toLowerCase() === "true";
+  if (dbgOn) {
+    if (process.env.ADVENTURE_LLM_DEBUG_LOG?.trim()) {
+      const logPath = resolveDebugLogPath();
+      if (logPath) {
+        process.stderr.write(`adventure-llm: interaction log → ${logPath}\n`);
+      }
+    } else {
+      process.stderr.write(
+        `adventure-llm: interaction logs → ${path.join(process.cwd(), ".cache", "llm-sessions", "<sessionId>.jsonl")} (web) or ${path.join(process.cwd(), ".cache", "llm-interactions.jsonl")} (CLI)\n`,
+      );
+    }
   }
 
   const port = resolveWebPort();
-  const server = createAutoplayDashboardServer();
+  const insecure = isWebDashboardInsecureHttp();
+  const tls = !insecure ? resolveWebDashboardTls(packageRoot) : null;
+  if (!insecure && tls === null) {
+    process.stderr.write(
+      "adventure-llm: No TLS certificate found. Run: npm run web:tls-init\n" +
+        "  Or set ADVENTURE_LLM_WEB_TLS_KEY / ADVENTURE_LLM_WEB_TLS_CERT, or use ADVENTURE_LLM_WEB_INSECURE_HTTP=1 (not recommended).\n",
+    );
+    process.exit(1);
+  }
+  if (insecure) {
+    process.stderr.write(
+      "adventure-llm: ADVENTURE_LLM_WEB_INSECURE_HTTP=1 — session cookies are not Secure; use only on trusted networks.\n",
+    );
+  }
+  const secureCookies = !insecure && tls !== null;
+  const server = createAutoplayDashboardServer({
+    secureCookies,
+    httpsOptions: tls ? httpsServerOptionsFromTls(tls) : undefined,
+  });
+  const proto = tls ? "https" : "http";
   server.listen(port, "127.0.0.1", () => {
     process.stderr.write(
-      `adventure-llm: autoplay web dashboard → http://127.0.0.1:${port}/\n`,
+      `adventure-llm: autoplay web dashboard → ${proto}://127.0.0.1:${port}/\n`,
     );
     process.stderr.write(
       "Open the URL in a browser; autoplay starts when the page subscribes to /events.\n",
