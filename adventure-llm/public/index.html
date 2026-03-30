@@ -534,51 +534,6 @@
         <div class="map-hero-column">
           <div class="map-hero-column-body">
             <section
-              class="panel map-hero map-hero-center"
-              aria-label="Inferred exploration map"
-            >
-              <div class="map-hero-head">
-                <h2 class="map-hero-title">Exploration map</h2>
-                <div class="map-xyz" aria-live="polite">
-                  <span class="map-xyz-label">Position (x, y, z)</span>
-                  <span id="map-coords" class="map-xyz-value">—</span>
-                </div>
-                <button
-                  type="button"
-                  class="help-icon-btn map-hero-help-btn"
-                  data-help-template="help-tpl-exploration-map"
-                  data-help-title="Exploration map"
-                  aria-label="About the exploration map"
-                >
-                  ?
-                </button>
-              </div>
-              <p class="map-hero-sub map-hero-sub--compact">
-                <label class="inline-z">
-                  Layer <strong>z</strong> =
-                  <input type="number" id="map-z" value="0" step="1" />
-                </label>
-              </p>
-              <p
-                id="map-room-kind"
-                class="map-room-kind small"
-                aria-live="polite"
-              ></p>
-              <div class="map-viewport">
-                <div
-                  id="map-grid"
-                  class="map-grid mono"
-                  role="img"
-                  aria-label="Inferred exploration grid"
-                ></div>
-              </div>
-              <div
-                id="map-legend"
-                class="map-legend"
-                aria-label="Room type legend"
-              ></div>
-            </section>
-            <section
               class="panel map-fsm-card"
               aria-label="Session exploration state machine"
             >
@@ -658,6 +613,51 @@
                 </summary>
                 <pre id="map-dot-src" class="map-fsm-pre mono"></pre>
               </details>
+            </section>
+            <section
+              class="panel map-hero map-hero-center"
+              aria-label="Inferred exploration map"
+            >
+              <div class="map-hero-head">
+                <h2 class="map-hero-title">Exploration map</h2>
+                <div class="map-xyz" aria-live="polite">
+                  <span class="map-xyz-label">Position (x, y, z)</span>
+                  <span id="map-coords" class="map-xyz-value">—</span>
+                </div>
+                <button
+                  type="button"
+                  class="help-icon-btn map-hero-help-btn"
+                  data-help-template="help-tpl-exploration-map"
+                  data-help-title="Exploration map"
+                  aria-label="About the exploration map"
+                >
+                  ?
+                </button>
+              </div>
+              <p class="map-hero-sub map-hero-sub--compact">
+                <label class="inline-z">
+                  Layer <strong>z</strong> =
+                  <input type="number" id="map-z" value="0" step="1" />
+                </label>
+              </p>
+              <p
+                id="map-room-kind"
+                class="map-room-kind small"
+                aria-live="polite"
+              ></p>
+              <div class="map-viewport">
+                <div
+                  id="map-grid"
+                  class="map-grid mono"
+                  role="img"
+                  aria-label="Inferred exploration grid"
+                ></div>
+              </div>
+              <div
+                id="map-legend"
+                class="map-legend"
+                aria-label="Room type legend"
+              ></div>
             </section>
           </div>
         </div>
