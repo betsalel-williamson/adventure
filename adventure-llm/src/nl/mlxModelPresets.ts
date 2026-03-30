@@ -1,8 +1,11 @@
-import { mlxModelsFromWebPresetsFile } from "./textLlmWebPresetsConfig.js";
+import {
+  mlxModelsFromWebPresetsFile,
+  sortWebDashboardModelIds,
+} from "./textLlmWebPresetsConfig.js";
 
 /** Allowlisted MLX Hugging Face repo ids for the web dashboard (from `text-llm-web-presets.yaml`). */
 export function mlxWebModelPresetsList(): readonly string[] {
-  return mlxModelsFromWebPresetsFile();
+  return sortWebDashboardModelIds(mlxModelsFromWebPresetsFile());
 }
 
 export function isAllowedMlxWebModelId(modelId: string): boolean {

@@ -17,11 +17,15 @@ function withGeminiTextModel<T>(value: string | undefined, fn: () => T): T {
 }
 
 describe("mergeGoogleWebPresetsFromEnv", () => {
-  it("prepends GEMINI_TEXT_MODEL when set and not already curated", () => {
+  it("includes GEMINI_TEXT_MODEL when set and not already curated, sorted A→Z", () => {
     withGeminiTextModel("gemini-2.0-flash-thinking-exp-01-21", () => {
       const m = mergeGoogleWebPresetsFromEnv();
-      expect(m[0]).toBe("gemini-2.0-flash-thinking-exp-01-21");
+      expect(m).toContain("gemini-2.0-flash-thinking-exp-01-21");
       expect(m).toContain("gemini-2.5-flash");
+      const sorted = [...m].sort((a, b) =>
+        a.localeCompare(b, undefined, { sensitivity: "base", numeric: true }),
+      );
+      expect(m).toEqual(sorted);
     });
   });
 

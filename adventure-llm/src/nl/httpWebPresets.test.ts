@@ -20,10 +20,16 @@ describe("mergeHttpWebPresetsFromEnv", () => {
     resetTextLlmWebPresetsCacheForTests();
   });
 
-  it("includes default model first and dedupes extras", () => {
+  it("dedupes env merge and sorts presets A→Z", () => {
     process.env.ADVENTURE_LLM_HTTP_MODEL = "a";
     process.env.ADVENTURE_LLM_HTTP_WEB_PRESETS = "b, a , c";
     expect(mergeHttpWebPresetsFromEnv()).toEqual(["a", "b", "c"]);
+  });
+
+  it("sorts so default HTTP model is not pinned first when not alphabetically first", () => {
+    process.env.ADVENTURE_LLM_HTTP_MODEL = "zebra";
+    process.env.ADVENTURE_LLM_HTTP_WEB_PRESETS = "alpha, beta";
+    expect(mergeHttpWebPresetsFromEnv()).toEqual(["alpha", "beta", "zebra"]);
   });
 
   it("appends providers.http.models from YAML after env merge", () => {

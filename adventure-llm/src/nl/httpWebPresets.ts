@@ -1,9 +1,12 @@
-import { httpExtraModelsFromWebPresetsFile } from "./textLlmWebPresetsConfig.js";
+import {
+  httpExtraModelsFromWebPresetsFile,
+  sortWebDashboardModelIds,
+} from "./textLlmWebPresetsConfig.js";
 
 /**
  * HTTP (OpenAI-compatible) model ids for the web dashboard: env default plus optional
  * `ADVENTURE_LLM_HTTP_WEB_PRESETS` (comma-separated), then extras from
- * `text-llm-web-presets.yaml` `providers.http.models`. Deduped; default model is first when set.
+ * `text-llm-web-presets.yaml` `providers.http.models`. Deduped; sorted A→Z for the picker.
  */
 export function mergeHttpWebPresetsFromEnv(): string[] {
   const defaultModel = process.env.ADVENTURE_LLM_HTTP_MODEL?.trim();
@@ -32,7 +35,7 @@ export function mergeHttpWebPresetsFromEnv(): string[] {
     seen.add(t);
     out.push(t);
   }
-  return out;
+  return sortWebDashboardModelIds(out);
 }
 
 export function isAllowedHttpWebModelId(modelId: string): boolean {
