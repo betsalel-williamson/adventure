@@ -23,7 +23,7 @@ export type PlannerUserPromptInput =
   | { readonly system: string; readonly user: string };
 
 /**
- * Vendor-neutral text LLM used for NL → parser tokens and autoplay planning.
+ * Vendor-neutral text model interface used for NL → parser tokens and autoplay planning.
  */
 export type TextLlm = {
   readonly providerId: TextLlmProviderId;
@@ -38,6 +38,8 @@ export type TextLlm = {
     options: {
       plannerUserPrompt: PlannerUserPromptInput;
       recentGameTextForRepair?: string;
+      /** When false, planner omits adventure.dat RTEXT HELP prepended to system. Default true. */
+      includeDatHelpInSystem?: boolean;
     },
   ): Promise<AutoplayPlannerResponse>;
   /**

@@ -111,10 +111,10 @@ export class MlxLmStdioTextLlm implements TextLlm {
   private readonly packageRoot: string;
   private readonly pythonPath: string;
   private readonly resolvedScriptPath: string;
-  private readonly maxTokens: number;
+  private maxTokens: number;
   private readonly readyTimeoutMs: number;
   private readonly compactPrompts: boolean;
-  private readonly mlxGenTemp: number;
+  private mlxGenTemp: number;
   private readonly mlxStopStrings: string[];
   private readonly onWorkerStderr?: (chunk: string) => void;
 
@@ -152,6 +152,28 @@ export class MlxLmStdioTextLlm implements TextLlm {
     this.mlxGenTemp = resolveMlxGenTemp();
     this.mlxStopStrings = resolveMlxStopStrings();
     this.onWorkerStderr = options.onWorkerStderr;
+  }
+
+  /** Mutable for the web dashboard. */
+  setDashboardGenerationOptions(opts: {
+    maxTokens?: number;
+    temperature?: number;
+  }): void {
+    if (opts.maxTokens !== undefined) {
+      const n = Math.floor(opts.maxTokens);
+      if (n >= 32) this.maxTokens = n;
+    }
+    if (opts.temperature !== undefined) {
+      const t = opts.temperature;
+      this.mlxGenTemp = Math.max(0, Math.min(2, t));
+    }
+  }
+
+  getDashboardGenerationOptions(): {
+    maxTokens: number;
+    temperature: number;
+  } {
+    return { maxTokens: this.maxTokens, temperature: this.mlxGenTemp };
   }
 
   /** Start the worker and wait for the model (same readiness as first `complete`). Idempotent. */
@@ -468,7 +490,7 @@ export class MlxLmStdioTextLlm implements TextLlm {
     });
     if (cacheHit) return cacheHit;
 
-    process.stderr.write("adventure-llm: translating with text LLM (MLX)…\n");
+    process.stderr.write("adventure-llm: translating with text model (MLX)…\n");
 
     const prompt = buildInterpretSystemAndUserPrompt(
       db,
@@ -529,6 +551,7 @@ export class MlxLmStdioTextLlm implements TextLlm {
     options: {
       plannerUserPrompt: PlannerUserPromptInput;
       recentGameTextForRepair?: string;
+      includeDatHelpInSystem?: boolean;
     },
   ): Promise<AutoplayPlannerResponse> {
     process.stderr.write(
@@ -597,7 +620,10 @@ ${plannerBody.user}`,
       }
     }
 
-    const compactOpts = { compact: this.compactPrompts };
+    const compactOpts = {
+      compact: this.compactPrompts,
+      includeDatHelpInSystem: options.includeDatHelpInSystem !== false,
+    };
     const toComplete =
       typeof plannerBody === "string"
         ? buildAutoplayPlannerPrompt(db, plannerBody, compactOpts)

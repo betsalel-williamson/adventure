@@ -47,10 +47,51 @@ export class GoogleGenerativeAiTextLlm implements TextLlm {
   readonly providerId = "google" as const;
   readonly modelId: string;
   private readonly apiKey: string;
+  private googleTemperature: number | undefined = undefined;
+  private googleMaxOutputTokens: number | undefined = undefined;
 
   constructor(options: GoogleGenerativeAiTextLlmOptions) {
     this.apiKey = options.apiKey;
     this.modelId = options.model?.trim() || resolvedGeminiTextModel();
+  }
+
+  setDashboardGenerationOptions(opts: {
+    temperature?: number;
+    maxOutputTokens?: number;
+  }): void {
+    if (opts.temperature !== undefined) {
+      this.googleTemperature = Math.max(0, Math.min(2, opts.temperature));
+    }
+    if (opts.maxOutputTokens !== undefined) {
+      const n = Math.floor(opts.maxOutputTokens);
+      this.googleMaxOutputTokens = n >= 1 ? n : undefined;
+    }
+  }
+
+  getDashboardGenerationOptions(): {
+    temperature?: number;
+    maxOutputTokens?: number;
+  } {
+    return {
+      ...(this.googleTemperature !== undefined
+        ? { temperature: this.googleTemperature }
+        : {}),
+      ...(this.googleMaxOutputTokens !== undefined
+        ? { maxOutputTokens: this.googleMaxOutputTokens }
+        : {}),
+    };
+  }
+
+  private geminiGenOverrides(): {
+    temperature?: number;
+    maxOutputTokens?: number;
+  } {
+    const o: { temperature?: number; maxOutputTokens?: number } = {};
+    if (this.googleTemperature !== undefined)
+      o.temperature = this.googleTemperature;
+    if (this.googleMaxOutputTokens !== undefined)
+      o.maxOutputTokens = this.googleMaxOutputTokens;
+    return o;
   }
 
   async interpretPlayerInput(
@@ -83,13 +124,14 @@ export class GoogleGenerativeAiTextLlm implements TextLlm {
     });
     if (cacheHit) return cacheHit;
 
-    process.stderr.write("adventure-llm: translating with text LLM…\n");
+    process.stderr.write("adventure-llm: translating with text model…\n");
 
     const tokenEnum = vocabTokensForLlmEnums(db);
     const gen = new GoogleGenerativeAI(this.apiKey);
     const model = gen.getGenerativeModel({
       model: this.modelId,
       generationConfig: {
+        ...this.geminiGenOverrides(),
         responseMimeType: "application/json",
         responseSchema: {
           type: SchemaType.OBJECT,
@@ -168,6 +210,7 @@ export class GoogleGenerativeAiTextLlm implements TextLlm {
     options: {
       plannerUserPrompt: PlannerUserPromptInput;
       recentGameTextForRepair?: string;
+      includeDatHelpInSystem?: boolean;
     },
   ): Promise<AutoplayPlannerResponse> {
     process.stderr.write("adventure-llm: autoplay — planning next move…\n");
@@ -177,6 +220,7 @@ export class GoogleGenerativeAiTextLlm implements TextLlm {
     const model = gen.getGenerativeModel({
       model: this.modelId,
       generationConfig: {
+        ...this.geminiGenOverrides(),
         responseMimeType: "application/json",
         responseSchema: {
           type: SchemaType.OBJECT,
@@ -205,7 +249,9 @@ export class GoogleGenerativeAiTextLlm implements TextLlm {
       },
     });
 
-    const prompt = buildAutoplayPlannerPrompt(db, options.plannerUserPrompt);
+    const prompt = buildAutoplayPlannerPrompt(db, options.plannerUserPrompt, {
+      includeDatHelpInSystem: options.includeDatHelpInSystem !== false,
+    });
 
     await appendInteractionLog({
       event: "text_llm_autoplay_request",

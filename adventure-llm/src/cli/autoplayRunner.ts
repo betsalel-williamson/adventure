@@ -14,15 +14,21 @@ import {
 } from "../nl/autoplaySessionMemory.js";
 import { planAutoplayWithTextLlm } from "../nl/adventureTextLlm.js";
 import {
+  effectivePlannerSendPayload,
   resolveAutoplayPromptMode,
   resolveCompactPrompts,
   resolveStructuredDashboardPrompts,
   resolveVocabHintMaxWords,
 } from "../nl/adventureNlPrompts.js";
 import {
+  applyPlannerPromptExperiment,
+  type PromptExperimentPatch,
+} from "../nl/promptExperiment.js";
+import {
   buildSituationalCandidateTokens,
   formatSituationalCandidatesSection,
   recentTextSuggestsIndoorBuildingNavigation,
+  shouldPrioritizeLootFunnel,
 } from "../nl/situationalCandidates.js";
 import { buildVocabHint } from "../nl/vocabHint.js";
 import { appendInteractionLog, resolveDebugLogPath } from "../nl/llmDebug.js";
@@ -41,7 +47,7 @@ import type {
   TextLlmProviderId,
 } from "../nl/textLlmContract.js";
 
-/** Fixed client or mutable ref (web dashboard text LLM hot-swap). */
+/** Fixed client or mutable ref (web dashboard text model hot-swap). */
 export type TextLlmSource = TextLlm | { current: TextLlm };
 
 function isMutableTextLlmRef(s: TextLlmSource): s is { current: TextLlm } {
@@ -50,7 +56,7 @@ function isMutableTextLlmRef(s: TextLlmSource): s is { current: TextLlm } {
   );
 }
 
-/** Resolves the active client once per call (supports `{ current }` for text LLM hot-swap in the web UI). */
+/** Resolves the active client once per call (supports `{ current }` for text model hot-swap in the web UI). */
 export function getTextLlmAccessor(src: TextLlmSource): () => TextLlm {
   if (isMutableTextLlmRef(src)) {
     return () => src.current;
@@ -68,7 +74,7 @@ export type AutoplayManualPlannerGate = {
   /**
    * Await user input from the dashboard. Return `null` to end the session without another GETIN
    * (same as planner `continuePlaying: false`). Return {@link AUTOPLAY_RESUME_PLANNER} if the UI
-   * re-enables the planner while blocked (runner will call the LLM on the next iteration).
+   * re-enables the planner while blocked (runner will call the text model on the next iteration).
    */
   readonly waitForManualLine: () => Promise<
     ScriptedGetinLine | null | typeof AUTOPLAY_RESUME_PLANNER
@@ -95,9 +101,6 @@ export function syntheticPlannerResponseFromScripted(
   };
 }
 
-const DEFAULT_USER_PREVIEW_CHARS = 12_000;
-const DEFAULT_SYSTEM_PREVIEW_CHARS = 8_000;
-
 export type AutoplayRunPaths = {
   readonly repoRoot: string;
   readonly datPath: string;
@@ -116,6 +119,8 @@ export type AutoplayRunOverrides = {
    * When set, called before each max-move check. Overrides {@link maxMoves} for that step.
    */
   readonly getMaxMoves?: () => number;
+  /** Web dashboard: prompt experiment patch applied after session-memory planner build. */
+  readonly getPlannerPromptExperiment?: () => PromptExperimentPatch;
 };
 
 export type AutoplayUiSink = {
@@ -135,6 +140,9 @@ export type AutoplayUiSink = {
   readonly onPlannerPrompt?: (e: {
     userPreview: string;
     systemPreview?: string;
+    fullSystem?: string;
+    fullUser?: string;
+    merged?: string;
   }) => void;
   /**
    * Engine stdout/stderr chunk. `step` = GETIN lines already sent (0 = opening only).
@@ -248,8 +256,8 @@ function truncatePreview(s: string, max: number): string {
 
 export function formatPlannerPromptPreviews(
   input: PlannerUserPromptInput,
-  maxUser = DEFAULT_USER_PREVIEW_CHARS,
-  maxSystem = DEFAULT_SYSTEM_PREVIEW_CHARS,
+  maxUser = 12_000,
+  maxSystem = 8_000,
 ): { userPreview: string; systemPreview?: string } {
   if (typeof input === "string") {
     return { userPreview: truncatePreview(input, maxUser) };
@@ -321,7 +329,6 @@ function logAutoplaySendingToGame(
   plan: AutoplayPlannerResponse,
   scripted: ScriptedGetinLine,
   log: (line: string) => void,
-  options?: { omitUiLog?: boolean },
 ): void {
   const tok: string[] = [`primary=${plan.primaryToken}`];
   if (plan.secondaryToken !== undefined && plan.secondaryToken !== "") {
@@ -344,11 +351,7 @@ function logAutoplaySendingToGame(
     }
   }
   const lineOut = `adventure-llm: autoplay — planned ${tok.join(", ")} → to adventure (GETIN): ${getinDesc}\n`;
-  if (options?.omitUiLog) {
-    process.stderr.write(lineOut);
-  } else {
-    log(lineOut);
-  }
+  log(lineOut);
 }
 
 export function resolveAutoplayPaceMs(): number {
@@ -372,7 +375,7 @@ export function resolveAutoplayContextChars(): number {
   return Number.isFinite(n) && n >= 2000 ? Math.floor(n) : 6000;
 }
 
-/** Compact / structured layout and repair window for the active text LLM provider (supports web hot-swap). */
+/** Compact / structured layout and repair window for the active text model provider (supports web hot-swap). */
 export function resolveAutoplayPromptLayout(providerId: TextLlmProviderId): {
   compact: boolean;
   structuredDashboard: boolean;
@@ -416,7 +419,6 @@ export async function runAutoplaySessionWithTextLlm(
   let lastGetinLine = "";
 
   let sessionTranscript = "";
-  const omitSendLineUiLog = Boolean(sink?.onLogLine);
 
   const callPlanner = async (recentForRepair: string) => {
     await sink?.beforePlannerCall?.();
@@ -426,15 +428,21 @@ export async function runAutoplaySessionWithTextLlm(
     const stagnating = memory.isLocationStagnating();
     const tryNextLine = memory.formatExplorationTryNextLine();
     const vocabHint = buildVocabHint(db, resolveVocabHintMaxWords(compact), {
-      grouped: true,
-      structuredGroups: structuredDashboard,
+      grouped: !compact,
+      structuredGroups: structuredDashboard && !compact,
       compact,
     });
-    const indoorLeave = recentTextSuggestsIndoorBuildingNavigation(
-      memory.getRecentRawTail(),
-    );
+    const objectScope = memory.getObjectHintScopeText();
+    const indoorLeave = recentTextSuggestsIndoorBuildingNavigation(objectScope);
     const promptMode = resolveAutoplayPromptMode();
     const invLines = memory.getStructuredInventory();
+    const takeFailWords = memory.getRoomTakeFailureObjectAtabWords();
+    const lootFunnel = shouldPrioritizeLootFunnel(
+      db,
+      objectScope,
+      invLines,
+      takeFailWords,
+    );
     const situationalSection = formatSituationalCandidatesSection(
       db,
       buildSituationalCandidateTokens(db, memory.getRecentRawTail(), {
@@ -443,22 +451,55 @@ export async function runAutoplaySessionWithTextLlm(
         exploreFirst: promptMode === "explore",
         inventorySubtractText:
           invLines.length > 0 ? invLines.join("\n") : undefined,
+        takeFailureSubtractWords: takeFailWords,
+        objectHintScopeText: objectScope,
+        lootFunnel,
       }),
       stagnating && tryNextLine.length > 0 ? tryNextLine : undefined,
+      {
+        flatList: !compact,
+        slmGrouped: compact,
+        lootFunnelDeferCandMove: lootFunnel,
+      },
     );
     const useMxStructuredSplit =
       plannerClient.providerId === "mlx" && structuredDashboard;
-    const plannerUserPrompt: PlannerUserPromptInput = useMxStructuredSplit
+    const baselinePlannerPrompt: PlannerUserPromptInput = useMxStructuredSplit
       ? memory.buildPlannerMxStructuredPrompt(contextChars, {
           compact,
           situationalSection,
+          lootFunnel,
         })
       : memory.buildPlannerUserPrompt(contextChars, vocabHint, {
           compact,
           situationalSection,
           structuredDashboard,
         });
-    sink?.onPlannerPrompt?.(formatPlannerPromptPreviews(plannerUserPrompt));
+    const experimentPatch = overrides?.getPlannerPromptExperiment?.() ?? {};
+    const plannerUserPrompt = applyPlannerPromptExperiment(
+      baselinePlannerPrompt,
+      experimentPatch,
+    );
+    const includeDatHelp = experimentPatch.includeDatHelpInSystem !== false;
+    const capSse = process.env.ADVENTURE_LLM_SSE_FULL_PROMPTS?.trim() === "1";
+    const effective = effectivePlannerSendPayload(
+      db,
+      plannerClient.providerId,
+      plannerUserPrompt,
+      {
+        compact,
+        structuredSplit: useMxStructuredSplit,
+        includeDatHelpInSystem: includeDatHelp,
+        capForEventStream: capSse,
+      },
+    );
+    sink?.onPlannerPrompt?.({
+      userPreview: effective.userPreview,
+      systemPreview: effective.systemPreview,
+      fullSystem: effective.fullSystem,
+      fullUser: effective.fullUser,
+      merged: effective.merged,
+    });
     sink?.onPlannerPhase?.({
       phase: "start",
       providerId: plannerClient.providerId,
@@ -467,6 +508,7 @@ export async function runAutoplaySessionWithTextLlm(
       return await planAutoplayWithTextLlm(db, plannerClient, {
         plannerUserPrompt,
         recentGameTextForRepair: recentForRepair.slice(-repairTailChars),
+        includeDatHelpInSystem: includeDatHelp,
       });
     } finally {
       sink?.onPlannerPhase?.({
@@ -559,9 +601,7 @@ export async function runAutoplaySessionWithTextLlm(
         const quitLine: ScriptedGetinLine = interpretedToGetinLine({
           primaryToken: "QUIT",
         });
-        logAutoplaySendingToGame(choice.plan, quitLine, logLine, {
-          omitUiLog: omitSendLineUiLog,
-        });
+        logAutoplaySendingToGame(choice.plan, quitLine, logLine);
         const glQuit = scriptedGetinLineString(quitLine);
         sink?.onPlanApplied?.({
           plan: choice.plan,
@@ -586,9 +626,7 @@ export async function runAutoplaySessionWithTextLlm(
           primaryToken: "QUIT",
           continuePlaying: false,
         };
-        logAutoplaySendingToGame(endPlan, quitLine, logLine, {
-          omitUiLog: omitSendLineUiLog,
-        });
+        logAutoplaySendingToGame(endPlan, quitLine, logLine);
         const glGateQuit = scriptedGetinLineString(quitLine);
         sink?.onPlanApplied?.({
           plan: endPlan,
@@ -602,9 +640,7 @@ export async function runAutoplaySessionWithTextLlm(
         return quitLine;
       }
       const { scripted, planForLog } = choice;
-      logAutoplaySendingToGame(planForLog, scripted, logLine, {
-        omitUiLog: omitSendLineUiLog,
-      });
+      logAutoplaySendingToGame(planForLog, scripted, logLine);
       const glFirst = scriptedGetinLineString(scripted);
       sink?.onPlanApplied?.({
         plan: planForLog,
@@ -652,9 +688,7 @@ export async function runAutoplaySessionWithTextLlm(
         logLine(
           "adventure-llm: autoplay — GAME IS OVER / PLAY AGAIN detected; sending Y (restart)\n",
         );
-        logAutoplaySendingToGame(planForLog, scripted, logLine, {
-          omitUiLog: omitSendLineUiLog,
-        });
+        logAutoplaySendingToGame(planForLog, scripted, logLine);
         const glPlayAgain = scriptedGetinLineString(scripted);
         sink?.onPlanApplied?.({
           plan: planForLog,
@@ -688,9 +722,7 @@ export async function runAutoplaySessionWithTextLlm(
         return null;
       }
       const { scripted, planForLog } = choice;
-      logAutoplaySendingToGame(planForLog, scripted, logLine, {
-        omitUiLog: omitSendLineUiLog,
-      });
+      logAutoplaySendingToGame(planForLog, scripted, logLine);
       const glCont = scriptedGetinLineString(scripted);
       sink?.onPlanApplied?.({
         plan: planForLog,

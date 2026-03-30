@@ -1,12 +1,12 @@
 # Demo walkthrough (judges & newcomers)
 
-Use this script to see the **magic moment** in under a few minutes: LLM-driven
+Use this script to see the **magic moment** in under a few minutes: language-model-driven
 autoplay with a live map, inventory hints, and transcript.
 
 ## Prerequisites
 
 - **GNU Fortran** (`gfortran`) and **Node.js 20+**
-- At least one **text LLM** backend configured for `adventure-llm` (for example
+- At least one **text model** backend configured for `adventure-llm` (for example
   `GEMINI_API_KEY` in `adventure-llm/.env` — copy from
   [`adventure-llm/.env.example`](adventure-llm/.env.example))
 
@@ -49,10 +49,10 @@ autoplay with a live map, inventory hints, and transcript.
    - The **session / FSM** diagram (Mermaid) shows high-level state.
    - Optional: change **autoplay pace** or **max moves** in the footer; values
      sync over SSE.
-   - Optional: use the **Text LLM** dropdown to swap provider/model if multiple
+   - Optional: use the **Text model** dropdown to swap provider/model if multiple
      backends are configured.
 
-## Classic mode (no LLM)
+## Classic mode (no language model)
 
 From the repo root:
 
@@ -61,11 +61,11 @@ make run
 ```
 
 This is the original TTY experience — good to show **historical fidelity**;
-the LLM dashboard is the **optional** teaching / observability layer.
+the language-model dashboard is the **optional** teaching / observability layer.
 
 ## If something fails
 
 - **“Cannot find ./adventure”** — run `make` from the repo root.
-- **“No text LLM configured”** — set env vars per
+- **“No text model configured”** — set env vars per
   [`adventure-llm/README.md`](adventure-llm/README.md).
 - **Port in use** — set `ADVENTURE_LLM_WEB_PORT` to a free port and restart.

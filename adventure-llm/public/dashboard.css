@@ -313,11 +313,23 @@ h2 {
     align-self: stretch;
     z-index: 3;
     min-height: 0;
+    /* Definite height so major children can use min-height: 100% for full-scrollport chunks. */
+    height: 100%;
     max-height: min(100%, calc(100vh - 2rem));
     max-height: min(100%, calc(100dvh - 2rem));
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* Prompt lab + autoplay: at least one scrollport tall; CRT sizes to its tube (no min 100%). */
+  .layout-dashboard .transcript-panel--hero > .crt-monitor-chassis {
+    flex: 0 0 auto;
+  }
+  .layout-dashboard .transcript-panel--hero > .prompt-lab-panel,
+  .layout-dashboard .transcript-panel--hero > .transcript-hero-chunk {
+    flex: 0 0 auto;
   }
   /* Fill the panel column and scroll inside (vh max-heights break once the grid clips the column). */
   .layout-dashboard .transcript-feed,
@@ -327,27 +339,27 @@ h2 {
     max-height: none;
   }
   .transcript-panel--hero .crt-monitor-chassis {
-    flex: 1 1 auto;
-    min-height: 0;
     display: flex;
     flex-direction: column;
   }
   .transcript-panel--hero .crt-terminal {
-    flex: 1 1 auto;
-    min-height: 0;
+    flex: 0 0 auto;
     display: flex;
     flex-direction: column;
+    min-height: 0;
   }
   .transcript-panel--hero .crt-terminal-screen {
-    flex: 1 1 auto;
-    min-height: 0;
+    flex: 0 0 auto;
     display: flex;
     flex-direction: column;
-  }
-  /* min-height: 0 so the prompt row stays inside the tube (overflow:hidden would clip it). */
-  .transcript-panel--hero .crt-terminal-screen .transcript-feed--crt {
-    flex: 1 1 auto;
     min-height: 0;
+  }
+  /* Fixed ~12-line scrollport; transcript scrolls inside the tube. */
+  .transcript-panel--hero .crt-terminal-screen .transcript-feed--crt {
+    flex: 0 1 auto;
+    min-height: 12lh;
+    max-height: 12lh;
+    overflow-y: auto;
   }
   .side-left-column {
     position: sticky;
@@ -426,7 +438,7 @@ h2 {
     scrollbar-width: none;
   }
   .autoplay-log-feed {
-    max-height: min(28vh, 28dvh, 12rem);
+    max-height: min(36vh, 36dvh, 16rem);
   }
 }
 
@@ -1077,6 +1089,108 @@ select.autoplay-pace-input {
   min-width: 0;
 }
 
+.prompt-lab-panel {
+  flex-shrink: 0;
+  overflow-x: hidden;
+  margin-top: 0.75rem;
+  margin-bottom: 0.65rem;
+}
+.prompt-lab-heading {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #b8bac3;
+}
+.prompt-lab-label {
+  display: block;
+  font-size: 0.78rem;
+  margin: 0.4rem 0 0.2rem;
+  color: #a8b0c0;
+}
+.prompt-lab-textarea {
+  width: 100%;
+  min-height: 3.5rem;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  padding: 0.45rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid #2a3140;
+  background: #0d0f14;
+  color: #c8d0e0;
+  resize: vertical;
+  box-sizing: border-box;
+}
+.prompt-lab-textarea[readonly] {
+  opacity: 0.92;
+}
+
+/* System instructions + user prompt (patch + last-sent); 12 lines at textarea metrics. */
+#prompt-patch-system,
+#prompt-patch-user-prefix,
+#prompt-patch-user-suffix,
+#prompt-last-system,
+#prompt-last-user,
+#prompt-last-merged {
+  min-height: 12lh;
+}
+
+.prompt-experiment-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  margin: 0.4rem 0;
+}
+.prompt-lab-panel .inline-field {
+  font-size: 0.78rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.prompt-lab-panel .checkbox-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.prompt-lab-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 0.45rem 0;
+}
+.prompt-last-sent {
+  margin-top: 0.25rem;
+}
+.prompt-last-sent-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  color: #a8b0c0;
+}
+.prompt-project-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.45rem 0;
+}
+.llm-gen-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0.4rem 0;
+}
+.llm-gen-field {
+  font-size: 0.78rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.llm-gen-field input {
+  width: 6.5rem;
+}
+
 /* Phosphor CRT-style transcript: green on black, monospace, preserve engine line breaks */
 .transcript-panel--crt {
   border-color: #1e4a32;
@@ -1097,26 +1211,40 @@ body:not(.transcript-layout--terminal) .panel-hint-row--transcript .crt-transcri
   opacity: 0.92;
 }
 
-/* Deck: options (column 1) + terminal layout toggle (column 2, same cell in both modes) */
+/* Deck: row 1 = model + pace + max; row 2 = interpret + autoplay + terminal layout (end-aligned). */
 .crt-control-deck {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-  column-gap: 0.75rem;
-  row-gap: 0.45rem;
+  display: flex;
+  flex-direction: column;
   width: 100%;
   box-sizing: border-box;
 }
 
 .crt-bezel-slot.crt-bezel-slot--deck {
-  grid-column: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.45rem;
   min-width: 0;
 }
 
-.crt-layout-toggle-slot {
-  grid-column: 2;
-  justify-self: end;
-  align-self: end;
+.crt-deck-primary-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.65rem;
+  min-width: 0;
+}
+
+.crt-deck-secondary-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.4rem 0.65rem;
+  min-width: 0;
+}
+
+.crt-deck-secondary-row .crt-layout-toggle-slot {
+  margin-inline-start: auto;
 }
 
 body:not(.transcript-layout--terminal) .crt-control-deck {
@@ -1128,14 +1256,28 @@ body:not(.transcript-layout--terminal) .crt-control-deck {
   border-radius: 0 0 8px 8px;
 }
 
-body:not(.transcript-layout--terminal) .crt-bezel-slot--deck {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 0.4rem 0.65rem;
+.crt-bezel-slot.crt-bezel-slot--deck .text-llm-wrap {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: min(13.5rem, 38vw);
 }
 
-body:not(.transcript-layout--terminal) .crt-bezel-slot .footer-dashboard-chunks,
+.crt-bezel-slot.crt-bezel-slot--deck .text-llm-label,
+.crt-bezel-slot.crt-bezel-slot--deck .mlx-model-label {
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.crt-bezel-slot.crt-bezel-slot--deck .text-llm-label select,
+.crt-bezel-slot.crt-bezel-slot--deck .mlx-model-label select {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
 body:not(.transcript-layout--terminal) .crt-bezel-slot #manual-interpret-container {
   display: contents;
 }
@@ -1200,9 +1342,14 @@ body:not(.transcript-layout--terminal) .crt-bezel-slot #manual-interpret-contain
   width: 100%;
   max-width: 100%;
   margin-inline: 0;
-  min-height: 24lh;
-  min-height: 29.28em;
-  max-height: none;
+  /* Match .transcript-panel--crt .transcript-body metrics; 12lh = visible scrollport */
+  font-family: "VT323", "IBM Plex Mono", ui-monospace, monospace;
+  line-height: 1.28;
+  font-size: clamp(1rem, 0.88rem + 0.55vw, 1.22rem);
+  min-height: 12lh;
+  max-height: 12lh;
+  overflow-y: auto;
+  overflow-x: hidden;
   box-sizing: border-box;
 }
 
@@ -1224,12 +1371,14 @@ body:not(.transcript-layout--terminal) .crt-terminal-screen .transcript-feed--cr
   flex: 1 1 auto;
 }
 
+body:not(.transcript-layout--terminal) .transcript-panel--hero .transcript-terminal-column {
+  flex: 0 0 auto;
+}
+
 body.transcript-layout--terminal .crt-terminal-screen .transcript-feed--crt {
-  flex: 1 1 auto;
-  /* Shrink inside the column so the prompt row stays visible; a large min-height
-     plus overflow:hidden on .transcript-terminal-column clipped the input. */
-  min-height: 0;
-  max-height: none;
+  flex: 0 1 auto;
+  min-height: 12lh;
+  max-height: 12lh;
   overflow-x: hidden;
   overflow-y: auto;
   scrollbar-width: none;
@@ -1431,12 +1580,13 @@ body.transcript-layout--terminal .crt-terminal.crt-terminal--integrated {
   perspective: none;
   display: flex;
   flex-direction: column;
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   min-height: 0;
   margin: 0;
   padding: 0;
   border-radius: 12px;
-  overflow: hidden;
+  /* Avoid overflow:hidden on this ancestor: it clips native <select> menus (e.g. Gemini optgroup) on some browsers. */
+  overflow: visible;
   background: linear-gradient(180deg, #2c2a28 0%, #1e1d1b 100%);
   box-shadow:
     0 4px 22px rgba(0, 0, 0, 0.55),
@@ -1457,30 +1607,28 @@ body.transcript-layout--terminal .crt-control-deck {
 }
 
 body.transcript-layout--terminal .crt-bezel-slot.crt-bezel-slot--deck {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: flex-start;
-  align-content: flex-start;
-  gap: 0.5rem 1rem;
-  flex: 1 1 auto;
-  min-width: 0;
+  flex: 0 0 auto;
   margin: 0;
   padding: 0;
   border: none;
   border-radius: 0;
   background: transparent;
   box-shadow: none;
+  gap: 0.5rem;
 }
 
-body.transcript-layout--terminal .crt-bezel-slot .footer-dashboard-chunks,
+body.transcript-layout--terminal .crt-deck-primary-row,
+body.transcript-layout--terminal .crt-deck-secondary-row {
+  gap: 0.5rem 1rem;
+}
+
 body.transcript-layout--terminal .crt-bezel-slot #manual-interpret-container {
   display: contents;
 }
 
-body.transcript-layout--terminal .crt-layout-toggle-slot {
-  padding-left: 0.35rem;
-  border-left: 1px solid rgba(0, 0, 0, 0.35);
+body.transcript-layout--terminal .crt-deck-secondary-row .crt-layout-toggle-slot {
+  padding-inline-start: 0.35rem;
+  border-inline-start: 1px solid rgba(0, 0, 0, 0.35);
 }
 
 /* Toggle + red LED (LED is ::before; order: LED, switch, caption) */
@@ -1594,8 +1742,11 @@ body.transcript-layout--terminal .crt-control-deck .autoplay-pace-input {
 }
 
 body.transcript-layout--terminal .crt-control-deck .text-llm-wrap {
-  flex: 1 1 100%;
-  justify-content: center;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: min(12rem, 34vw);
+  justify-content: flex-start;
+  align-items: stretch;
 }
 
 body.transcript-layout--terminal .crt-control-deck .text-llm-label,
@@ -1611,7 +1762,6 @@ body.transcript-layout--terminal .crt-control-deck .mlx-model-label {
 
 body.transcript-layout--terminal .crt-control-deck .mlx-model-label select,
 body.transcript-layout--terminal .crt-control-deck .text-llm-label select {
-  max-width: min(100%, 22rem);
   background: #0c0b0a;
   border-color: #2a2826;
   color: #d8d4cc;
@@ -1633,16 +1783,17 @@ body.transcript-layout--terminal .panel-hint-row--transcript .crt-transcript-hel
   background: linear-gradient(180deg, #66625e 0%, #403e3c 100%);
 }
 
-/* Simple front-on CRT: glass fills space above the deck */
+/* Glass height follows feed + prompt; no empty flex growth above the deck. */
 body.transcript-layout--terminal .crt-terminal--integrated .crt-terminal-screen {
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
+  min-height: 0;
   transform: none;
   filter: none;
   animation: none;
-  border-radius: 0;
+  border-radius: 10px 10px 0 0;
+  overflow: hidden;
   box-shadow:
     inset 0 0 0 4px #1a1a1c,
     inset 0 0 0 6px #0d0d0f,
@@ -1682,7 +1833,7 @@ body.transcript-layout--terminal .crt-terminal-scanline-sweep {
 body.transcript-layout--terminal .transcript-terminal-column {
   position: relative;
   z-index: 6;
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   min-height: 0;
   background: radial-gradient(
     ellipse 100% 80% at 50% 42%,
@@ -1712,7 +1863,8 @@ body.transcript-layout--terminal #transcript.transcript-feed--crt {
     0 0 5px rgba(200, 255, 210, 0.35),
     0 0 14px rgba(50, 200, 90, 0.25);
   padding: 1.1rem 1.15rem 0.85rem;
-  min-height: 0;
+  min-height: 12lh;
+  max-height: 12lh;
   overflow-x: hidden;
   overflow-y: auto;
   scrollbar-width: none;
@@ -1993,11 +2145,18 @@ body.transcript-layout--terminal .manual-controls-group #manual-send {
     inset 0 0 0 1px rgba(50, 140, 80, 0.15);
 }
 
+.transcript-hero-chunk--autoplay {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 0;
+}
+
 .autoplay-log-feed {
   margin: 0;
   flex: 0 0 auto;
-  min-height: 5.5rem;
-  max-height: min(28vh, 14rem);
+  min-height: 12lh;
+  max-height: min(32vh, 16rem);
   overflow-y: auto;
   overflow-x: auto;
   padding: 0.35rem 0.5rem;
@@ -2019,6 +2178,17 @@ body.transcript-layout--terminal .manual-controls-group #manual-send {
   color: #a8d4b8;
   font-family: "IBM Plex Mono", ui-monospace, monospace;
   font-size: 0.74rem;
+}
+
+/* Hero: 12-line scrollport for raw engine + planner log lines. */
+.transcript-panel--hero .autoplay-log-feed {
+  flex: 0 1 auto;
+  min-height: 12lh;
+  max-height: 12lh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  line-height: 1.45;
+  -webkit-overflow-scrolling: touch;
 }
 
 .transcript-panel--crt .autoplay-log-text {
@@ -2121,6 +2291,9 @@ body.transcript-layout--terminal .manual-controls-group #manual-send {
 }
 
 @supports (container-type: inline-size) {
+  .crt-terminal-screen .transcript-feed--crt {
+    font-size: clamp(1rem, calc(100cqi / 72 * 1.18), 1.38rem);
+  }
   .transcript-panel--crt .transcript-body {
     /* Size from CRT width; /72 + multiplier (was /80) reads larger while staying near one screen line width. */
     font-size: clamp(1rem, calc(100cqi / 72 * 1.18), 1.38rem);

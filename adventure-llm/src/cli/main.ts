@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
- * CLI: with a configured text LLM (Google Generative AI or OpenAI-compatible HTTP), the Fortran opening runs
- * (you answer the instructions question), then each `> ` line is mapped through help-intent shortcuts and the LLM
- * into GETIN tokens until .quit/:q or game exit. Otherwise the original Fortran binary runs in full TTY.
- * Pass --classic to force Fortran even when an LLM is configured. Pass --debug to enable JSONL interaction
+ * CLI: with a configured text model (Google Generative AI or OpenAI-compatible HTTP), the Fortran opening runs
+ * (you answer the instructions question), then each `> ` line is mapped through help-intent shortcuts and the text
+ * model into GETIN tokens until .quit/:q or game exit. Otherwise the original Fortran binary runs in full TTY.
+ * Pass --classic to force Fortran even when a language model is configured. Pass --debug to enable JSONL interaction
  * logging (see ADVENTURE_LLM_DEBUG* and ADVENTURE_LLM_CACHE_DIR in .env.example).
- * Pass --autoplay for self-acting mode (LLM drives every move; see ADVENTURE_LLM_AUTOPLAY_* in .env.example).
+ * Pass --autoplay for self-acting mode (model-driven moves; see ADVENTURE_LLM_AUTOPLAY_* in .env.example).
  * For a browser dashboard (transcript, inferred map, prompts), run `npm run web` after build (see README).
  */
 import { existsSync } from "node:fs";
@@ -70,7 +70,7 @@ function printClassicBanner(
   );
   if (!hasTextLlmConfigured) {
     process.stderr.write(
-      "Natural language needs a text LLM: set GEMINI_API_KEY and/or ADVENTURE_LLM_HTTP_* (see adventure-llm/.env.example). Omit --classic once configured.\n",
+      "Natural language needs a text model: set GEMINI_API_KEY and/or ADVENTURE_LLM_HTTP_* (see adventure-llm/.env.example). Omit --classic once configured.\n",
     );
   } else if (forceClassic) {
     process.stderr.write(
@@ -138,7 +138,7 @@ async function main(): Promise<void> {
 
   if (autoplay && !hasTextLlm) {
     process.stderr.write(
-      "adventure-llm: --autoplay requires a text LLM (GEMINI_API_KEY and/or ADVENTURE_LLM_HTTP_MODEL; see .env.example).\n",
+      "adventure-llm: --autoplay requires a text model (GEMINI_API_KEY and/or ADVENTURE_LLM_HTTP_MODEL; see .env.example).\n",
     );
     process.exitCode = 1;
     return;
@@ -168,7 +168,7 @@ async function main(): Promise<void> {
     } catch (err) {
       if (shouldFallbackToClassicForLlmError(err, textLlm.providerId)) {
         process.stderr.write(
-          "\nadventure-llm: text LLM unavailable (quota, rate limit, network, or service error). Autoplay stopped.\n",
+          "\nadventure-llm: text model unavailable (quota, rate limit, network, or service error). Autoplay stopped.\n",
         );
         process.exitCode = 1;
         return;
@@ -188,7 +188,9 @@ async function main(): Promise<void> {
 
   const db = loadDatFile(datPath);
 
-  process.stderr.write("adventure-llm: LLM-assisted input enabled.\n");
+  process.stderr.write(
+    "adventure-llm: language-model-assisted input enabled.\n",
+  );
   process.stderr.write(
     "adventure-llm: type naturally at > ; input is translated to game vocabulary. .quit or :q ends the session.\n",
   );
@@ -303,7 +305,7 @@ async function main(): Promise<void> {
   } catch (err) {
     if (shouldFallbackToClassicForLlmError(err, textLlm!.providerId)) {
       process.stderr.write(
-        "\nadventure-llm: text LLM is unavailable (quota, rate limit, or service error). Switching to classic mode: type parser words directly (e.g. EAST, TAKE LAMP).\n\n",
+        "\nadventure-llm: text model is unavailable (quota, rate limit, or service error). Switching to classic mode: type parser words directly (e.g. EAST, TAKE LAMP).\n\n",
       );
       printClassicBanner(hasTextLlm, forceClassic);
       runClassicInteractive();

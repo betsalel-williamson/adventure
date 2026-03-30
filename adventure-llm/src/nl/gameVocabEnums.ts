@@ -26,7 +26,7 @@ export function collectGameVocabTokens(db: AdventureDatabase): string[] {
 }
 
 /**
- * Token list for LLM JSON enums: game vocabulary plus synthetic planner tokens.
+ * Token list for language-model JSON enums: game vocabulary plus synthetic planner tokens.
  * Use the same list for primary and secondary so the model cannot invent words;
  * use game token `NULL` (when present in dat) or omit secondary where the API allows.
  */

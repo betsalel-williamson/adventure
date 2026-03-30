@@ -97,7 +97,7 @@ export function typeTextIntoPre(scrollRoot, pre, text, opts = {}) {
 }
 
 /**
- * Character-at-a-time into the manual prompt (autoplay “LLM typing” before echo hits the transcript).
+ * Character-at-a-time into the manual prompt (autoplay model typing before echo hits the transcript).
  *
  * @param {HTMLInputElement | null} input
  * @param {string} text

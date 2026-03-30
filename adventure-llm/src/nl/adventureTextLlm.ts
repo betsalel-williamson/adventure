@@ -108,7 +108,7 @@ export function createGoogleTextLlmFromEnv(
 }
 
 /**
- * Resolve which text LLM to use from `process.env`.
+ * Resolve which text model to use from `process.env`.
  *
  * - `ADVENTURE_LLM_TEXT_PROVIDER=google` — requires `GEMINI_API_KEY`
  * - `ADVENTURE_LLM_TEXT_PROVIDER=http` — requires `ADVENTURE_LLM_HTTP_MODEL` (base URL defaults to {@link DEFAULT_HTTP_OPENAI_BASE_URL})
@@ -168,6 +168,7 @@ export async function planAutoplayWithTextLlm(
   options: {
     plannerUserPrompt: PlannerUserPromptInput;
     recentGameTextForRepair?: string;
+    includeDatHelpInSystem?: boolean;
   },
 ): Promise<AutoplayPlannerResponse> {
   return client.planAutoplay(db, options);

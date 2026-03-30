@@ -12,7 +12,10 @@ export function wireCopyPromptButton(btn, sourceEl) {
   btn.addEventListener("click", (e) => {
     e.preventDefault();
     e.stopPropagation();
-    const text = sourceEl.textContent ?? "";
+    const text =
+      sourceEl instanceof HTMLTextAreaElement || "value" in sourceEl
+        ? String(/** @type {{ value?: string }} */ (sourceEl).value ?? "")
+        : (sourceEl.textContent ?? "");
     void navigator.clipboard.writeText(text).then(
       () => {
         if (iconEl && defaultGlyph) {
@@ -166,8 +169,9 @@ export function wireMermaidFullscreenDialog() {
 export function wireCopyPromptButtonsFromElements() {
   const el = elements;
   if (!el) return;
-  wireCopyPromptButton(el.copyPromptUserBtn, el.promptUserEl);
-  wireCopyPromptButton(el.copyPromptSystemBtn, el.promptSystemEl);
+  wireCopyPromptButton(el.copyPromptLastSystemBtn, el.promptLastSystemEl);
+  wireCopyPromptButton(el.copyPromptLastUserBtn, el.promptLastUserEl);
+  wireCopyPromptButton(el.copyPromptLastMergedBtn, el.promptLastMergedEl);
   wireCopyPromptButton(el.copyMermaidBtn, el.mapMermaidSrcEl);
   wireCopyPromptButton(el.copyDotBtn, el.mapDotSrcEl);
 }

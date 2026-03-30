@@ -1,10 +1,10 @@
 # adventure
 
 **Classic Colossal Cave Adventure, restored for modern Fortran, plus optional
-TypeScript + LLM tooling** that can drive autoplay and stream a local web
+TypeScript + language-model tooling** that can drive autoplay and stream a local web
 dashboard (transcript, inferred map, session diagram).
 
-![AdventureLLM autoplay web dashboard: transcript, state panels, map, and Mermaid FSM](docs/adventure-llm-dashboard.png)
+![Adventure LM autoplay web dashboard: transcript, state panels, map, and Mermaid FSM](docs/adventure-llm-dashboard.png)
 
 ## The problem
 
@@ -24,7 +24,7 @@ natural-language mapping, and a **local autoplay dashboard** with SSE updates.
 - **Fortran 77** — game engine (`gfortran`, `make`)
 - **TypeScript / Node 20+** — `adventure-llm` CLI, tests (Vitest), local HTTP
   dashboard (static ES modules)
-- **Optional LLMs** — Google Gemini, local MLX Gemma, or OpenAI-compatible HTTP
+- **Optional text models** — Google Gemini, local MLX weights, or OpenAI-compatible HTTP (hosted LLMs or smaller local models)
   (see [`adventure-llm/.env.example`](adventure-llm/.env.example))
 
 ## Quick start
@@ -38,7 +38,7 @@ make
 ./adventure
 ```
 
-**Autoplay web dashboard** (needs Node + LLM env configured):
+**Autoplay web dashboard** (needs Node + a configured text-model backend):
 
 ```sh
 make install-llm

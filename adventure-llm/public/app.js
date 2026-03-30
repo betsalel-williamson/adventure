@@ -8,6 +8,7 @@ import { registerDashboardEventHandlers } from "./dashboardEventStream.js";
 import { bindDashboardElements, elements } from "./dashboardElementRefs.js";
 import { defaultPorts, resolveDashboardElements } from "./dashboardEnv.js";
 import { renderMapSlice } from "./mapView.js";
+import { createPromptLab } from "./promptLab.js";
 import { state } from "./dashboardState.js";
 import {
   wireCopyPromptButtonsFromElements,
@@ -26,11 +27,14 @@ import {
   initTranscriptLayout,
   isTerminalTranscriptLayout,
   renderTranscriptFeed,
+  wireTranscriptFeedScrollIntent,
 } from "./transcriptView.js";
 
 bindDashboardElements(resolveDashboardElements(document));
 const ports = defaultPorts();
 const api = createDashboardApi(ports);
+const promptLab = createPromptLab(ports, elements);
+promptLab.wirePromptLab();
 
 const MLX_LOAD_PROGRESS_MAX = 120000;
 
@@ -151,7 +155,8 @@ function setManualUiState() {
   );
   const canSend = !plannerOn;
   el.manualInput.disabled = !canSend;
-  el.manualInterpretToggle.disabled = !canSend;
+  /* Interpret-with-language-model is a preference; keep it toggleable while autoplay runs. */
+  el.manualInterpretToggle.disabled = false;
   el.manualSend.disabled = !canSend;
   el.manualEndSession.disabled = !canSend;
 }
@@ -443,6 +448,9 @@ async function applyStoredAutoplaySettings() {
 
 await applyStoredAutoplaySettings();
 await loadParserVerbHints();
+void promptLab.fetchPromptExperiment();
+void promptLab.refreshProjectList();
+void promptLab.refreshLlmGenFields();
 
 const es = new ports.EventSource(new URL("/events", ports.location.href).href);
 
@@ -460,6 +468,9 @@ registerDashboardEventHandlers(es, {
   formatAutoplaySessionStatusLine,
   refreshModeFromServer,
   initTextLlmPicker,
+  onPlannerPromptSse: (d) => {
+    promptLab.setLastSentFromSse(d);
+  },
   typingTimingFromPaceSelect,
 });
 
@@ -522,6 +533,7 @@ registerDashboardEventHandlers(es, {
 }
 
 initTranscriptLayout();
+wireTranscriptFeedScrollIntent();
 
 if (elements?.transcriptLayoutToggle) {
   elements.transcriptLayoutToggle.addEventListener("change", () => {
@@ -576,6 +588,7 @@ if (elements?.textLlmSelect) {
       }
       state.lastTextLlmOptionValue = el.textLlmSelect.value;
       if (!state.mlxModelLoadingUi) setSessionStatus(prevStatus);
+      void promptLab.refreshLlmGenFields();
     } catch (e) {
       showManualError(e instanceof Error ? e.message : "Network error");
       el.textLlmSelect.value = state.lastTextLlmOptionValue;

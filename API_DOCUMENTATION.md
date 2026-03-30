@@ -1,9 +1,11 @@
-# AdventureLLM autoplay dashboard — HTTP API
+# Adventure language-model autoplay dashboard — HTTP API
 
 The local web server is started with `npm run web` from `adventure-llm/` (or
 `make run-autoplay-web` from the repo root). It binds to **127.0.0.1** only.
 
 **Authentication:** none. Do not expose this server to untrusted networks.
+
+**Autoplay planner (behavior):** the server uses the same **`adventure-llm`** autoplay loop as the CLI: session memory, situation candidates, and planner guards. Heuristic **object** / **loot-funnel** cues follow the latest room-description block in the transcript (not the whole tail). See [`docs/architecture/adventure-engine.md`](docs/architecture/adventure-engine.md) and [`docs/decisions/ADR0003-scoped-object-hints-latest-room-block.md`](docs/decisions/ADR0003-scoped-object-hints-latest-room-block.md).
 
 ## Static UI
 
@@ -102,7 +104,7 @@ Body (both fields optional; omitted fields keep previous override or env default
 }
 ```
 
-`current` may be `null` when no LLM is configured.
+`current` may be `null` when no text model is configured.
 
 ### `POST /api/text-llm`
 

@@ -1,5 +1,5 @@
 /**
- * Normalize structured LLM JSON before Zod validation. Small local models often return
+ * Normalize structured language-model JSON before Zod validation. Small local models often return
  * over-long tokens, JSON null for optional fields, or non-boolean continuePlaying.
  */
 

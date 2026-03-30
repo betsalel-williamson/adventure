@@ -1,6 +1,6 @@
 /**
  * NE / NW / SE / SW are motion words in adventure.dat, but many Colossal Cave ports and
- * player expectations treat travel as cardinal (and vertical) only. The LLM layer can omit
+ * player expectations treat travel as cardinal (and vertical) only. The language-model layer can omit
  * them unless explicitly re-enabled.
  */
 
@@ -11,7 +11,7 @@ export const DIAGONAL_COMPASS_MOTION_TOKEN_SET = new Set<string>(
 );
 
 /**
- * When true, diagonal compass motion tokens appear in LLM enums, situational candidates,
+ * When true, diagonal compass motion tokens appear in planner JSON enums, situational candidates,
  * and autoplay escape ordering (matching full adventure.dat motion vocabulary).
  *
  * @env ADVENTURE_LLM_DIAGONAL_COMPASS_MOTION — `1`, `true`, or `yes` enables. Unset or other values: disabled.

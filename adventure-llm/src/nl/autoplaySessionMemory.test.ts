@@ -12,6 +12,11 @@ import {
   normalizeGetinLineKey,
 } from "./autoplaySessionMemory.js";
 import { fingerprintLocationFromGameOutput } from "./inferredExplorationMap.js";
+import {
+  buildSituationalCandidateTokens,
+  formatSituationalCandidatesSection,
+  listVisibleAdventureObjectsInText,
+} from "./situationalCandidates.js";
 
 const datPath = path.join(
   fileURLToPath(new URL(".", import.meta.url)),
@@ -26,6 +31,98 @@ describe("normalizeGetinLineKey", () => {
     });
     expect(normalizeGetinLineKey(line)).toBe(line);
     expect(normalizeGetinLineKey("  take keys  ")).toBe(line);
+  });
+});
+
+describe("take failure object learning", () => {
+  const dbPath = path.join(
+    fileURLToPath(new URL(".", import.meta.url)),
+    "../../../adventure.dat",
+  );
+
+  it("records failed TAKE/GET and exposes ATAB word via getRoomTakeFailureObjectAtabWords", () => {
+    const db = loadDatFile(dbPath);
+    const m = new AutoplaySessionMemory();
+    m.seedOpening("YOU'RE OUTSIDE GRATE. A METAL GRATE.\n", {
+      adventureDb: db,
+    });
+    const line = interpretedToGetinLine({
+      primaryToken: "TAKE",
+      secondaryToken: "GRATE",
+    });
+    m.recordCommandOutcome(
+      line,
+      "I DON'T KNOW HOW TO APPLY THAT WORD HERE.\n",
+      { adventureDb: db },
+    );
+    expect(m.getRoomTakeFailureObjectAtabWords()).toContain("GRATE");
+  });
+
+  it("learns YOU CAN'T style refusal as take failure", () => {
+    const db = loadDatFile(dbPath);
+    const m = new AutoplaySessionMemory();
+    m.seedOpening("METAL GRATE HERE.\n", { adventureDb: db });
+    m.recordCommandOutcome(
+      interpretedToGetinLine({ primaryToken: "GET", secondaryToken: "GRATE" }),
+      "YOU CAN'T GET THAT.\n",
+      { adventureDb: db },
+    );
+    expect(m.getRoomTakeFailureObjectAtabWords()).toContain("GRATE");
+  });
+
+  it("removes object from take-failure set after Fortran OK on same verb+object", () => {
+    const db = loadDatFile(dbPath);
+    const m = new AutoplaySessionMemory();
+    m.seedOpening("KEYS ON THE GROUND.\n", { adventureDb: db });
+    const takeKeys = interpretedToGetinLine({
+      primaryToken: "TAKE",
+      secondaryToken: "KEYS",
+    });
+    m.recordCommandOutcome(takeKeys, "NOTHING HAPPENS.\n", { adventureDb: db });
+    expect(m.getRoomTakeFailureObjectAtabWords()).toContain("KEYS");
+    m.recordCommandOutcome(takeKeys, "OK\n", { adventureDb: db });
+    expect(m.getRoomTakeFailureObjectAtabWords()).not.toContain("KEYS");
+  });
+});
+
+describe("location hint for planner", () => {
+  it("merges wrapped room lines and normalizes whitespace (full sentence, not 200-char cut)", () => {
+    const m = new AutoplaySessionMemory();
+    const transcript =
+      "> GO WEST\n" +
+      "YOU ARE IN A 20 FOOT DEPRESSION FLOORED WITH BARE DIRT. SET INTO\n" +
+      "THE DIRT IS A STRONG STEEL GRATE MOUNTED IN CONCRETE.\n";
+    m.seedOpening(transcript);
+    const loc = m.getLocationHint();
+    expect(loc).toContain("20 FOOT DEPRESSION");
+    expect(loc).toContain("SET INTO");
+    expect(loc).toContain("STEEL GRATE");
+    expect(loc).toContain("MOUNTED IN CONCRETE");
+    expect(loc).not.toMatch(/\n/);
+    expect(loc).not.toMatch(/  +/);
+    expect(loc.endsWith("…")).toBe(false);
+  });
+});
+
+describe("getObjectHintScopeText", () => {
+  const dbPath = path.join(
+    fileURLToPath(new URL(".", import.meta.url)),
+    "../../../adventure.dat",
+  );
+
+  it("limits visible object hints to the latest location block", () => {
+    const db = loadDatFile(dbPath);
+    const m = new AutoplaySessionMemory();
+    const tail = [
+      "YOU'RE OUTSIDE GRATE. SMALL STREAM. WATER HERE. METAL GRATE.",
+      "",
+      "YOU'RE IN OPEN FOREST, WITH A DEEP VALLEY IN ONE DIRECTION.",
+    ].join("\n");
+    m.seedOpening(tail, { adventureDb: db });
+    const scope = m.getObjectHintScopeText();
+    expect(scope.toUpperCase()).not.toContain("GRATE");
+    expect(scope.toUpperCase()).toContain("OPEN FOREST");
+    expect(listVisibleAdventureObjectsInText(db, scope)).not.toContain("GRATE");
   });
 });
 
@@ -104,7 +201,7 @@ describe("AutoplaySessionMemory", () => {
     expect(p).toContain("EAST, WEST, TAKE");
     expect(p).toContain("YOU ARE INSIDE");
     expect(p).toContain("WELL HOUSE");
-    expect(p).toContain("### LOCAL SESSION MAP");
+    expect(p).toContain("### SPATIAL HINT (session, text)");
     expect(p).not.toContain("## Turn log");
     expect(p).not.toContain("### RECENT MOVES");
     expect(m.getRecentRawTail()).toMatch(
@@ -172,7 +269,7 @@ describe("AutoplaySessionMemory", () => {
     expect(p).not.toMatch(/parser rejection \(last turn\)/i);
   });
 
-  it("MLX structured split puts rules in system and CURRENT SESSION + state + CANDIDATES + local DOT in user", () => {
+  it("MLX structured compact: system has SLM Rules+Constraints; user has Loc+Cand only token list (no DOT)", () => {
     const prev = process.env.ADVENTURE_LLM_AUTOPLAY_PROMPT_MODE;
     process.env.ADVENTURE_LLM_AUTOPLAY_PROMPT_MODE = "full";
     try {
@@ -187,20 +284,28 @@ describe("AutoplaySessionMemory", () => {
       expect(parts.system.length).toBeGreaterThan(80);
       expect(parts.system).toContain("GETIN");
       expect(parts.system).toContain("JSON");
-      expect(parts.user).toContain("### CURRENT SESSION");
+      expect(parts.system).toMatch(/\*\*Rules:\*\*/);
+      expect(parts.system).toMatch(/\*\*Constraints:\*\*/);
+      expect(parts.system).toMatch(/Wrong:.*NORTH.*NORTH/s);
+      expect(parts.system).toMatch(/Right:.*"NORTH"\s*}/);
+      expect(parts.system).not.toMatch(/Vocabulary \(parser tokens\)/);
+      expect(parts.system).not.toMatch(/continuePlaying/);
+      expect(parts.user).toContain("### SESSION");
       expect(parts.user).not.toContain("### INSTRUCTIONS");
-      expect(parts.user).toContain("### GAME ENGINE STATE");
-      expect(parts.user.indexOf("### CURRENT SESSION")).toBeLessThan(
-        parts.user.indexOf("### GAME ENGINE STATE"),
+      expect(parts.user).toContain("**Loc:**");
+      expect(parts.user).toContain("**Exits:**");
+      expect(parts.user).toContain("**Cand:**");
+      expect(parts.user).toContain("**Task:**");
+      expect(parts.user.indexOf("### SESSION")).toBeLessThan(
+        parts.user.indexOf("**Loc:**"),
       );
-      expect(parts.user.indexOf("### GAME ENGINE STATE")).toBeLessThan(
-        parts.user.indexOf("### CANDIDATES"),
+      expect(parts.user.indexOf("**Loc:**")).toBeLessThan(
+        parts.user.indexOf("**Cand:**"),
       );
-      expect(parts.user).toContain("### CANDIDATES");
+      expect(parts.user).toContain("EAST, WEST, TAKE");
       expect(parts.user).not.toContain("### RECENT MOVES");
-      expect(parts.user).toContain("### LOCAL SESSION MAP");
-      expect(parts.user).toContain("```dot");
-      expect(parts.user).toContain("digraph planner_local_fsm");
+      expect(parts.user).not.toContain("```dot");
+      expect(parts.user).not.toContain("digraph planner_local_fsm");
       expect(parts.user).toMatch(/WELL HOUSE/i);
       expect(parts.user).not.toContain("### Vocabulary");
       expect(parts.user).not.toContain("### TASK");
@@ -212,7 +317,7 @@ describe("AutoplaySessionMemory", () => {
     }
   });
 
-  it("MLX structured explore mode leads with AT THIS NODE and EXPLORATION MAP", () => {
+  it("MLX structured explore compact user has Loc, Exits, Cand (no coordinate map)", () => {
     const prev = process.env.ADVENTURE_LLM_AUTOPLAY_PROMPT_MODE;
     process.env.ADVENTURE_LLM_AUTOPLAY_PROMPT_MODE = "explore";
     try {
@@ -223,11 +328,14 @@ describe("AutoplaySessionMemory", () => {
         compact: true,
         situationalSection: "## Situation candidates\nEAST",
       });
-      expect(parts.user).toContain("### AT THIS NODE");
-      expect(parts.user).toContain("### EXPLORATION MAP");
-      expect(parts.user).not.toContain("### GAME ENGINE STATE");
-      expect(parts.user.indexOf("### AT THIS NODE")).toBeLessThan(
-        parts.user.indexOf("### EXPLORATION MAP"),
+      expect(parts.user).toContain("**Loc:**");
+      expect(parts.user).toContain("**Exits:**");
+      expect(parts.user).toContain("**Cand:**");
+      expect(parts.user).not.toContain("**Crumb:**");
+      expect(parts.user).not.toContain("### AT THIS NODE");
+      expect(parts.user).not.toContain("### EXPLORATION MAP");
+      expect(parts.user.indexOf("### SESSION")).toBeLessThan(
+        parts.user.indexOf("**Loc:**"),
       );
     } finally {
       if (prev === undefined)
@@ -236,7 +344,7 @@ describe("AutoplaySessionMemory", () => {
     }
   });
 
-  it("structured dashboard puts ADVENTURE STATE and TASK before LOCAL SESSION MAP", () => {
+  it("structured dashboard puts ADVENTURE STATE and TASK before SPATIAL HINT", () => {
     const m = new AutoplaySessionMemory();
     m.seedOpening("YOU ARE AT THE END OF A ROAD.\n");
     m.recordCommandOutcome("EAST   ", "YOU ARE IN A WELL HOUSE.\n");
@@ -246,10 +354,10 @@ describe("AutoplaySessionMemory", () => {
     expect(p).toContain("### ADVENTURE STATE");
     expect(p).toContain("### TASK");
     expect(p.indexOf("### ADVENTURE STATE")).toBeLessThan(
-      p.indexOf("### LOCAL SESSION MAP"),
+      p.indexOf("### SPATIAL HINT (session, text)"),
     );
     expect(p.indexOf("### TASK")).toBeLessThan(
-      p.indexOf("### LOCAL SESSION MAP"),
+      p.indexOf("### SPATIAL HINT (session, text)"),
     );
   });
 
@@ -374,7 +482,7 @@ describe("AutoplaySessionMemory", () => {
     expect(p).toContain("ROAD");
   });
 
-  it("MLX structured prompt folds oscillation into GAME ENGINE STATE alerts", () => {
+  it("MLX structured prompt folds oscillation into CURRENT SESSION alerts", () => {
     const prev = process.env.ADVENTURE_LLM_AUTOPLAY_PROMPT_MODE;
     process.env.ADVENTURE_LLM_AUTOPLAY_PROMPT_MODE = "full";
     try {
@@ -386,8 +494,8 @@ describe("AutoplaySessionMemory", () => {
       m.recordCommandOutcome(road, "YOU'RE AT HILL IN ROAD.\n");
       m.recordCommandOutcome(road, "YOU'RE AT END OF ROAD AGAIN.\n");
       const parts = m.buildPlannerMxStructuredPrompt(20_000, { compact: true });
-      expect(parts.user).toContain("### GAME ENGINE STATE");
-      expect(parts.user).toContain("Alerts:");
+      expect(parts.user).toContain("### SESSION");
+      expect(parts.user).toContain("**Alt:**");
       expect(parts.user).toContain("Two-location loop");
       expect(parts.user).not.toContain("### Two-location loop");
     } finally {
@@ -397,12 +505,69 @@ describe("AutoplaySessionMemory", () => {
     }
   });
 
-  it("MLX structured prompt includes EXPLORATION MAP block", () => {
+  it("MLX structured prompt surfaces Exits and Hist with outcome tags (no coordinate map)", () => {
     const m = new AutoplaySessionMemory();
     m.seedOpening("YOU ARE AT THE END OF A ROAD.\n");
+    m.recordCommandOutcome("LOOK   ", "YOU ARE AT THE END OF A ROAD.\n");
     const parts = m.buildPlannerMxStructuredPrompt(20_000, { compact: true });
-    expect(parts.user).toContain("### EXPLORATION MAP");
-    expect(parts.user).toMatch(/\(x,y,z\)=\(0,0,0\)|inferred position/i);
+    expect(parts.user).toContain("**Exits:**");
+    expect(parts.user).toContain("**Hist:**");
+    expect(parts.user).toContain("(OK)");
+    expect(parts.user).not.toContain("(x,y,z)=");
+  });
+
+  it("MLX Task line suggests breaking repeated primary in Hist", () => {
+    const m = new AutoplaySessionMemory();
+    m.seedOpening("YOU ARE STANDING AT THE END OF A ROAD.\n");
+    const road = interpretedToGetinLine({ primaryToken: "ROAD" });
+    const exEnd = "YOU'RE AT END OF ROAD AGAIN.\n";
+    const exHill = "YOU'RE AT HILL IN ROAD.\n";
+    m.recordCommandOutcome(road, exEnd);
+    m.recordCommandOutcome(road, exHill);
+    m.recordCommandOutcome(road, exEnd);
+    const parts = m.buildPlannerMxStructuredPrompt(16_000, { compact: true });
+    expect(parts.user).toMatch(/Break ROAD repetition/i);
+    expect(parts.user).toContain("**Cand_Move**");
+  });
+
+  it("MLX loot funnel moves **Items**/**Task** after Cand and omits Break-* streak in Task", () => {
+    const db = loadDatFile(datPath);
+    const m = new AutoplaySessionMemory();
+    m.seedOpening(
+      "YOU ARE INSIDE A BUILDING. THERE ARE SOME KEYS ON THE GROUND.\n",
+      { adventureDb: db },
+    );
+    const west = interpretedToGetinLine({ primaryToken: "WEST" });
+    const room =
+      "YOU ARE STILL INSIDE. A SHINY BRASS LAMP IS HERE. KEYS ON THE GROUND.\n";
+    m.recordCommandOutcome(west, room, { adventureDb: db });
+    m.recordCommandOutcome(west, room, { adventureDb: db });
+    m.recordCommandOutcome(west, room, { adventureDb: db });
+    const situational = formatSituationalCandidatesSection(
+      db,
+      buildSituationalCandidateTokens(db, m.getRecentRawTail(), {
+        lootFunnel: true,
+        exploreFirst: true,
+      }),
+      undefined,
+      { slmGrouped: true, lootFunnelDeferCandMove: true },
+    );
+    const parts = m.buildPlannerMxStructuredPrompt(20_000, {
+      compact: true,
+      situationalSection: situational,
+      lootFunnel: true,
+    });
+    expect(parts.system).toMatch(/Loot gate/i);
+    expect(parts.user).not.toMatch(/Break WEST/i);
+    expect(parts.user).toContain("**Items:**");
+    expect(parts.user).toMatch(/TAKE|GET/);
+    const iCand = parts.user.indexOf("**Cand_Act:**");
+    const iItems = parts.user.indexOf("**Items:**");
+    const iTask = parts.user.indexOf("**Task:**");
+    expect(iCand).toBeGreaterThanOrEqual(0);
+    expect(iItems).toBeGreaterThan(iCand);
+    expect(iTask).toBeGreaterThan(iItems);
+    expect(parts.user).toContain("deferred");
   });
 
   it("adds stagnation block and alert after repeated same location", () => {

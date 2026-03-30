@@ -1,7 +1,14 @@
-import { describe, expect, it } from "vitest";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
 import { createAutoplayDashboardServer } from "./webDashboard.js";
 
 describe("createAutoplayDashboardServer", () => {
+  afterEach(() => {
+    delete process.env.ADVENTURE_LLM_PROMPT_PROJECTS_DIR;
+  });
+
   it("GET /api/text-llm returns backends and shape", async () => {
     const server = createAutoplayDashboardServer();
     await new Promise<void>((resolve) => {
@@ -151,5 +158,68 @@ describe("createAutoplayDashboardServer", () => {
     await new Promise<void>((resolve, reject) => {
       server.close((err) => (err ? reject(err) : resolve()));
     });
+  });
+
+  it("GET/PATCH /api/prompt-experiment", async () => {
+    const server = createAutoplayDashboardServer();
+    await new Promise<void>((resolve) => {
+      server.listen(0, "127.0.0.1", () => resolve());
+    });
+    const addr = server.address();
+    const port =
+      typeof addr === "object" && addr !== null ? addr.port : undefined;
+    expect(port).toBeDefined();
+    const base = `http://127.0.0.1:${port}`;
+    const g = await fetch(`${base}/api/prompt-experiment`);
+    expect(g.ok).toBe(true);
+    const j0 = (await g.json()) as {
+      patch: { includeDatHelpInSystem?: boolean };
+    };
+    expect(j0.patch.includeDatHelpInSystem).not.toBe(false);
+
+    const p = await fetch(`${base}/api/prompt-experiment`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ systemMode: "append", systemText: "x" }),
+    });
+    expect(p.ok).toBe(true);
+    const j1 = (await p.json()) as { patch: { systemMode?: string } };
+    expect(j1.patch.systemMode).toBe("append");
+
+    await new Promise<void>((resolve, reject) => {
+      server.close((err) => (err ? reject(err) : resolve()));
+    });
+  });
+
+  it("POST /api/prompt-projects creates file in ADVENTURE_LLM_PROMPT_PROJECTS_DIR", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "adv-ppm-"));
+    process.env.ADVENTURE_LLM_PROMPT_PROJECTS_DIR = dir;
+    const server = createAutoplayDashboardServer();
+    await new Promise<void>((resolve) => {
+      server.listen(0, "127.0.0.1", () => resolve());
+    });
+    const addr = server.address();
+    const port =
+      typeof addr === "object" && addr !== null ? addr.port : undefined;
+    expect(port).toBeDefined();
+    const base = `http://127.0.0.1:${port}`;
+    const c = await fetch(`${base}/api/prompt-projects`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "T1" }),
+    });
+    expect(c.status).toBe(201);
+    const rec = (await c.json()) as { id: string };
+    expect(rec.id.length).toBeGreaterThan(0);
+
+    const li = await fetch(`${base}/api/prompt-projects`);
+    expect(li.ok).toBe(true);
+    const lj = (await li.json()) as { projects: Array<{ id: string }> };
+    expect(lj.projects.some((p) => p.id === rec.id)).toBe(true);
+
+    await new Promise<void>((resolve, reject) => {
+      server.close((err) => (err ? reject(err) : resolve()));
+    });
+    rmSync(dir, { recursive: true });
   });
 });

@@ -74,6 +74,7 @@ async function postChatCompletion(
   model: string,
   userContent: string,
   responseFormat?: Record<string, unknown>,
+  generation?: { temperature?: number; max_tokens?: number },
 ): Promise<string> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -85,9 +86,12 @@ async function postChatCompletion(
   const body: Record<string, unknown> = {
     model,
     messages: [{ role: "user", content: userContent }],
-    temperature: 0.2,
+    temperature: generation?.temperature ?? 0.2,
     stream: false,
   };
+  if (generation?.max_tokens !== undefined) {
+    body.max_tokens = generation.max_tokens;
+  }
   if (responseFormat !== undefined) {
     body.response_format = responseFormat;
   }
@@ -145,6 +149,8 @@ export class HttpOpenAiCompatibleTextLlm implements TextLlm {
   private readonly url: string;
   private readonly apiKey: string | undefined;
   private readonly useJsonSchemaResponseFormat: boolean;
+  private chatTemperature = 0.2;
+  private chatMaxTokens: number | undefined = undefined;
 
   constructor(options: HttpOpenAiCompatibleTextLlmOptions) {
     this.url = chatCompletionsUrl(options.baseUrl.trim());
@@ -152,6 +158,39 @@ export class HttpOpenAiCompatibleTextLlm implements TextLlm {
     this.apiKey = options.apiKey?.trim() || undefined;
     this.useJsonSchemaResponseFormat =
       options.useJsonSchemaResponseFormat ?? httpUseJsonSchemaFromEnv();
+  }
+
+  /** Mutable for the web dashboard (interpret + autoplay + unstructured). */
+  setDashboardGenerationOptions(opts: {
+    temperature?: number;
+    maxTokens?: number;
+  }): void {
+    if (opts.temperature !== undefined)
+      this.chatTemperature = Math.max(0, Math.min(2, opts.temperature));
+    if (opts.maxTokens !== undefined) {
+      const n = Math.floor(opts.maxTokens);
+      this.chatMaxTokens = n >= 1 ? n : undefined;
+    }
+  }
+
+  getDashboardGenerationOptions(): {
+    temperature: number;
+    maxTokens?: number;
+  } {
+    return {
+      temperature: this.chatTemperature,
+      ...(this.chatMaxTokens !== undefined
+        ? { maxTokens: this.chatMaxTokens }
+        : {}),
+    };
+  }
+
+  private chatGen(): { temperature: number; max_tokens?: number } {
+    const g: { temperature: number; max_tokens?: number } = {
+      temperature: this.chatTemperature,
+    };
+    if (this.chatMaxTokens !== undefined) g.max_tokens = this.chatMaxTokens;
+    return g;
   }
 
   async interpretPlayerInput(
@@ -184,7 +223,7 @@ export class HttpOpenAiCompatibleTextLlm implements TextLlm {
     });
     if (cacheHit) return cacheHit;
 
-    process.stderr.write("adventure-llm: translating with text LLM…\n");
+    process.stderr.write("adventure-llm: translating with text model…\n");
 
     const prompt = buildInterpretSystemAndUserPrompt(
       db,
@@ -221,6 +260,7 @@ export class HttpOpenAiCompatibleTextLlm implements TextLlm {
       this.modelId,
       prompt,
       responseFormat,
+      this.chatGen(),
     );
     const durationMs = Date.now() - startedMs;
 
@@ -259,11 +299,14 @@ export class HttpOpenAiCompatibleTextLlm implements TextLlm {
     options: {
       plannerUserPrompt: PlannerUserPromptInput;
       recentGameTextForRepair?: string;
+      includeDatHelpInSystem?: boolean;
     },
   ): Promise<AutoplayPlannerResponse> {
     process.stderr.write("adventure-llm: autoplay — planning next move…\n");
 
-    const prompt = buildAutoplayPlannerPrompt(db, options.plannerUserPrompt);
+    const prompt = buildAutoplayPlannerPrompt(db, options.plannerUserPrompt, {
+      includeDatHelpInSystem: options.includeDatHelpInSystem !== false,
+    });
 
     await appendInteractionLog({
       event: "text_llm_autoplay_request",
@@ -292,6 +335,7 @@ export class HttpOpenAiCompatibleTextLlm implements TextLlm {
       this.modelId,
       prompt,
       responseFormat,
+      this.chatGen(),
     );
     const durationMs = Date.now() - startedMs;
 
@@ -325,6 +369,7 @@ export class HttpOpenAiCompatibleTextLlm implements TextLlm {
       this.modelId,
       prompt,
       undefined,
+      this.chatGen(),
     );
   }
 }

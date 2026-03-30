@@ -1,7 +1,7 @@
 /**
  * In-process session memory for self-acting (autoplay) mode: event log, heuristic
  * derived state, and budgeted prompt text for stateless TextLlm calls.
- * MLX structured prompts: {@link mlxAutoplaySystemPrompt} (system) + situational user body in `buildPlannerMxStructuredPrompt`.
+ * MLX structured prompts: system (rules + JSON + flat vocabulary) + compact user body in `buildPlannerMxStructuredPrompt`.
  * Shared role/rules for other paths: {@link linesForAutoplayPlannerContextBody}.
  */
 import {
@@ -17,6 +17,8 @@ import {
   listVisibleAdventureObjectsInText,
   matchSecondaryToObjectAtabWord,
   recentTextSuggestsIndoorBuildingNavigation,
+  shouldPrioritizeLootFunnel,
+  stripInjectedCommandLinesForObjectHints,
 } from "./situationalCandidates.js";
 import {
   interpretedToGetinLine,
@@ -25,16 +27,14 @@ import {
 } from "./schema.js";
 import {
   detectLocationStagnation,
-  fingerprintLocationFromGameOutput,
   graphNodeIdFromCellKey,
-  locationFingerprintFromGameOutputStrict,
+  sessionLocationFingerprintFromGameOutput,
   InferredExplorationMap,
   type InferredExplorationMapSnapshot,
 } from "./inferredExplorationMap.js";
 import {
   graphNodeCaptionForSnapshot,
   inferredMapToDot,
-  inferredMapToLocalDot,
   inferredMapToMermaid,
 } from "./explorationGraphViz.js";
 
@@ -153,6 +153,15 @@ const ESCAPE_PRIMARY_TOKENS: readonly string[] = [
   "OUT",
 ];
 
+function objectAtabFromTakeGetSecondary(
+  secondary: string,
+  db: AdventureDatabase,
+): string | undefined {
+  const sec = secondary.trim().toUpperCase();
+  if (sec.length === 0) return undefined;
+  return matchSecondaryToObjectAtabWord(sec, db) ?? sec.slice(0, 5).trimEnd();
+}
+
 function oneLineExcerpt(text: string, maxLen: number): string {
   const t = text.replace(/\r\n/g, "\n").replace(/\s+/g, " ").trim();
   if (t.length <= maxLen) return t;
@@ -163,6 +172,18 @@ function getPrimaryFromStoredCommand(command: string): string {
   const t = command.replace(/\r/g, "").trimEnd().toUpperCase();
   const head = (t.length >= 5 ? t.slice(0, 5) : t.padEnd(5, " ")).slice(0, 5);
   return head.trimEnd();
+}
+
+/** Short primary or PRIMARY+SECONDARY for planner **History** lines. */
+function formatPlannerCommandAbbrev(command: string): string {
+  const t = command.replace(/\r/g, "").trimEnd().toUpperCase();
+  const head = (t.length >= 10 ? t.slice(0, 10) : t.padEnd(10, " ")).slice(
+    0,
+    10,
+  );
+  const p = head.slice(0, 5).trimEnd();
+  const s = head.slice(5, 10).trimEnd();
+  return s.length > 0 ? `${p}+${s}` : p;
 }
 
 export type AlternatingLocationLoopInfo = {
@@ -388,19 +409,83 @@ function lineLooksLikeGameLocationLine(line: string): boolean {
   return false;
 }
 
+/** Collapse line breaks and repeated spaces for prompt lines; do not drop room words. */
+function formatLocationHintForPlanner(text: string): string {
+  return text.replace(/\r\n/g, "\n").replace(/\s+/g, " ").trim();
+}
+
 /**
- * Latest room line in the transcript tail — scan **bottom-up** so the opening message does not
- * win forever once the player has moved (e.g. YOU'RE AT END OF ROAD AGAIN).
+ * True when a transcript line ends the current room-description block (blank, command, meta).
  */
-function extractLocationHint(text: string): string {
+function lineBreaksRoomDescriptionContinuation(line: string): boolean {
+  const u = line.trim().toUpperCase();
+  if (u.length === 0) return true;
+  if (u.startsWith(">")) return true;
+  if (u.startsWith("YOU ARE CARRYING")) return true;
+  if (u.includes("YOU ARE CARRYING:")) return true;
+  if (
+    u.includes("YOU ARE ALREADY CARRYING") ||
+    u.includes("YOU'RE ALREADY CARRYING")
+  ) {
+    return true;
+  }
+  if (u.includes("I DON'T KNOW HOW TO APPLY")) return true;
+  if (u.includes("I DON'T UNDERSTAND THAT")) return true;
+  if (u.includes("NOTHING HAPPENS")) return true;
+  if (u.includes("THERE IS NO WAY TO GO THAT DIRECTION")) return true;
+  if (
+    u === "OK" ||
+    u.startsWith("OK ") ||
+    u.startsWith("OK.") ||
+    u.startsWith("OK,")
+  ) {
+    return true;
+  }
+  if (u.includes("GAME IS OVER") && u.includes("PLAY AGAIN")) return true;
+  return false;
+}
+
+/** Safety cap only for corrupted huge tails; typical rooms stay well under this. */
+const LOCATION_HINT_MAX_CHARS = 6000;
+
+/**
+ * Latest contiguous room-description block (YOU ARE / YOU'RE header + wrapped lines), or "".
+ * Used to scope **Items** / object **Cand** to the **current** room so stale GRATE/WATER in the
+ * tail does not hijack loot / vertical cues after the player moves.
+ */
+export function extractLatestRoomDescriptionBlock(text: string): string {
   const lines = text.replace(/\r\n/g, "\n").split("\n");
   for (let i = lines.length - 1; i >= 0; i--) {
     const t = lines[i]!.trim();
-    if (lineLooksLikeGameLocationLine(t)) {
-      return t.slice(0, 200);
+    if (!lineLooksLikeGameLocationLine(t)) continue;
+
+    const parts: string[] = [];
+    for (let j = i; j < lines.length; j++) {
+      const raw = lines[j]!;
+      const seg = raw.trim();
+      if (j > i) {
+        if (seg.length === 0) break;
+        if (lineBreaksRoomDescriptionContinuation(raw)) break;
+        if (lineLooksLikeGameLocationLine(seg)) break;
+      }
+      parts.push(seg);
     }
+    if (parts.length > 0) return parts.join("\n");
   }
   return "";
+}
+
+/**
+ * Latest room block — scan bottom-up for a location line, then forward for wrapped Fortran lines.
+ * Content is not truncated to a short prefix; only whitespace is normalized for **Loc:** readability.
+ */
+function extractLocationHint(text: string): string {
+  const block = extractLatestRoomDescriptionBlock(text);
+  if (block.length === 0) return "";
+  const formatted = formatLocationHintForPlanner(block);
+  if (formatted.length === 0) return "";
+  if (formatted.length <= LOCATION_HINT_MAX_CHARS) return formatted;
+  return `${formatted.slice(0, LOCATION_HINT_MAX_CHARS - 1)}…`;
 }
 
 function extractObjectNotes(text: string): string[] {
@@ -461,6 +546,14 @@ export class AutoplaySessionMemory {
   private adventureDbRef: AdventureDatabase | undefined;
   /** graphNodeId → GETIN keys that were NULL (no location or inventory change). */
   private readonly nullCommandKeysByNode = new Map<string, Set<string>>();
+  /**
+   * Per inferred-map node: ATAB object words where TAKE/GET + object did not succeed (parser/game
+   * refusal). Excluded from **Items** / Cand_Obj until the player leaves this cell.
+   */
+  private readonly takeFailedObjectAtabByNodeId = new Map<
+    string,
+    Set<string>
+  >();
 
   /** ATAB object words from parsed inventory — subtract from room “takeable” on the map. */
   private inventoryObjectAtabWordsForMap(): ReadonlySet<string> | undefined {
@@ -480,6 +573,36 @@ export class AutoplaySessionMemory {
     return inv ? { inventoryObjectAtabWords: inv } : {};
   }
 
+  private recordTakeGetOutcomeLearning(
+    command: string,
+    gameOutputNorm: string,
+    nodeIdBefore: string,
+  ): void {
+    if (!this.adventureDbRef) return;
+    const { primary, secondary } = parseGetinPrimarySecondary(command);
+    if (!INVENTORY_TAKE_VERB_PRIMARIES.has(primary)) return;
+    const atab = objectAtabFromTakeGetSecondary(secondary, this.adventureDbRef);
+    if (!atab || atab.length === 0) return;
+
+    if (outcomeLooksLikeFortranOkSuccess(gameOutputNorm)) {
+      const s = this.takeFailedObjectAtabByNodeId.get(nodeIdBefore);
+      if (s) {
+        s.delete(atab);
+        if (s.size === 0) {
+          this.takeFailedObjectAtabByNodeId.delete(nodeIdBefore);
+        }
+      }
+      return;
+    }
+
+    let s = this.takeFailedObjectAtabByNodeId.get(nodeIdBefore);
+    if (!s) {
+      s = new Set();
+      this.takeFailedObjectAtabByNodeId.set(nodeIdBefore, s);
+    }
+    s.add(atab);
+  }
+
   /**
    * Raw accumulated transcript tail (for situational candidate extraction).
    * After each {@link recordCommandOutcome}, a line `> VERB` or `> VERB OBJECT` is
@@ -487,6 +610,29 @@ export class AutoplaySessionMemory {
    */
   getRecentRawTail(): string {
     return this.recentRawTail;
+  }
+
+  /**
+   * Text slice used for **Items**, loot funnel, Cand_Obj, and vertical-passage cues: the latest
+   * room-description block when one can be parsed, else the full stripped tail (same as before).
+   */
+  getObjectHintScopeText(): string {
+    const block = extractLatestRoomDescriptionBlock(this.recentRawTail);
+    const strippedTail = stripInjectedCommandLinesForObjectHints(
+      this.recentRawTail,
+    );
+    if (block.trim().length === 0) return strippedTail;
+    return stripInjectedCommandLinesForObjectHints(block);
+  }
+
+  /**
+   * Object-class tokens to omit from room “takeable” hints after failed TAKE/GET in this cell
+   * (e.g. GRATE as scenery).
+   */
+  getRoomTakeFailureObjectAtabWords(): string[] {
+    const id = graphNodeIdFromCellKey(this.exploration.currentCellKey());
+    const s = this.takeFailedObjectAtabByNodeId.get(id);
+    return s ? [...s].sort((a, b) => a.localeCompare(b)) : [];
   }
 
   /** Seed from transcript before the first `> ` command. */
@@ -584,7 +730,10 @@ export class AutoplaySessionMemory {
   ): string {
     const maxTotal = options.compact ? 900 : 1400;
     const mapLine = this.exploration
-      .formatPromptLines({ compact: options.compact })
+      .formatPromptLines({
+        compact: options.compact,
+        excludeLineKeys: this.getNullKeysForCurrentNode(),
+      })
       .join(" ");
     const lines: string[] = [
       "### Interactive session context",
@@ -608,10 +757,16 @@ export class AutoplaySessionMemory {
         lines.push(`- \`${t.command}\` → ${t.outcomeExcerpt}${tag}`);
       }
     }
-    const indoor = recentTextSuggestsIndoorBuildingNavigation(
-      this.recentRawTail,
-    );
+    const objectScope = this.getObjectHintScopeText();
+    const indoor = recentTextSuggestsIndoorBuildingNavigation(objectScope);
     const invLines = this.getStructuredInventory();
+    const takeFailWords = this.getRoomTakeFailureObjectAtabWords();
+    const lootFunnel = shouldPrioritizeLootFunnel(
+      db,
+      objectScope,
+      invLines,
+      takeFailWords,
+    );
     const situ = formatSituationalCandidatesSection(
       db,
       buildSituationalCandidateTokens(db, this.recentRawTail, {
@@ -619,7 +774,14 @@ export class AutoplaySessionMemory {
         exploreFirst: resolveAutoplayPromptMode() === "explore",
         inventorySubtractText:
           invLines.length > 0 ? invLines.join("\n") : undefined,
+        takeFailureSubtractWords: takeFailWords,
+        objectHintScopeText: objectScope,
+        lootFunnel,
       }),
+      undefined,
+      {
+        lootFunnelDeferCandMove: lootFunnel,
+      },
     );
     if (situ.trim().length > 0) {
       lines.push("");
@@ -650,11 +812,12 @@ export class AutoplaySessionMemory {
     );
     const outcomeWasParserRejection = gameOutputLooksLikeParserRejection(norm);
     const outcomeWasBlockedMove = gameOutputLooksLikeBlockedMove(norm);
-    const outcomeLocationFingerprint =
-      locationFingerprintFromGameOutputStrict(norm) ??
-      fpBefore ??
-      fingerprintLocationFromGameOutput(norm);
+    const outcomeLocationFingerprint = sessionLocationFingerprintFromGameOutput(
+      norm,
+      fpBefore,
+    );
     const outcomeHadFortranOk = outcomeLooksLikeFortranOkSuccess(norm);
+    this.recordTakeGetOutcomeLearning(command, norm, nodeIdBefore);
     if (outcomeWasParserRejection) {
       const key = normalizeGetinLineKey(command);
       if (!this.rejectedGetinQueue.includes(key)) {
@@ -680,6 +843,7 @@ export class AutoplaySessionMemory {
     }
     if (/\bINIT\s+DONE\b/i.test(norm)) {
       this.inventoryTurnStart = this.turns.length;
+      this.takeFailedObjectAtabByNodeId.clear();
     }
     const cmdLine = formatPlayerCommandLineForTranscript(command);
     const withCommand = cmdLine.length > 0 ? `${cmdLine}\n${norm}` : norm;
@@ -703,10 +867,7 @@ export class AutoplaySessionMemory {
       this.addNullCommandForNode(nodeIdBefore, cmdKey);
     } else {
       const invAfter = inventorySignature(this.inventory);
-      const fpAfter =
-        locationFingerprintFromGameOutputStrict(norm) ??
-        fpBefore ??
-        fingerprintLocationFromGameOutput(norm);
+      const fpAfter = sessionLocationFingerprintFromGameOutput(norm, fpBefore);
       if (fpBefore !== null && fpBefore === fpAfter && invBefore === invAfter) {
         this.addNullCommandForNode(nodeIdBefore, cmdKey);
       }
@@ -949,11 +1110,9 @@ export class AutoplaySessionMemory {
         "",
         this.buildCurrentNodeBlockMx(),
         "",
-        "**Inferred exploration map** (East=+x, North=+y, Up=+z):",
+        `**Exits (session):** ${this.buildPlannerExitsLine()}`,
+        `**Breadcrumb (last locations):** ${this.buildPlannerBreadcrumbLine()}`,
       ];
-      for (const ln of this.exploration.formatPromptLines({ compact: true })) {
-        lines.push(`- ${ln}`);
-      }
       if (this.objectNotes.length > 0) {
         lines.push(`**Notes:** ${this.objectNotes.join(" ")}`);
       }
@@ -982,10 +1141,10 @@ export class AutoplaySessionMemory {
       );
     }
     lines.push("");
-    lines.push("**Inferred exploration map** (East=+x, North=+y, Up=+z):");
-    for (const ln of this.exploration.formatPromptLines({ compact: true })) {
-      lines.push(`- ${ln}`);
-    }
+    lines.push(`**Exits (session):** ${this.buildPlannerExitsLine()}`);
+    lines.push(
+      `**Breadcrumb (last locations):** ${this.buildPlannerBreadcrumbLine()}`,
+    );
     if (this.objectNotes.length > 0) {
       lines.push(`**Notes:** ${this.objectNotes.join(" ")}`);
     }
@@ -999,52 +1158,193 @@ export class AutoplaySessionMemory {
     return lines.join("\n");
   }
 
+  private buildRoomDescriptionSnippet(): string {
+    const stripped = stripInjectedCommandLinesForObjectHints(
+      this.recentRawTail,
+    ).trim();
+    if (stripped.length === 0) return "(none yet)";
+    return oneLineExcerpt(stripped, 220);
+  }
+
+  private buildItemsHereLine(options?: { excludeCarried?: boolean }): string {
+    if (!this.adventureDbRef) return "(unknown)";
+    let objs = listVisibleAdventureObjectsInText(
+      this.adventureDbRef,
+      this.getObjectHintScopeText(),
+    );
+    const takeFail = new Set(this.getRoomTakeFailureObjectAtabWords());
+    objs = objs.filter((w) => !takeFail.has(w));
+    if (!options?.excludeCarried || this.inventory.length === 0) {
+      return objs.length > 0 ? objs.join(", ") : "(none visible)";
+    }
+    const carried = new Set(
+      listVisibleAdventureObjectsInText(
+        this.adventureDbRef,
+        this.inventory.join("\n"),
+      ),
+    );
+    const rest = objs.filter((w) => !carried.has(w));
+    return rest.length > 0 ? rest.join(", ") : "(none visible)";
+  }
+
+  private buildPlannerExitsLine(): string {
+    const nullKeys = this.getNullKeysForCurrentNode();
+    const { travel: deadTravel } =
+      this.exploration.partitionDeadEndPrimariesFromCurrentCell();
+    const tryNext = this.exploration
+      .getUntriedMotionPrimaries(nullKeys)
+      .slice(0, 16);
+    const parts: string[] = [];
+    if (tryNext.length > 0) parts.push(`open: ${tryNext.join(", ")}`);
+    if (deadTravel.length > 0) parts.push(`tried: ${deadTravel.join(", ")}`);
+    return parts.length > 0 ? parts.join(" | ") : "(see CANDIDATES)";
+  }
+
+  private buildPlannerBreadcrumbLine(): string {
+    const ok = this.turns.filter((t) => !t.outcomeWasParserRejection);
+    const fps = ok
+      .map((t) => t.outcomeLocationFingerprint)
+      .filter((f) => f.length > 0);
+    const last3 = fps
+      .slice(-3)
+      .map((f) => (f.length > 52 ? `${f.slice(0, 51)}…` : f));
+    return last3.length > 0 ? last3.join(" → ") : "(start)";
+  }
+
+  private buildPlannerHistoryLine(): string {
+    const slice = this.turns.slice(-4);
+    if (slice.length === 0) return "(none yet)";
+    return slice
+      .map((t) => {
+        const cmd = formatPlannerCommandAbbrev(t.command);
+        if (t.outcomeWasParserRejection) return `${cmd} (Rejected)`;
+        if (gameOutputLooksLikeBlockedMove(t.outcomeExcerpt))
+          return `${cmd} (Blocked)`;
+        return cmd;
+      })
+      .join("; ");
+  }
+
+  /** Recent primaries with compact outcome tags for SLM **Hist:** (ties to **Cand** selection). */
+  private buildPlannerHistoryCommaPrimaries(): string {
+    const slice = this.turns.slice(-6);
+    if (slice.length === 0) return "(none)";
+    return slice
+      .map((t) => {
+        const p = getPrimaryFromStoredCommand(t.command);
+        if (t.outcomeWasParserRejection) return `${p} (Reject)`;
+        if (gameOutputLooksLikeBlockedMove(t.outcomeExcerpt))
+          return `${p} (No path)`;
+        return `${p} (OK)`;
+      })
+      .join(", ");
+  }
+
+  /** Shorter **Exits:** line: open directions comma-separated, optional tried suffix. */
+  private buildPlannerExitsCommaList(): string {
+    const nullKeys = this.getNullKeysForCurrentNode();
+    const { travel: deadTravel } =
+      this.exploration.partitionDeadEndPrimariesFromCurrentCell();
+    const tryNext = this.exploration
+      .getUntriedMotionPrimaries(nullKeys)
+      .slice(0, 20);
+    if (tryNext.length === 0 && deadTravel.length === 0)
+      return "(see Cand_Move)";
+    const open = tryNext.join(", ");
+    return deadTravel.length > 0
+      ? `${open} (tried: ${deadTravel.join(", ")})`
+      : open;
+  }
+
+  private lastTwoBreadcrumbFingerprintsIdentical(): boolean {
+    const ok = this.turns.filter((t) => !t.outcomeWasParserRejection);
+    const fps = ok
+      .map((t) => t.outcomeLocationFingerprint)
+      .filter((f) => f.length > 0);
+    if (fps.length < 2) return false;
+    return fps[fps.length - 1] === fps[fps.length - 2]!;
+  }
+
+  /** Same primary repeated at least `min` times in the last up-to-five turns. */
+  private repeatedPrimaryStreakMin(min: number): string | null {
+    const slice = this.turns.slice(-5);
+    if (slice.length < min) return null;
+    const primaries = slice.map((t) => getPrimaryFromStoredCommand(t.command));
+    const last = primaries[primaries.length - 1]!;
+    if (last.length === 0) return null;
+    const n = primaries.filter((p) => p === last).length;
+    return n >= min ? last : null;
+  }
+
+  private buildPlannerMxTaskLine(lootFunnel?: boolean): string {
+    if (lootFunnel) {
+      return "Ground **Items** are listed and **Inv** is empty — output **TAKE** or **GET** with **secondaryToken** from **Items**/**Cand_Obj** now. Ignore pathfinding until **Items** reads (none visible). JSON only.";
+    }
+    const base =
+      "Pick one command from **Cand_Move**/**Cand_Act** not negated by **Hist**. JSON only.";
+    const streak = this.repeatedPrimaryStreakMin(3);
+    if (streak !== null) {
+      return `Break ${streak} repetition — ${base}`;
+    }
+    if (this.lastTwoBreadcrumbFingerprintsIdentical()) {
+      return `Last two locations match — pick a primary not shown as (No path)/(Reject) in **Hist**. ${base}`;
+    }
+    return base;
+  }
+
   /**
-   * Single engine-state block for MLX: location/inventory plus optional **Alerts**
-   * (parser rejection, two-room loop, queued rejected GETIN lines).
+   * Compact situation fields for MLX structured **user** prompts (no x,y,z map, no DOT).
    */
-  private buildGameEngineStateBlockMx(): string {
+  private buildPlannerMxUserCoreBlock(
+    compact: boolean,
+    options?: { lootFunnel?: boolean },
+  ): string {
+    const lootFunnel = options?.lootFunnel === true;
     const alerts = this.buildCompactPlannerAlerts();
-    if (resolveAutoplayPromptMode() === "explore") {
+    const inv =
+      this.inventory.length > 0 ? this.inventory.join(", ") : "(empty)";
+    const itemsHere = this.buildItemsHereLine();
+    const exits = compact
+      ? this.buildPlannerExitsCommaList()
+      : this.buildPlannerExitsLine();
+    const exitsDisplay =
+      compact && lootFunnel
+        ? "(deferred — clear ground **Items** first)"
+        : exits;
+
+    if (compact) {
+      const hist = this.buildPlannerHistoryCommaPrimaries();
       const lines: string[] = [
-        "### EXPLORATION MAP (inferred — engine text is authoritative)",
+        `**Loc:** ${this.locationHint || "?"}`,
+        `**Inv:** ${inv}`,
       ];
-      for (const ln of this.exploration.formatPromptLines({ compact: true })) {
-        lines.push(ln);
+      if (!lootFunnel) {
+        lines.push(`**Items:** ${itemsHere}`);
       }
-      if (this.objectNotes.length > 0) {
-        lines.push(`Notes: ${this.objectNotes.join(" ")}`);
-      }
+      lines.push(`**Exits:** ${exitsDisplay}`, `**Hist:** ${hist}`);
       if (alerts.length > 0) {
-        lines.push("");
-        lines.push("Alerts:");
-        for (const a of alerts) lines.push(`- ${a}`);
+        lines.push("", "**Alt:**");
+        for (const a of alerts) {
+          lines.push(`- ${oneLineExcerpt(a, 160)}`);
+        }
       }
       return lines.join("\n");
     }
-    const loc =
-      this.locationHint ||
-      "(unknown — infer from Location hint and parsed state below)";
-    const inv =
-      this.inventory.length > 0
-        ? this.inventory.join("; ")
-        : "(not detected — infer from inventory lines in parsed state if any)";
+
+    const crumb = this.buildPlannerBreadcrumbLine();
+    const hist = this.buildPlannerHistoryLine();
     const lines: string[] = [
-      "### GAME ENGINE STATE",
-      `Location: ${loc}`,
-      `Inventory (parsed): ${inv}`,
+      `**Location:** ${this.locationHint || "(unknown)"}`,
+      `**Description:** ${this.buildRoomDescriptionSnippet()}`,
+      `**Inventory:** ${inv}`,
+      `**Items here:** ${itemsHere}`,
+      `**Exits:** ${exits}`,
+      `**Breadcrumb:** ${crumb}`,
+      `**History:** ${hist}`,
     ];
-    lines.push("");
-    lines.push("### EXPLORATION MAP (inferred — engine text is authoritative)");
-    for (const ln of this.exploration.formatPromptLines({ compact: true })) {
-      lines.push(ln);
-    }
-    if (this.objectNotes.length > 0) {
-      lines.push(`Notes: ${this.objectNotes.join(" ")}`);
-    }
     if (alerts.length > 0) {
       lines.push("");
-      lines.push("Alerts:");
+      lines.push("**Alerts:**");
       for (const a of alerts) lines.push(`- ${a}`);
     }
     return lines.join("\n");
@@ -1055,7 +1355,7 @@ export class AutoplaySessionMemory {
     const last = this.turns[this.turns.length - 1];
     if (last?.outcomeWasParserRejection) {
       out.push(
-        "The parser rejected the last command — try another verb from **CANDIDATES**, or **LOOK**/**EXAMI** for room wording, then issue a **new** primaryToken (different from the previous GETIN).",
+        "The parser rejected the last command — try another verb from **Cand_Act** / **Cand_Move**, or **LOOK**/**EXAMI**, then a **new** primary (not the same GETIN).",
       );
     }
     if (
@@ -1087,7 +1387,7 @@ export class AutoplaySessionMemory {
     }
     if (this.isLocationStagnating()) {
       out.push(
-        `No location change for ${STAGNATION_MIN_SAME_TURNS}+ successful moves — use **EXPLORATION MAP** and **Try next**: compass, **UP**/**DOWN**, **ENTER**, **IN**, and verbs you have not used from this cell yet; **rotate** toward a fresh command from those lists.`,
+        `No location change for ${STAGNATION_MIN_SAME_TURNS}+ successful moves — use **Exits** and **CANDIDATES**: compass, **UP**/**DOWN**, **ENTER**, **IN**, and verbs you have not used from this cell yet; **rotate** toward a fresh command.`,
       );
     }
     return out;
@@ -1138,7 +1438,10 @@ The last four successful moves alternated between the same two location lines us
     const title = structured
       ? "### Location stagnation"
       : "## Location stagnation (heuristic)";
-    const tryNext = this.exploration.getUntriedMotionPrimaries().slice(0, 12);
+    const nullKeys = this.getNullKeysForCurrentNode();
+    const tryNext = this.exploration
+      .getUntriedMotionPrimaries(nullKeys)
+      .slice(0, 12);
     const indoor = recentTextSuggestsIndoorBuildingNavigation(
       this.recentRawTail,
     );
@@ -1150,7 +1453,7 @@ The last four successful moves alternated between the same two location lines us
         ? `**Try next** includes: **${tryNext.join("**, **")}** (still open from this inferred cell).`
         : "Prefer a fresh compass direction, **UP**/**DOWN**, **ENTER**, or **IN** from the vocabulary.";
     return `${title}
-The last ${STAGNATION_MIN_SAME_TURNS} or more successful moves share the same location line. **Rotate** toward a fresh GETIN from **Try next** / **EXPLORATION MAP** unless the transcript changed.
+The last ${STAGNATION_MIN_SAME_TURNS} or more successful moves share the same location line. **Rotate** toward a fresh GETIN from **Exits** / **CANDIDATES** unless the transcript changed.
 ${hint}
 Use **INVENTORY (parsed)** for TAKE/GET/DROP when items appear in the room text.`;
   }
@@ -1213,26 +1516,13 @@ Use **INVENTORY (parsed)** for TAKE/GET/DROP when items appear in the room text.
   }
 
   /**
-   * Session FSM neighborhood (Graphviz DOT) for planner prompts — current cell + a few hops, no verbatim game log.
+   * Text-only spatial hint for merged planner prompts (replaces Graphviz DOT for SLMs).
    */
-  private buildPlannerLocalFsmGraphBlock(): string {
-    const explore = resolveAutoplayPromptMode() === "explore";
-    const snap = this.exploration.toSnapshot(this.mapSnapshotOptions());
-    const dot = inferredMapToLocalDot(
-      snap,
-      explore
-        ? { maxHops: 1, maxNodes: 12, maxEdges: 22 }
-        : { maxHops: 2, maxNodes: 18, maxEdges: 36 },
-    );
-    const intro = explore
-      ? "Local graph (session only). **YOU ARE HERE** = dark node. Solid=travel; dashed=rejected; dotted=no move / action."
-      : "Learned this session only (not engine truth). **Current position:** the **dark filled** node with **thick border** and a **YOU ARE HERE** line in its label (also noted in a `//` comment with the node id). Other nodes use a light fill. **takeable:** lists parser object words still believed on the ground in that room (updated when room text is seen; successful TAKE removes an object from that room; carrying items are subtracted). **Edges:** solid = travel; dashed gray = rejected compass; dotted blue = non-move actions (TAKE, LOOK, EXAMI, …) tried at that node. Self-loops on travel = blocked / no move. Full game text is not included — use **GAME ENGINE STATE**, **EXPLORATION MAP**, **CANDIDATES**, **AT THIS NODE**, and this graph.";
+  private buildPlannerSpatialHintBlock(): string {
     return [
-      "### LOCAL SESSION MAP (Graphviz DOT)",
-      intro,
-      "```dot",
-      dot,
-      "```",
+      "### SPATIAL HINT (session, text)",
+      `**Exits:** ${this.buildPlannerExitsLine()}`,
+      `**Breadcrumb:** ${this.buildPlannerBreadcrumbLine()}`,
     ].join("\n");
   }
 
@@ -1250,8 +1540,8 @@ ${lines.join("\n")}`;
   }
 
   /**
-   * Gemma-oriented planner: **system** = {@link mlxAutoplaySystemPrompt} (rules + JSON + background).
-   * **user** = GAME ENGINE STATE → CANDIDATES → LOCAL SESSION MAP (DOT); no full transcript (no turn-by-turn log).
+   * Gemma-oriented planner: **system** = SLM **Rules** + JSON shape (no duplicate token list).
+   * **user** = **Loc** / **Cand** / **Hist** / … + **Task**; tokens live only in **Cand** (situational list).
    * The worker merges `system` + `user` before generation (`scripts/mlx_lm_worker.py`).
    */
   buildPlannerMxStructuredPrompt(
@@ -1259,49 +1549,73 @@ ${lines.join("\n")}`;
     options: {
       compact: boolean;
       situationalSection?: string;
+      /** SLM loot funnel: empty inventory + visible ground objects (defers travel in Cand/Exits). */
+      lootFunnel?: boolean;
     },
   ): { system: string; user: string } {
     const mode = resolveAutoplayPromptMode();
+    const compact = options.compact;
+    const lootFunnelActive = compact && options.lootFunnel === true;
     const situationalSection = options.situationalSection?.trim();
     const situationalBlock =
       situationalSection && situationalSection.length > 0
-        ? situationalSection.replace(
-            /^## Situation candidates[^\n]*/,
-            "### CANDIDATES",
-          )
+        ? (() => {
+            let body = situationalSection
+              .replace(/^## Situation candidates[^\n]*\n*/i, "")
+              .trim();
+            if (compact) {
+              const hasCand =
+                body.includes("**Cand_Move:**") ||
+                body.includes("**Cand_Act:**") ||
+                body.includes("**Cand:**");
+              if (!hasCand && body.length > 0) {
+                body = `**Cand:** ${body}`;
+              }
+            } else if (body.length > 0 && !body.startsWith("###")) {
+              body = `### CANDIDATES\n${body}`;
+            }
+            return body;
+          })()
         : "";
 
-    const gameEngineBlock = this.buildGameEngineStateBlockMx();
-    const localGraph = this.buildPlannerLocalFsmGraphBlock();
+    const sessionFraming = compact
+      ? "### SESSION"
+      : mode === "explore"
+        ? "### CURRENT SESSION\nPick **one** JSON command per system **Rules**."
+        : "### CURRENT SESSION\nPick **one** parser command. No full transcript — local fields only.";
 
-    const sessionFraming =
-      mode === "explore"
-        ? `### CURRENT SESSION
-Pick **one** parser command (JSON in system message). **Lead** with **Try next** and **AT THIS NODE**; vary your choice when the situation is unchanged.`
-        : `### CURRENT SESSION
-You are in the situation below. Pick **one** parser command using **GAME ENGINE STATE**, **EXPLORATION MAP**, **CANDIDATES**, and **LOCAL SESSION MAP**. In the DOT map, your position is the **dark-filled** node whose label starts with **YOU ARE HERE** (see the section intro). **Prioritize** **Try next** and directions that are still open from the current inferred cell. There is no full game transcript in this message — use parsed state and the DOT neighborhood. Follow the system message for JSON shape and parser rules.`;
+    const itemsHere = this.buildItemsHereLine(
+      lootFunnelActive ? { excludeCarried: true } : undefined,
+    );
+    const taskLine = this.buildPlannerMxTaskLine(lootFunnelActive);
+    const tail: string[] = [];
+    if (lootFunnelActive) {
+      tail.push("", `**Items:** ${itemsHere}`, "", `**Task:** ${taskLine}`);
+    } else {
+      tail.push("", `**Task:** ${taskLine}`);
+    }
 
     const userSections = [
       sessionFraming,
       "",
-      ...(mode === "explore" ? [this.buildCurrentNodeBlockMx(), ""] : []),
-      gameEngineBlock,
+      this.buildPlannerMxUserCoreBlock(compact, {
+        lootFunnel: lootFunnelActive,
+      }),
       ...(situationalBlock ? ["", situationalBlock] : []),
-      "",
-      localGraph,
+      ...tail,
     ].join("\n");
     const user =
       userSections.length > maxChars
         ? trimPromptPreservePrefix(userSections, maxChars)
         : userSections;
     return {
-      system: mlxAutoplaySystemPrompt(options.compact, mode),
+      system: mlxAutoplaySystemPrompt(compact, mode, lootFunnelActive),
       user,
     };
   }
 
   /**
-   * Assemble full user prompt body for the planner: narrative sections + local session DOT graph,
+   * Assemble full user prompt body for the planner: narrative sections + text spatial hint,
    * trimmed to `maxChars` (no full verbatim transcript; no numbered recent-move list).
    */
   buildPlannerUserPrompt(
@@ -1321,7 +1635,7 @@ You are in the situation below. Pick **one** parser command using **GAME ENGINE 
     const oscillationBlock = this.buildOscillationBlock(structured);
     const stagnationBlock = this.buildStagnationBlock(structured);
     const rejectedBlock = this.buildRejectedCommandsBlock(structured);
-    const localGraph = this.buildPlannerLocalFsmGraphBlock();
+    const spatialHint = this.buildPlannerSpatialHintBlock();
 
     const vocabSection = vocabTrim(vocabHint, maxChars);
 
@@ -1362,7 +1676,7 @@ You are in the situation below. Pick **one** parser command using **GAME ENGINE 
       ].join("\n");
     }
 
-    const out = `${preambleHead}\n\n${localGraph}`;
+    const out = `${preambleHead}\n\n${spatialHint}`;
     return out.length > maxChars
       ? trimPromptPreservePrefix(out, maxChars)
       : out;

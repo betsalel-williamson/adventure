@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * One-shot: call the configured text LLM to categorize adventure.dat vocabulary into JSON,
+ * One-shot: call the configured text model to categorize adventure.dat vocabulary into JSON,
  * then write the cache file used by buildVocabHint (when present / env enables).
  *
  * From adventure-llm (after `npm run build`):
@@ -36,7 +36,7 @@ async function main() {
   const client = resolveTextLlmFromEnv();
   if (!client) {
     console.error(
-      "generate-vocab-categories-ai: configure a text LLM (see .env.example).",
+      "generate-vocab-categories-ai: configure a text model (see .env.example).",
     );
     process.exitCode = 1;
     return;

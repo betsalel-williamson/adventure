@@ -7,7 +7,11 @@ import {
   countVisibleAdventureObjectsInText,
   formatSituationalCandidatesSection,
   parseRelevantTokensResponse,
+  recentTextSuggestsGrateDescentNavigation,
   recentTextSuggestsIndoorBuildingNavigation,
+  recentTextSuggestsVerticalPassageNavigation,
+  listVisibleRoomObjectsNotCarried,
+  shouldPrioritizeLootFunnel,
   stripInjectedCommandLinesForObjectHints,
 } from "./situationalCandidates.js";
 
@@ -119,6 +123,128 @@ describe("buildSituationalCandidateTokens", () => {
     expect(idxEast).toBeLessThan(idxTake);
   });
 
+  it("grate context lists DOWN before compass when room objects are present", () => {
+    const db = loadDatFile(datPath);
+    const text =
+      "YOU'RE OUTSIDE GRATE. THERE IS WATER HERE. A METAL GRATE IN THE STREAM.\n";
+    const c = buildSituationalCandidateTokens(db, text, { maxTotal: 60 });
+    const iDown = c.indexOf("DOWN");
+    const iEast = c.indexOf("EAST");
+    expect(iDown).toBeGreaterThanOrEqual(0);
+    if (iEast >= 0) expect(iDown).toBeLessThan(iEast);
+  });
+
+  it("objectHintScopeText ignores stale GRATE from an earlier room in the tail", () => {
+    const db = loadDatFile(datPath);
+    const fullTail = [
+      "YOU'RE OUTSIDE GRATE. SMALL STREAM. WATER HERE. METAL GRATE.",
+      "",
+      "YOU'RE IN OPEN FOREST, WITH A DEEP VALLEY IN ONE DIRECTION.",
+    ].join("\n");
+    const forestOnly =
+      "YOU'RE IN OPEN FOREST, WITH A DEEP VALLEY IN ONE DIRECTION.";
+    const cFull = buildSituationalCandidateTokens(db, fullTail, {
+      maxTotal: 80,
+    });
+    const cScoped = buildSituationalCandidateTokens(db, fullTail, {
+      maxTotal: 80,
+      objectHintScopeText: forestOnly,
+    });
+    expect(cFull).toContain("GRATE");
+    expect(cScoped.includes("GRATE")).toBe(false);
+    expect(shouldPrioritizeLootFunnel(db, forestOnly, [], undefined)).toBe(
+      false,
+    );
+    expect(shouldPrioritizeLootFunnel(db, fullTail, [], undefined)).toBe(true);
+  });
+
+  it("lootFunnel retains DOWN/UP when vertical passage context (travel otherwise hidden)", () => {
+    const db = loadDatFile(datPath);
+    const text =
+      "YOU'RE OUTSIDE GRATE. SMALL STREAM. WATER HERE. METAL GRATE.\n";
+    const c = buildSituationalCandidateTokens(db, text, {
+      maxTotal: 80,
+      lootFunnel: true,
+    });
+    expect(c).toContain("DOWN");
+    expect(c).toContain("UP");
+    expect(c).toContain("TAKE");
+    expect(c.includes("EAST")).toBe(false);
+  });
+
+  it("lootFunnel retains vertical motion for ladder + shaft-style text", () => {
+    const db = loadDatFile(datPath);
+    const text = "NARROW LADDER LEADS UP. SOME WATER HERE.\n";
+    expect(recentTextSuggestsVerticalPassageNavigation(text)).toBe(true);
+    const c = buildSituationalCandidateTokens(db, text, {
+      maxTotal: 80,
+      lootFunnel: true,
+    });
+    expect(c).toContain("DOWN");
+    expect(c).toContain("UP");
+    expect(c.includes("NORTH")).toBe(false);
+  });
+
+  it("lootFunnel drops CLASS_MOTION tokens even when exploreFirst would apply", () => {
+    const db = loadDatFile(datPath);
+    const text =
+      "YOU ARE IN A BUILDING. THERE ARE SOME KEYS ON THE GROUND. A BRASS LAMP IS NEARBY.";
+    const c = buildSituationalCandidateTokens(db, text, {
+      maxTotal: 80,
+      exploreFirst: true,
+      lootFunnel: true,
+    });
+    expect(c).toContain("TAKE");
+    expect(c).toContain("KEYS");
+    expect(c.some((t) => t === "EAST" || t === "WEST")).toBe(false);
+    expect(c).toContain("LOOK");
+  });
+
+  it("shouldPrioritizeLootFunnel matches room objects minus carried (loot gate)", () => {
+    const db = loadDatFile(datPath);
+    const text = "YOU'RE INSIDE BUILDING. KEYS ON GROUND. LAMP NEARBY.";
+    expect(shouldPrioritizeLootFunnel(db, text, [])).toBe(true);
+    expect(
+      shouldPrioritizeLootFunnel(db, text, [
+        "YOU ARE CARRYING SOME KEYS",
+        "YOU ARE CARRYING A LAMP",
+      ]),
+    ).toBe(false);
+    expect(
+      shouldPrioritizeLootFunnel(db, text, ["YOU ARE CARRYING SOME KEYS"]),
+    ).toBe(true);
+    expect(
+      listVisibleRoomObjectsNotCarried(db, text, [
+        "YOU ARE CARRYING SOME KEYS",
+      ]),
+    ).toContain("LAMP");
+    expect(
+      listVisibleRoomObjectsNotCarried(db, text, [], ["LAMP"]),
+    ).not.toContain("LAMP");
+  });
+
+  it("takeFailureSubtractWords omits learned-untakeable objects from Cand_Obj", () => {
+    const db = loadDatFile(datPath);
+    const text = "YOU'RE OUTSIDE GRATE. METAL GRATE. WATER IN THE STREAM.\n";
+    const withGrate = buildSituationalCandidateTokens(db, text, {
+      maxTotal: 60,
+    });
+    expect(withGrate).toContain("GRATE");
+    const withoutGrate = buildSituationalCandidateTokens(db, text, {
+      maxTotal: 60,
+      takeFailureSubtractWords: ["GRATE"],
+    });
+    expect(withoutGrate.includes("GRATE")).toBe(false);
+    expect(withoutGrate).toContain("WATER");
+  });
+
+  it("shouldPrioritizeLootFunnel is false when only remaining objects are take-failures", () => {
+    const db = loadDatFile(datPath);
+    const text = "YOU SEE A METAL GRATE.\n";
+    expect(shouldPrioritizeLootFunnel(db, text, [], [])).toBe(true);
+    expect(shouldPrioritizeLootFunnel(db, text, [], ["GRATE"])).toBe(false);
+  });
+
   it("stripInjectedCommandLinesForObjectHints removes > lines", () => {
     const raw = "> TAKE KEYS\nYOU ARE IN FOREST.\n";
     expect(stripInjectedCommandLinesForObjectHints(raw)).not.toMatch(/>/);
@@ -153,6 +279,64 @@ describe("buildSituationalCandidateTokens", () => {
     if (idxRoad(without) >= 0 && idxRoad(withDep) >= 0) {
       expect(idxRoad(withDep)).toBeGreaterThanOrEqual(idxRoad(without));
     }
+  });
+});
+
+describe("recentTextSuggestsVerticalPassageNavigation", () => {
+  it("matches grate, pit, stair, ladder, and chasm cues", () => {
+    expect(
+      recentTextSuggestsVerticalPassageNavigation(
+        "YOU'RE OUTSIDE GRATE. THE STREAM BED.\n",
+      ),
+    ).toBe(true);
+    expect(
+      recentTextSuggestsVerticalPassageNavigation(
+        "A METAL GRATE IN THE TWENTY FOOT DEPRESSION.\n",
+      ),
+    ).toBe(true);
+    expect(
+      recentTextSuggestsVerticalPassageNavigation(
+        "YOU ARE AT THE BRINK OF A DEEP PIT.\n",
+      ),
+    ).toBe(true);
+    expect(
+      recentTextSuggestsVerticalPassageNavigation(
+        "ROUGH STONE STEPS LEAD DOWN.\n",
+      ),
+    ).toBe(true);
+    expect(
+      recentTextSuggestsVerticalPassageNavigation(
+        "THERE IS A RICKETY WOODEN LADDER HERE.\n",
+      ),
+    ).toBe(true);
+    expect(
+      recentTextSuggestsVerticalPassageNavigation(
+        "YOU ARE ON THE EDGE OF A BREATHTAKING CHASM.\n",
+      ),
+    ).toBe(true);
+  });
+
+  it("is false without vertical-passage cues", () => {
+    expect(
+      recentTextSuggestsVerticalPassageNavigation("YOU ARE IN A FOREST.\n"),
+    ).toBe(false);
+    expect(
+      recentTextSuggestsVerticalPassageNavigation(
+        "ABOUT A GRATE OF CARROTS.\n",
+      ),
+    ).toBe(false);
+    expect(
+      recentTextSuggestsVerticalPassageNavigation(
+        "A DEEP FOREST PITTED WITH STUMPS.\n",
+      ),
+    ).toBe(false);
+  });
+
+  it("grateDescentNavigation alias matches vertical passage", () => {
+    const s = "YOU'RE OUTSIDE GRATE.\n";
+    expect(recentTextSuggestsGrateDescentNavigation(s)).toBe(
+      recentTextSuggestsVerticalPassageNavigation(s),
+    );
   });
 });
 
@@ -193,6 +377,52 @@ describe("formatSituationalCandidatesSection", () => {
     expect(s).toContain("**EAST**");
     expect(s).toMatch(/travel east/i);
     expect(s).toContain("Try next");
+  });
+
+  it("flatList emits comma-separated tokens only", () => {
+    const db = loadDatFile(datPath);
+    const s = formatSituationalCandidatesSection(
+      db,
+      ["EAST", "WEST", "TAKE"],
+      undefined,
+      { flatList: true },
+    );
+    expect(s).toContain("EAST, WEST, TAKE");
+    expect(s).not.toMatch(/\*\*EAST\*\*\s*—/);
+  });
+
+  it("slmGrouped splits motion vs action vs object", () => {
+    const db = loadDatFile(datPath);
+    const s = formatSituationalCandidatesSection(
+      db,
+      ["EAST", "WEST", "TAKE", "KEYS"],
+      undefined,
+      { slmGrouped: true },
+    );
+    expect(s).toContain("**Cand_Move:**");
+    expect(s).toContain("**Cand_Act:**");
+    expect(s).toContain("**Cand_Obj:**");
+    const iAct = s.indexOf("**Cand_Act:**");
+    const iObj = s.indexOf("**Cand_Obj:**");
+    const iMove = s.indexOf("**Cand_Move:**");
+    expect(iAct).toBeLessThan(iObj);
+    expect(iObj).toBeLessThan(iMove);
+    expect(s).toMatch(/EAST.*WEST/);
+    expect(s).toContain("TAKE");
+    expect(s).toContain("KEYS");
+  });
+
+  it("lootFunnelDeferCandMove explains deferred travel when move list empty", () => {
+    const db = loadDatFile(datPath);
+    const s = formatSituationalCandidatesSection(
+      db,
+      ["TAKE", "GET", "KEYS"],
+      undefined,
+      { slmGrouped: true, lootFunnelDeferCandMove: true },
+    );
+    expect(s).toContain("deferred");
+    expect(s).toContain("**Cand_Move:**");
+    expect(s).not.toContain("EAST");
   });
 
   it("groups pickup before travel when room objects are in the list", () => {

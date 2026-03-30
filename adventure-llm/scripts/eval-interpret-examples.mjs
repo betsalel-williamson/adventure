@@ -5,7 +5,7 @@
  * From adventure-llm (after `npm run build`):
  *   node scripts/eval-interpret-examples.mjs
  *
- * Requires: adventure.dat at repo root, configured text LLM (see .env.example).
+ * Requires: adventure.dat at repo root, configured text model (see .env.example).
  */
 import { config as loadEnv } from "dotenv";
 import path from "node:path";
@@ -34,7 +34,7 @@ async function main() {
   const client = resolveTextLlmFromEnv();
   if (!client) {
     console.error(
-      "eval-interpret-examples: configure a text LLM (GEMINI_API_KEY, ADVENTURE_LLM_HTTP_MODEL, or ADVENTURE_LLM_MLX_MODEL). See .env.example.",
+      "eval-interpret-examples: configure a text model (GEMINI_API_KEY, ADVENTURE_LLM_HTTP_MODEL, or ADVENTURE_LLM_MLX_MODEL). See .env.example.",
     );
     process.exitCode = 1;
     return;

@@ -33,7 +33,7 @@ ${list}`;
 }
 
 /**
- * Call the configured LLM once to build an {@link AiVocabCategoriesFile} and validate shape.
+ * Call the configured text model once to build an {@link AiVocabCategoriesFile} and validate shape.
  * Caller writes the result to disk; see \`scripts/generate-vocab-categories-ai.mjs\`.
  */
 export async function generateAiVocabCategoriesWithLlm(

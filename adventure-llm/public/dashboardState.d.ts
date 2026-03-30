@@ -23,6 +23,8 @@ export function createDashboardState(): {
     providerId: string;
   } | null;
   autoplaySettingsSaveTimer: ReturnType<typeof setTimeout> | null;
+  transcriptScrollIsProgrammatic: boolean;
+  transcriptStickToBottom: boolean;
 };
 
 export const state: ReturnType<typeof createDashboardState>;

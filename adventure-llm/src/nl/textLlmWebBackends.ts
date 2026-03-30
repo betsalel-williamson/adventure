@@ -1,5 +1,5 @@
-import { MLX_WEB_MODEL_PRESETS } from "./mlxModelPresets.js";
-import { GOOGLE_WEB_MODEL_PRESETS } from "./googleWebModelPresets.js";
+import { mlxWebModelPresetsList } from "./mlxModelPresets.js";
+import { mergeGoogleWebPresetsFromEnv } from "./googleWebModelPresets.js";
 import { mergeHttpWebPresetsFromEnv } from "./httpWebPresets.js";
 import type { TextLlmProviderId } from "./textLlmContract.js";
 
@@ -31,7 +31,7 @@ export function buildTextLlmBackendSnapshots(): TextLlmBackendSnapshot[] {
     {
       providerId: "mlx",
       available: mlxAv,
-      presets: mlxAv ? [...MLX_WEB_MODEL_PRESETS] : [],
+      presets: mlxAv ? [...mlxWebModelPresetsList()] : [],
     },
     {
       providerId: "http",
@@ -41,7 +41,7 @@ export function buildTextLlmBackendSnapshots(): TextLlmBackendSnapshot[] {
     {
       providerId: "google",
       available: googleAv,
-      presets: googleAv ? [...GOOGLE_WEB_MODEL_PRESETS] : [],
+      presets: googleAv ? mergeGoogleWebPresetsFromEnv() : [],
     },
   ];
 }

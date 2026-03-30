@@ -4,6 +4,8 @@ import {
   describeMotionGridDelta,
   extractLocationLineForFingerprint,
   fingerprintLocationFromGameOutput,
+  sessionLocationFingerprintFromGameOutput,
+  canonicalExplorationFingerprint,
   fsmLabelFromGetinCommand,
   graphEdgeLabelFromCommand,
   InferredExplorationMap,
@@ -115,6 +117,14 @@ describe("extractLocationLineForFingerprint", () => {
 });
 
 describe("fingerprintLocationFromGameOutput", () => {
+  it("fingerprints Colossal Cave stream slit room (no YOU ARE line)", () => {
+    const text =
+      "AT YOUR FEET ALL THE WATER OF THE STREAM SPLASHES INTO A 2 INCH SLIT IN THE ROCK. DOWNSTREAM THE STREAMBED IS BARE ROCK.";
+    const fp = fingerprintLocationFromGameOutput(text);
+    expect(fp.length).toBeGreaterThan(0);
+    expect(fp.includes("AT YOUR FEET")).toBe(true);
+  });
+
   it("fingerprints from extracted room line when blocked prefix is first", () => {
     const text =
       "THERE IS NO WAY TO GO THAT DIRECTION. YOU ARE IN A MAZE OF TWISTY LITTLE PASSAGES, ALL ALIKE.";
@@ -130,6 +140,54 @@ describe("fingerprintLocationFromGameOutput", () => {
 
   it("does not fingerprint OK-only blobs as a room", () => {
     expect(fingerprintLocationFromGameOutput("OK\n")).toBe("");
+  });
+});
+
+describe("canonicalExplorationFingerprint", () => {
+  it("merges outdoor road-start wording and OUT return line to one fingerprint", () => {
+    const a = fingerprintLocationFromExcerpt(
+      "YOU ARE STANDING AT THE END OF A ROAD BEFORE A SMALL BRICK",
+    );
+    const b = fingerprintLocationFromExcerpt(
+      "YOU ARE STANDING AT THE END OF A ROAD BEFORE A SMALL BRICK BUILDING.",
+    );
+    const c = fingerprintLocationFromExcerpt("YOU'RE AT END OF ROAD AGAIN.");
+    expect(canonicalExplorationFingerprint(a)).toBe(
+      canonicalExplorationFingerprint(b),
+    );
+    expect(canonicalExplorationFingerprint(c)).toBe(
+      canonicalExplorationFingerprint(b),
+    );
+  });
+
+  it("does not merge hill-in-road (LTEXT 2)", () => {
+    const hill = fingerprintLocationFromExcerpt("YOU'RE AT HILL IN ROAD.");
+    const road = fingerprintLocationFromExcerpt(
+      "YOU ARE STANDING AT THE END OF A ROAD BEFORE A SMALL BRICK BUILDING.",
+    );
+    expect(canonicalExplorationFingerprint(hill)).not.toBe(
+      canonicalExplorationFingerprint(road),
+    );
+  });
+});
+
+describe("sessionLocationFingerprintFromGameOutput", () => {
+  it("uses loose place prose before staling to the previous room fingerprint", () => {
+    const prev =
+      "YOU ARE IN A VALLEY IN THE FOREST BESIDE A STREAM TUMBLING ALONG A ROCKY BED.";
+    const prevFp = fingerprintLocationFromExcerpt(prev);
+    const atSlit =
+      "AT YOUR FEET ALL THE WATER OF THE STREAM SPLASHES INTO A 2 INCH SLIT IN THE ROCK. DOWNSTREAM THE STREAMBED IS BARE ROCK.";
+    expect(sessionLocationFingerprintFromGameOutput(atSlit, prevFp)).not.toBe(
+      prevFp,
+    );
+  });
+
+  it("falls back to previous fingerprint for OK-only output", () => {
+    const prev = "YOU ARE IN A VALLEY.";
+    expect(sessionLocationFingerprintFromGameOutput("OK", prev)).toBe(
+      fingerprintLocationFromExcerpt(prev),
+    );
   });
 });
 
@@ -255,6 +313,24 @@ describe("detectLocationStagnation", () => {
 });
 
 describe("InferredExplorationMap", () => {
+  it("records SOUTH from valley to AT YOUR FEET stream slit as a new cell", () => {
+    const m = new InferredExplorationMap();
+    m.seedFromTranscript(
+      "YOU ARE IN A VALLEY IN THE FOREST BESIDE A STREAM TUMBLING ALONG A ROCKY BED.\n",
+    );
+    const south = interpretedToGetinLine({ primaryToken: "SOUTH" });
+    const slitText =
+      "AT YOUR FEET ALL THE WATER OF THE STREAM SPLASHES INTO A 2 INCH SLIT IN THE ROCK. DOWNSTREAM THE STREAMBED IS BARE ROCK.";
+    m.recordOutcome(south, slitText, false);
+    const snap = m.toSnapshot();
+    expect(snap.cells.length).toBe(2);
+    const southEdges = snap.directedEdges.filter(
+      (e) => e.kind === "move" && e.label === "SOUTH",
+    );
+    expect(southEdges.length).toBe(1);
+    expect(southEdges[0]!.from).not.toBe(southEdges[0]!.to);
+  });
+
   it("applies grid delta on new room after NORTH", () => {
     const m = new InferredExplorationMap();
     m.seedFromTranscript("YOU ARE AT THE START.\n");
@@ -387,6 +463,22 @@ describe("InferredExplorationMap", () => {
     m.recordOutcome(out, "YOU'RE AT END OF ROAD AGAIN.\n", false);
     expect(m.getCurrentVec().z).toBe(0);
     expect(m.getCurrentVec().x).toBe(0);
+    expect(m.toSnapshot().cells.length).toBe(2);
+  });
+
+  it("does not split end-of-road into two cells when the first sentence ends after SMALL BRICK", () => {
+    const m = new InferredExplorationMap();
+    m.seedFromTranscript(
+      "YOU ARE STANDING AT THE END OF A ROAD BEFORE A SMALL BRICK BUILDING.\n",
+    );
+    const look = interpretedToGetinLine({ primaryToken: "LOOK" });
+    m.recordOutcome(
+      look,
+      "YOU ARE STANDING AT THE END OF A ROAD BEFORE A SMALL BRICK. AROUND YOU IS A FOREST.\n",
+      false,
+    );
+    expect(m.toSnapshot().cells.length).toBe(1);
+    expect(m.getCurrentVec()).toEqual({ x: 0, y: 0, z: 0 });
   });
 
   it("toSnapshot lists cells, current position, and exit outcomes", () => {
@@ -456,6 +548,39 @@ describe("InferredExplorationMap", () => {
     expect(p.other).toContain("LOOK");
     expect(p.travel).toContain("WEST");
     expect(p.travel).not.toContain("LOOK");
+  });
+
+  it("formatPromptLines excludeLineKeys removes those primaries from try-next wording", () => {
+    const m = new InferredExplorationMap();
+    m.seedFromTranscript("YOU ARE AT THE START.\n");
+    const untried = m.getUntriedMotionPrimaries();
+    expect(untried.length).toBeGreaterThan(0);
+    const p = untried[0]!;
+    const excludeKey = `${p.padEnd(5, " ")}${" ".repeat(5)}`;
+    const base = m
+      .formatPromptLines({ compact: true })
+      .find((l) => l.includes("Good next options"));
+    expect(base).toBeDefined();
+    expect(base).toContain(p);
+    const filtered = m
+      .formatPromptLines({
+        compact: true,
+        excludeLineKeys: new Set([excludeKey]),
+      })
+      .find((l) => l.includes("Good next options"));
+    expect(filtered).toBeDefined();
+    expect(filtered).not.toContain(p);
+  });
+
+  it("getUntriedMotionPrimaries omits travel already used successfully from this cell", () => {
+    const m = new InferredExplorationMap();
+    m.seedFromTranscript("YOU'RE IN VALLEY\n");
+    const west = interpretedToGetinLine({ primaryToken: "WEST" });
+    m.recordOutcome(west, "YOU'RE IN FOREST\n", false);
+    const east = interpretedToGetinLine({ primaryToken: "EAST" });
+    m.recordOutcome(east, "YOU'RE IN VALLEY\n", false);
+    expect(m.getExitOutcome(m.currentCellKey(), "WEST")).toBe("moved");
+    expect(m.getUntriedMotionPrimaries()).not.toContain("WEST");
   });
 
   const mazeLine = "YOU ARE IN A MAZE OF TWISTY LITTLE PASSAGES, ALL ALIKE.";

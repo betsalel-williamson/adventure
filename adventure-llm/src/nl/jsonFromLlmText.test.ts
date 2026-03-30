@@ -23,6 +23,13 @@ describe("parseJsonObjectFromLlmText", () => {
     expect(o).toEqual({ primaryToken: "NORTH" });
   });
 
+  it("uses only the first object when the model emits two JSON objects", () => {
+    const o = parseJsonObjectFromLlmText(
+      '{"primaryToken":"NORTH","confidence":0.9}\n{"primaryToken":"EAST"}',
+    );
+    expect(o).toEqual({ primaryToken: "NORTH", confidence: 0.9 });
+  });
+
   it("accepts Python None/True/False outside strings (MLX-style output)", () => {
     const o = parseJsonObjectFromLlmText(
       '{"primaryToken":"SMASH","secondaryToken":None,"confidence":1}',

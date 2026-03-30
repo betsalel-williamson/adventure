@@ -35,7 +35,8 @@ Accepted.
 ## References
 
 - [docs/architecture/adventure-engine.md](../architecture/adventure-engine.md) — package-level logical and process view (kept in sync with this ADR).
-- [guidelines/adventure-llm/autoplay-planner-context.md](../../guidelines/adventure-llm/autoplay-planner-context.md) — autoplay prompt modes (`explore` / `full`), candidate hygiene, guards, web pace overrides.
+- [ADR0003: scoped object hints to latest room block](./ADR0003-scoped-object-hints-latest-room-block.md) — **Items** / **Cand_Obj** / loot funnel scoped to **`getObjectHintScopeText()`** (complements interactive session context from this ADR).
+- [guidelines/adventure-llm/autoplay-planner-context.md](../../guidelines/adventure-llm/autoplay-planner-context.md) — autoplay prompt modes (`explore` / `full`), candidate hygiene, object scope, guards, web pace overrides.
 - [adventure-llm/src/nl/textLlmContract.ts](../../adventure-llm/src/nl/textLlmContract.ts)
 - [adventure-llm/src/nl/textLlmInterpretPipeline.ts](../../adventure-llm/src/nl/textLlmInterpretPipeline.ts)
 - [adventure-llm/src/nl/interpretCacheKey.ts](../../adventure-llm/src/nl/interpretCacheKey.ts)

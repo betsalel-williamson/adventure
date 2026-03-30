@@ -177,7 +177,7 @@ const LOCAL_DEFAULT_HOPS = 2;
 /** Points per grid unit for Graphviz `pos` (neato); matches inferred map: East=+x, North=+y. */
 const DOT_PTS_PER_GRID = 52;
 
-/** Matches dashboard Mermaid `currentState`; high contrast on screen and in LLM-facing DOT. */
+/** Matches dashboard Mermaid `currentState`; high contrast on screen and in planner-prompt DOT. */
 const DOT_CURRENT_FILL = "#3d3d5c";
 const DOT_CURRENT_FONT = "#eeeeee";
 const DOT_OTHER_FILL = "#ececf2";
@@ -321,7 +321,7 @@ export function collectNeighborhoodNodeIds(
 }
 
 /**
- * Small Graphviz DOT around the current cell (for planner prompts): a few hops out, capped edges.
+ * Small Graphviz DOT around the current cell (optional tools / tests): a few hops out, capped edges.
  * Same conventions as {@link inferredMapToDot}: dark filled node + **YOU ARE HERE** label line = current;
  * dashed gray = reject; dotted blue = non-move actions (TAKE, LOOK, …).
  */

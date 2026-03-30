@@ -24,9 +24,14 @@ import { shouldFallbackToClassicForLlmError } from "../nl/llmErrors.js";
 import { resolveDebugLogPath } from "../nl/llmDebug.js";
 import {
   isAllowedMlxWebModelId,
-  MLX_WEB_MODEL_PRESETS,
+  mlxWebModelPresetsList,
 } from "../nl/mlxModelPresets.js";
 import { MlxLmStdioTextLlm } from "../nl/providers/mlxLmStdioTextLlm.js";
+import {
+  defaultPromptExperimentPatch,
+  patchPromptExperimentPatch,
+  type PromptExperimentPatch,
+} from "../nl/promptExperiment.js";
 import { interpretedToGetinLine, swapInterpretedTokens } from "../nl/schema.js";
 import { buildVerbSynonymGroups } from "../vocab/verbSynonymGroups.js";
 import type { TextLlm, TextLlmProviderId } from "../nl/textLlmContract.js";
@@ -47,6 +52,20 @@ import {
   type AutoplayRunOverrides,
   type AutoplayUiSink,
 } from "./autoplayRunner.js";
+import {
+  deletePromptProject,
+  listPromptProjects,
+  newPromptProjectId,
+  readPromptProject,
+  resolvePromptProjectsDir,
+  writePromptProject,
+  type PromptProjectRecord,
+} from "./promptProjectsStore.js";
+import {
+  applyGenerationParamsPatch,
+  buildGenerationParamsSnapshot,
+  snapshotGenerationMeta,
+} from "./webDashboardGeneration.js";
 
 const packageRoot = path.join(
   fileURLToPath(new URL(".", import.meta.url)),
@@ -191,7 +210,7 @@ export function createAutoplayDashboardServer(): http.Server {
     }
   };
 
-  /** Mutable when MLX web swaps models; null if no LLM configured. */
+  /** Mutable when MLX web swaps models; null if no text model configured. */
   const textLlmRef: { current: TextLlm } | null = (() => {
     const base = resolveTextLlmFromEnv();
     if (!base) return null;
@@ -214,7 +233,7 @@ export function createAutoplayDashboardServer(): http.Server {
     if (!textLlmRef) return;
     const c = textLlmRef.current;
     broadcast("text_llm", { providerId: c.providerId, modelId: c.modelId });
-    broadcast("mlx_model", { modelId: c.modelId });
+    broadcast("mlx_model", { modelId: c.modelId, providerId: c.providerId });
   };
 
   const swapTextLlmTo = async (
@@ -222,7 +241,7 @@ export function createAutoplayDashboardServer(): http.Server {
     nextModelId: string,
   ): Promise<void> => {
     if (!textLlmRef) {
-      throw new Error("No text LLM configured");
+      throw new Error("No text model configured");
     }
     const prev = textLlmRef.current;
     if (prev.providerId === nextProvider && prev.modelId === nextModelId) {
@@ -282,14 +301,14 @@ export function createAutoplayDashboardServer(): http.Server {
 
     if (nextProvider === "http") {
       if (!httpBackendAvailableFromEnv()) {
-        throw new Error("HTTP text LLM not configured");
+        throw new Error("HTTP text model not configured");
       }
       if (!isAllowedHttpWebModelId(nextModelId)) {
         throw new Error("Unknown or disallowed HTTP model id");
       }
       const nu = createHttpTextLlmFromEnv(nextModelId);
       if (!nu) {
-        throw new Error("HTTP text LLM not configured");
+        throw new Error("HTTP text model not configured");
       }
       await runMlxSwap(async () => {
         const oc = textLlmRef!.current;
@@ -323,14 +342,20 @@ export function createAutoplayDashboardServer(): http.Server {
         textLlmRef!.current = nu;
         broadcastTextLlmState();
       });
+      return;
     }
   };
 
   const db = existsSync(datPath) ? loadDatFile(datPath) : null;
+  const promptProjectsDir = resolvePromptProjectsDir(packageRoot);
 
   let plannerAutoplayEnabled = true;
   /** Optional overrides (set via POST /api/autoplay-settings); read live during autoplay. */
   let webAutoplayOverrides: AutoplayRunOverrides = {};
+  /** Planner prompt experiment (PATCH /api/prompt-experiment); read each autoplay LLM call. */
+  let webPromptExperiment: PromptExperimentPatch =
+    defaultPromptExperimentPatch();
+  let activePromptProjectId: string | null = null;
   /** Passed to {@link runAutoplaySessionWithTextLlm} so pace/max update without restarting the session. */
   const webAutoplayLiveOverrides: AutoplayRunOverrides = {
     getPaceMs: () =>
@@ -341,9 +366,39 @@ export function createAutoplayDashboardServer(): http.Server {
       webAutoplayOverrides.maxMoves !== undefined
         ? webAutoplayOverrides.maxMoves
         : resolveAutoplayMaxMoves(),
+    getPlannerPromptExperiment: () => webPromptExperiment,
   };
+
+  function applyProjectGenerationForCurrentClient(
+    rec: PromptProjectRecord,
+  ): string | null {
+    if (!textLlmRef) return "No text LLM";
+    const pid = textLlmRef.current.providerId;
+    const raw =
+      pid === "mlx"
+        ? rec.generationParams.mlx
+        : pid === "http"
+          ? rec.generationParams.http
+          : rec.generationParams.google;
+    if (!raw || typeof raw !== "object") return null;
+    return applyGenerationParamsPatch(textLlmRef.current, {
+      ...raw,
+    } as Record<string, unknown>);
+  }
   let latestTranscript = "";
+  /** Incomplete engine line for `log_line` (stdout+stderr chunks may split mid-line). */
+  let engineLogLineBuffer = "";
   let manualPending: ManualPending | null = null;
+
+  const flushEngineLogBuffer = (step: number): void => {
+    if (engineLogLineBuffer.length === 0) return;
+    broadcast("log_line", {
+      line: engineLogLineBuffer,
+      step,
+      channel: "engine",
+    });
+    engineLogLineBuffer = "";
+  };
 
   const manualPlannerGate: AutoplayManualPlannerGate = {
     isPlannerEnabled: () => plannerAutoplayEnabled,
@@ -372,21 +427,35 @@ export function createAutoplayDashboardServer(): http.Server {
 
   const sink: AutoplayUiSink = {
     forwardGameOutputToTerminal: false,
-    onSessionStart: (e) => broadcast("session_start", e),
-    onSessionEnd: () => broadcast("session_end", {}),
+    onSessionStart: (e) => {
+      engineLogLineBuffer = "";
+      broadcast("session_start", e);
+    },
+    onSessionEnd: () => {
+      flushEngineLogBuffer(0);
+      broadcast("session_end", {});
+    },
     beforePlannerCall: awaitMlxModelReady,
     onPlannerPhase: (e) => broadcast("planner_phase", e),
     onPlannerPrompt: (e) => broadcast("planner_prompt", e),
     onTranscriptChunk: (text, step) => {
       latestTranscript += text;
       broadcast("transcript_delta", { text, step });
+      engineLogLineBuffer += text;
+      let nl: number;
+      while ((nl = engineLogLineBuffer.indexOf("\n")) >= 0) {
+        const line = engineLogLineBuffer.slice(0, nl + 1);
+        engineLogLineBuffer = engineLogLineBuffer.slice(nl + 1);
+        broadcast("log_line", { line, step, channel: "engine" });
+      }
     },
     onTurnEnd: (e) => {
       latestTranscript = e.transcriptSoFar;
       broadcast("turn_end", e);
     },
     onPlanApplied: (e) => broadcast("plan_applied", e),
-    onLogLine: (line, step) => broadcast("log_line", { line, step }),
+    onLogLine: (line, step) =>
+      broadcast("log_line", { line, step, channel: "planner" }),
   };
 
   const server = http.createServer(async (req, res) => {
@@ -434,6 +503,224 @@ export function createAutoplayDashboardServer(): http.Server {
           webAutoplayOverrides.maxMoves !== undefined
             ? webAutoplayOverrides.maxMoves
             : resolveAutoplayMaxMoves(),
+      });
+      return;
+    }
+
+    if (pathname === "/api/prompt-experiment" && req.method === "GET") {
+      jsonResponse(res, 200, {
+        patch: webPromptExperiment,
+        activeProjectId: activePromptProjectId,
+        note: "Applies to autoplay planner only, not manual interpret.",
+      });
+      return;
+    }
+
+    if (pathname === "/api/prompt-experiment" && req.method === "PATCH") {
+      try {
+        const body = (await readJsonBody(req)) as Record<
+          string,
+          unknown
+        > | null;
+        if (body === null || typeof body !== "object" || Array.isArray(body)) {
+          jsonResponse(res, 400, { error: "Expected JSON object" });
+          return;
+        }
+        webPromptExperiment = patchPromptExperimentPatch(
+          webPromptExperiment,
+          body,
+        );
+        broadcast("prompt_experiment", { patch: webPromptExperiment });
+        jsonResponse(res, 200, { patch: webPromptExperiment });
+      } catch {
+        jsonResponse(res, 400, { error: "Invalid JSON" });
+      }
+      return;
+    }
+
+    if (pathname === "/api/llm-generation-params" && req.method === "GET") {
+      if (!textLlmRef) {
+        jsonResponse(res, 503, { error: "No text LLM configured" });
+        return;
+      }
+      jsonResponse(res, 200, snapshotGenerationMeta(textLlmRef.current));
+      return;
+    }
+
+    if (pathname === "/api/llm-generation-params" && req.method === "PATCH") {
+      if (!textLlmRef) {
+        jsonResponse(res, 503, { error: "No text LLM configured" });
+        return;
+      }
+      try {
+        const body = (await readJsonBody(req)) as Record<
+          string,
+          unknown
+        > | null;
+        if (body === null || typeof body !== "object" || Array.isArray(body)) {
+          jsonResponse(res, 400, { error: "Expected JSON object" });
+          return;
+        }
+        const err = applyGenerationParamsPatch(textLlmRef.current, body);
+        if (err) {
+          jsonResponse(res, 400, { error: err });
+          return;
+        }
+        jsonResponse(res, 200, snapshotGenerationMeta(textLlmRef.current));
+      } catch {
+        jsonResponse(res, 400, { error: "Invalid JSON" });
+      }
+      return;
+    }
+
+    const promptProjectActivateMatch =
+      /^\/api\/prompt-projects\/([^/]+)\/activate$/.exec(pathname);
+    if (promptProjectActivateMatch && req.method === "POST") {
+      const idAct = promptProjectActivateMatch[1]!;
+      readPromptProject(promptProjectsDir, idAct).then((rec) => {
+        if (!rec) {
+          jsonResponse(res, 404, { error: "Project not found" });
+          return;
+        }
+        webPromptExperiment = {
+          ...defaultPromptExperimentPatch(),
+          ...rec.promptExperiment,
+        };
+        activePromptProjectId = idAct;
+        const gerr = applyProjectGenerationForCurrentClient(rec);
+        broadcast("prompt_project", { activeId: idAct, name: rec.name });
+        if (gerr && gerr !== "No text LLM") {
+          jsonResponse(res, 200, {
+            ok: true,
+            project: rec,
+            generationWarning: gerr,
+          });
+          return;
+        }
+        jsonResponse(res, 200, { ok: true, project: rec });
+      });
+      return;
+    }
+
+    const promptProjectOneMatch = /^\/api\/prompt-projects\/([^/]+)$/.exec(
+      pathname,
+    );
+    if (pathname === "/api/prompt-projects" && req.method === "GET") {
+      listPromptProjects(promptProjectsDir).then((list) => {
+        jsonResponse(res, 200, {
+          projects: list,
+          activeId: activePromptProjectId,
+        });
+      });
+      return;
+    }
+
+    if (pathname === "/api/prompt-projects" && req.method === "POST") {
+      readJsonBody(req).then((rawBody) => {
+        try {
+          const body = rawBody as Record<string, unknown> | null;
+          const name =
+            body !== null &&
+            typeof body === "object" &&
+            typeof body.name === "string"
+              ? body.name.trim().slice(0, 120) || "Untitled"
+              : "Untitled";
+          const description =
+            body !== null &&
+            typeof body === "object" &&
+            typeof body.description === "string"
+              ? body.description.trim().slice(0, 2000)
+              : undefined;
+          const now = new Date().toISOString();
+          const idNew = newPromptProjectId();
+          const rec: PromptProjectRecord = {
+            schemaVersion: 1,
+            id: idNew,
+            name,
+            ...(description ? { description } : {}),
+            createdAt: now,
+            updatedAt: now,
+            promptExperiment: { ...webPromptExperiment },
+            generationParams: buildGenerationParamsSnapshot(
+              textLlmRef?.current ?? null,
+            ),
+            subsystemToggles: {
+              inventory: false,
+              graph: false,
+              xyz: false,
+              reactionLedger: false,
+            },
+          };
+          writePromptProject(promptProjectsDir, rec)
+            .then(() => {
+              jsonResponse(res, 201, rec);
+            })
+            .catch((e) => {
+              jsonResponse(res, 500, {
+                error: e instanceof Error ? e.message : "Write failed",
+              });
+            });
+        } catch (e) {
+          jsonResponse(res, 400, {
+            error: e instanceof Error ? e.message : "Invalid",
+          });
+        }
+      });
+      return;
+    }
+
+    if (promptProjectOneMatch && req.method === "GET") {
+      const idG = promptProjectOneMatch[1]!;
+      readPromptProject(promptProjectsDir, idG).then((rec) => {
+        if (!rec) {
+          jsonResponse(res, 404, { error: "Not found" });
+          return;
+        }
+        jsonResponse(res, 200, rec);
+      });
+      return;
+    }
+
+    if (promptProjectOneMatch && req.method === "PUT") {
+      const idU = promptProjectOneMatch[1]!;
+      readJsonBody(req).then((rawBody) => {
+        try {
+          const body = rawBody as PromptProjectRecord | null;
+          if (body === null || body.schemaVersion !== 1 || body.id !== idU) {
+            jsonResponse(res, 400, {
+              error: "Expected full project JSON with matching id",
+            });
+            return;
+          }
+          const updated: PromptProjectRecord = {
+            ...body,
+            updatedAt: new Date().toISOString(),
+          };
+          writePromptProject(promptProjectsDir, updated)
+            .then(() => jsonResponse(res, 200, updated))
+            .catch((e) => {
+              jsonResponse(res, 500, {
+                error: e instanceof Error ? e.message : "Write failed",
+              });
+            });
+        } catch (e) {
+          jsonResponse(res, 400, {
+            error: e instanceof Error ? e.message : "Invalid",
+          });
+        }
+      });
+      return;
+    }
+
+    if (promptProjectOneMatch && req.method === "DELETE") {
+      const idD = promptProjectOneMatch[1]!;
+      deletePromptProject(promptProjectsDir, idD).then((ok) => {
+        if (!ok) {
+          jsonResponse(res, 404, { error: "Not found" });
+          return;
+        }
+        if (activePromptProjectId === idD) activePromptProjectId = null;
+        jsonResponse(res, 200, { ok: true });
       });
       return;
     }
@@ -523,7 +810,7 @@ export function createAutoplayDashboardServer(): http.Server {
         jsonResponse(res, 200, {
           canSwap: false,
           modelId: "",
-          presets: [...MLX_WEB_MODEL_PRESETS],
+          presets: [...mlxWebModelPresetsList()],
         });
         return;
       }
@@ -533,7 +820,7 @@ export function createAutoplayDashboardServer(): http.Server {
       jsonResponse(res, 200, {
         canSwap,
         modelId: textLlmRef.current.modelId,
-        presets: [...MLX_WEB_MODEL_PRESETS],
+        presets: [...mlxWebModelPresetsList()],
       });
       return;
     }
@@ -559,7 +846,7 @@ export function createAutoplayDashboardServer(): http.Server {
 
     if (pathname === "/api/text-llm" && req.method === "POST") {
       if (!textLlmRef) {
-        jsonResponse(res, 503, { error: "No text LLM configured" });
+        jsonResponse(res, 503, { error: "No text model configured" });
         return;
       }
       try {
@@ -601,7 +888,7 @@ export function createAutoplayDashboardServer(): http.Server {
 
     if (pathname === "/api/mlx-model" && req.method === "POST") {
       if (!textLlmRef) {
-        jsonResponse(res, 503, { error: "No text LLM configured" });
+        jsonResponse(res, 503, { error: "No text model configured" });
         return;
       }
       try {
@@ -626,7 +913,7 @@ export function createAutoplayDashboardServer(): http.Server {
     if (pathname === "/api/manual-command" && req.method === "POST") {
       if (!textLlmRef || !db) {
         jsonResponse(res, 503, {
-          error: "Text LLM or adventure.dat not available",
+          error: "Text model or adventure.dat not available",
         });
         return;
       }
@@ -737,7 +1024,10 @@ export function createAutoplayDashboardServer(): http.Server {
           providerId: cur.providerId,
           modelId: cur.modelId,
         });
-        sseWrite(res, "mlx_model", { modelId: cur.modelId });
+        sseWrite(res, "mlx_model", {
+          modelId: cur.modelId,
+          providerId: cur.providerId,
+        });
         if (cur.providerId === "mlx" && mlxLoadUiActive) {
           sseWrite(res, "mlx_loading", {
             loading: true,
@@ -755,7 +1045,7 @@ export function createAutoplayDashboardServer(): http.Server {
       if (!textLlmRef) {
         sseWrite(res, "session_error", {
           message:
-            "No text LLM configured (GEMINI_API_KEY, ADVENTURE_LLM_HTTP_MODEL, or MLX). See adventure-llm/.env.example.",
+            "No text model configured (GEMINI_API_KEY, ADVENTURE_LLM_HTTP_MODEL, or MLX). See adventure-llm/.env.example.",
         });
         return;
       }
@@ -801,7 +1091,9 @@ export function createAutoplayDashboardServer(): http.Server {
               )
             ) {
               broadcast("log_line", {
-                line: "adventure-llm: text LLM unavailable (quota, rate limit, network, or service error).\n",
+                line: "adventure-llm: text model unavailable (quota, rate limit, network, or service error).\n",
+                step: 0,
+                channel: "planner",
               });
             }
           } finally {
@@ -836,7 +1128,10 @@ export function createAutoplayDashboardServer(): http.Server {
     const ext = path.extname(filePath);
     const base = path.basename(filePath);
     const noCacheDashboardAsset =
-      base === "index.html" || base === "app.js" || base === "dashboard.css";
+      base === "index.html" ||
+      base === "app.js" ||
+      base === "dashboard.css" ||
+      base === "promptLab.js";
     res.writeHead(200, {
       "Content-Type": MIME[ext] ?? "application/octet-stream",
       ...(noCacheDashboardAsset ? { "Cache-Control": "no-store" } : {}),

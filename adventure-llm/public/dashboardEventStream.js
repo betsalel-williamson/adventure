@@ -35,6 +35,7 @@ import { applySnapshot } from "./mapView.js";
  *   }) => string;
  *   refreshModeFromServer: () => Promise<void>;
  *   initTextLlmPicker: () => Promise<void>;
+ *   onPlannerPromptSse?: (d: Record<string, unknown>) => void;
  *   typingTimingFromPaceSelect: () => {
  *     charDelayMs: number;
  *     finalPauseMs: number;
@@ -113,7 +114,11 @@ export function registerDashboardEventHandlers(es, reg) {
     const d = parseSseJson(ev.data);
     const el = elements;
     if (!d || typeof d.modelId !== "string" || !el?.textLlmSelect) return;
-    const matches = [...el.textLlmSelect.options].filter((o) => {
+    const eventPid =
+      typeof d.providerId === "string" && d.providerId.trim() !== ""
+        ? d.providerId.trim()
+        : null;
+    let matches = [...el.textLlmSelect.options].filter((o) => {
       try {
         const p = JSON.parse(o.value);
         return p.modelId === d.modelId;
@@ -121,10 +126,33 @@ export function registerDashboardEventHandlers(es, reg) {
         return false;
       }
     });
-    if (matches.length === 1) {
-      el.textLlmSelect.value = matches[0].value;
-      state.lastTextLlmOptionValue = el.textLlmSelect.value;
+    if (matches.length === 0) return;
+    if (eventPid) {
+      matches = matches.filter((o) => {
+        try {
+          return JSON.parse(o.value).providerId === eventPid;
+        } catch {
+          return false;
+        }
+      });
+    } else if (matches.length > 1) {
+      try {
+        const cur = JSON.parse(el.textLlmSelect.value);
+        const narrowed = matches.filter((o) => {
+          try {
+            return JSON.parse(o.value).providerId === cur.providerId;
+          } catch {
+            return false;
+          }
+        });
+        if (narrowed.length === 1) matches = narrowed;
+      } catch {
+        /* keep matches as-is */
+      }
     }
+    if (matches.length !== 1) return;
+    el.textLlmSelect.value = matches[0].value;
+    state.lastTextLlmOptionValue = el.textLlmSelect.value;
   });
 
   es.addEventListener("mlx_loading", (ev) => {
@@ -242,16 +270,8 @@ export function registerDashboardEventHandlers(es, reg) {
 
   es.addEventListener("planner_prompt", (ev) => {
     const d = parseSseJson(ev.data);
-    const el = elements;
-    if (!d || !el) return;
-    if (el.promptUserEl) el.promptUserEl.textContent = d.userPreview || "";
-    if (d.systemPreview) {
-      if (el.promptSystemEl) el.promptSystemEl.textContent = d.systemPreview;
-      el.promptSystemWrap?.classList.remove("hidden");
-    } else {
-      if (el.promptSystemEl) el.promptSystemEl.textContent = "";
-      el.promptSystemWrap?.classList.add("hidden");
-    }
+    if (!d || typeof d !== "object") return;
+    reg.onPlannerPromptSse?.(/** @type {Record<string, unknown>} */ (d));
   });
 
   es.addEventListener("transcript_delta", (ev) => {
@@ -353,7 +373,8 @@ export function registerDashboardEventHandlers(es, reg) {
     if (!d?.line) return;
     const step =
       typeof d.step === "number" && Number.isFinite(d.step) ? d.step : 0;
-    appendAutoplayLogLine(d.line, step);
+    const ch = d.channel === "engine" ? "engine" : "planner";
+    appendAutoplayLogLine(d.line, step, ch);
   });
 
   es.onopen = () => {

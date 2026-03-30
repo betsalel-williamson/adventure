@@ -1,13 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   isAllowedMlxWebModelId,
-  MLX_WEB_MODEL_PRESETS,
+  mlxWebModelPresetsList,
 } from "./mlxModelPresets.js";
 
 describe("mlxModelPresets", () => {
   it("allows preset ids and rejects unknown ids", () => {
-    expect(MLX_WEB_MODEL_PRESETS.length).toBeGreaterThan(0);
-    for (const id of MLX_WEB_MODEL_PRESETS) {
+    const presets = mlxWebModelPresetsList();
+    expect(presets.length).toBeGreaterThan(0);
+    for (const id of presets) {
       expect(isAllowedMlxWebModelId(id)).toBe(true);
     }
     expect(isAllowedMlxWebModelId("unknown/model")).toBe(false);

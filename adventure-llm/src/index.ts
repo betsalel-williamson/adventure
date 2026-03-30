@@ -48,12 +48,14 @@ export {
 } from "./nl/autoplaySessionMemory.js";
 export {
   InferredExplorationMap,
+  canonicalExplorationFingerprint,
   classifyRoomFingerprint,
   detectLocationStagnation,
   extractLocationLineForFingerprint,
   fingerprintLocationFromExcerpt,
   fingerprintLocationFromGameOutput,
   graphNodeIdFromCellKey,
+  sessionLocationFingerprintFromGameOutput,
   inverseMotionPrimary,
   isGridMotionPrimary,
   isMazeFingerprint,
@@ -101,8 +103,12 @@ export {
   listVisibleAdventureObjectsInText,
   matchSecondaryToObjectAtabWord,
   formatSituationalCandidatesSection,
+  listVisibleRoomObjectsNotCarried,
+  shouldPrioritizeLootFunnel,
   parseRelevantTokensResponse,
+  recentTextSuggestsGrateDescentNavigation,
   recentTextSuggestsIndoorBuildingNavigation,
+  recentTextSuggestsVerticalPassageNavigation,
   stripInjectedCommandLinesForObjectHints,
 } from "./nl/situationalCandidates.js";
 export {
@@ -112,11 +118,14 @@ export {
   ADVENTURE_LLM_AUTOPLAY_PLANNER_ROLE_COMPACT,
   ADVENTURE_LLM_PARSER_TOKEN_RULES,
   ADVENTURE_LLM_PARSER_TOKEN_RULES_COMPACT,
+  ADVENTURE_LLM_AUTOPLAY_RULES_SLM,
+  ADVENTURE_LLM_AUTOPLAY_LOOT_FUNNEL_SYSTEM_SLM,
   ADVENTURE_LLM_INTERPRET_COMPACT_HELP_HINT,
   adventureLlmInterpretJsonFooter,
   adventureLlmAutoplayJsonFooter,
   buildInterpretSystemAndUserPrompt,
   buildAutoplayPlannerPrompt,
+  effectivePlannerSendPayload,
   linesForAutoplayPlannerContextBody,
   autoplayPlannerTaskBlockStructured,
   interpretTaskBlockStructured,
@@ -135,9 +144,18 @@ export {
   resolveInterpretPromptExamples,
   resolveInterpretPromptBuildOptions,
   type AutoplayPromptMode,
+  type AutoplayPlannerBuildOptions,
   type BuildInterpretPromptOptions,
   type MlxSystemPromptVariant,
 } from "./nl/adventureNlPrompts.js";
+export {
+  applyPlannerPromptExperiment,
+  defaultPromptExperimentPatch,
+  patchPromptExperimentPatch,
+  type PromptExperimentModelNotesTarget,
+  type PromptExperimentPatch,
+  type PromptExperimentSystemMode,
+} from "./nl/promptExperiment.js";
 export {
   loadInterpretEvalFixtures,
   buildInterpretEvalExamplesSection,

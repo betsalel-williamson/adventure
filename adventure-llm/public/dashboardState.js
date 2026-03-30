@@ -16,6 +16,18 @@ export function createDashboardState() {
     autoplayTranscriptHoldBuffer: new Map(),
     activeSessionAutoplayMeta: null,
     autoplaySettingsSaveTimer: null,
+    /**
+     * True while the feed's scroll position is being updated by layout/render (not the user).
+     * Suppresses the transcript scroll listener so replaceChildren / pin-to-bottom does not
+     * clear "following tail" by accident.
+     */
+    transcriptScrollIsProgrammatic: false,
+    /**
+     * Terminal layout: viewer is following live output (scroll viewport pinned to the last line),
+     * like a normal terminal. Updated from scroll position; defaults true. When false, new
+     * output preserves scrollback position (delta from height change).
+     */
+    transcriptStickToBottom: true,
   };
 }
 

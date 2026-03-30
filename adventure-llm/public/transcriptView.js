@@ -49,6 +49,33 @@ export function applyTranscriptLayout(mode) {
   }
 }
 
+let transcriptScrollIntentWired = false;
+
+/**
+ * Terminal layout: keep {@link state.transcriptStickToBottom} in sync with viewport position.
+ * Matches typical terminal UX — follow new output only while the view is at (or near) the end;
+ * after scrollback, new text does not yank the viewport until the user returns to the bottom.
+ */
+export function wireTranscriptFeedScrollIntent() {
+  const el = elements;
+  const node = el?.transcriptEl;
+  if (!node || transcriptScrollIntentWired) return;
+  transcriptScrollIntentWired = true;
+
+  node.addEventListener(
+    "scroll",
+    () => {
+      if (state.transcriptScrollIsProgrammatic) return;
+      if (!isTerminalTranscriptLayout()) return;
+      const { scrollTop, scrollHeight, clientHeight } = node;
+      const fromBottom = scrollHeight - scrollTop - clientHeight;
+      state.transcriptStickToBottom =
+        fromBottom <= TRANSCRIPT_SCROLL_BOTTOM_EPS_PX;
+    },
+    { passive: true },
+  );
+}
+
 export function initTranscriptLayout() {
   const params = new URLSearchParams(window.location.search);
   const q = params.get("transcript");
@@ -134,11 +161,6 @@ export function renderTranscriptFeed() {
   const { transcriptEl } = el;
   const prevScrollTop = transcriptEl.scrollTop;
   const prevScrollHeight = transcriptEl.scrollHeight;
-  const wasAtBottom =
-    prevScrollHeight - prevScrollTop - transcriptEl.clientHeight <=
-    TRANSCRIPT_SCROLL_BOTTOM_EPS_PX;
-
-  transcriptEl.replaceChildren();
   const frag = document.createDocumentFragment();
   if (terminal) {
     const sorted = sortTranscriptBlocksChronological(state.transcriptBlocks);
@@ -194,38 +216,55 @@ export function renderTranscriptFeed() {
       frag.appendChild(wrap);
     }
   }
-  transcriptEl.appendChild(frag);
+  state.transcriptScrollIsProgrammatic = true;
+  transcriptEl.replaceChildren(frag);
 
-  requestAnimationFrame(() => {
-    if (!el?.transcriptEl) return;
-    if (terminal) {
-      if (wasAtBottom || prevScrollHeight === 0) {
-        el.transcriptEl.scrollTop = el.transcriptEl.scrollHeight;
-      } else {
-        const delta = el.transcriptEl.scrollHeight - prevScrollHeight;
-        el.transcriptEl.scrollTop = prevScrollTop + delta;
-      }
-    } else {
+  if (terminal) {
+    /* Double rAF: layout + scrollHeight stable after monospace / flex; also races less with
+     * back-to-back SSE transcript deltas. */
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (!el?.transcriptEl) return;
+        const ta = el.transcriptEl;
+        const delta = ta.scrollHeight - prevScrollHeight;
+        const shouldPinToBottom =
+          state.transcriptStickToBottom || prevScrollHeight === 0;
+        if (shouldPinToBottom) {
+          ta.scrollTop = ta.scrollHeight;
+        } else {
+          ta.scrollTop = prevScrollTop + delta;
+        }
+        requestAnimationFrame(() => {
+          state.transcriptScrollIsProgrammatic = false;
+        });
+      });
+    });
+  } else {
+    requestAnimationFrame(() => {
+      if (!el?.transcriptEl) return;
       el.transcriptEl.scrollTop = 0;
-    }
-  });
+      state.transcriptScrollIsProgrammatic = false;
+    });
+  }
 }
 
 /**
  * @param {string} line
  * @param {number} step
+ * @param {"planner" | "engine"} [channel]
  */
-export function appendAutoplayLogLine(line, step) {
+export function appendAutoplayLogLine(line, step, channel = "planner") {
   const el = elements;
   if (!el?.autoplayLogEl) return;
   const row = document.createElement("div");
   row.className = "autoplay-log-line";
   const cap = document.createElement("span");
   cap.className = "autoplay-log-step";
+  const tag = channel === "engine" ? "stdio" : "planner";
   cap.textContent =
     typeof step === "number" && Number.isFinite(step)
-      ? `planner · step ${step} · `
-      : "planner · ";
+      ? `${tag} · step ${step} · `
+      : `${tag} · `;
   const body = document.createElement("span");
   body.className = "autoplay-log-text";
   body.textContent = line.replace(/\n+$/g, "");
@@ -267,6 +306,7 @@ export function resetTranscriptFeed() {
     delete state.motionGridHintByStep[Number(k)];
   }
   if (el?.autoplayLogEl) el.autoplayLogEl.replaceChildren();
+  state.transcriptStickToBottom = true;
   renderTranscriptFeed();
 }
 

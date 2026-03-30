@@ -82,6 +82,8 @@ async function main() {
     const situationalSection = formatSituationalCandidatesSection(
       db,
       buildSituationalCandidateTokens(db, memory.getRecentRawTail()),
+      undefined,
+      { flatList: !compact, slmGrouped: compact },
     );
     const plannerUserPrompt = memory.buildPlannerMxStructuredPrompt(
       contextChars,

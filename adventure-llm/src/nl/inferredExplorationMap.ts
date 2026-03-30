@@ -130,6 +130,58 @@ export function fingerprintLocationFromExcerpt(excerpt: string): string {
 }
 
 /**
+ * Stock Colossal Cave LTEXT 1 (road before well house) can appear with different wording or
+ * line breaks (truncated before `BUILDING`, shorter YOU ARE AT…, OUT line `YOU'RE AT END OF ROAD
+ * AGAIN`). Map those to one fingerprint so the inferred map does not split the same place.
+ */
+const CANONICAL_OUTDOOR_ROAD_START_FINGERPRINT = fingerprintLocationFromExcerpt(
+  "YOU ARE STANDING AT THE END OF A ROAD BEFORE A SMALL BRICK BUILDING.",
+);
+
+function matchesOutdoorRoadStartFingerprint(u: string): boolean {
+  const n = u.replace(/\s+/g, " ").trim().toUpperCase();
+  if (n.includes("HILL IN ROAD") || n.includes("YOU HAVE WALKED UP A HILL")) {
+    return false;
+  }
+  if (
+    n.includes("YOU'RE AT END OF ROAD AGAIN") ||
+    n.includes("YOU ARE AT END OF ROAD AGAIN")
+  ) {
+    return true;
+  }
+  if (!n.includes("END OF A ROAD")) return false;
+  if (
+    n.includes("SMALL BRICK") ||
+    n.includes("SMALL BUILDING") ||
+    n.includes("BEFORE A BUILDING")
+  ) {
+    return true;
+  }
+  if (
+    n.includes("STANDING AT THE END OF A ROAD") ||
+    n.includes("YOU ARE AT THE END OF A ROAD") ||
+    n.includes("YOU'RE AT THE END OF A ROAD")
+  ) {
+    if (n.includes("HILL")) return false;
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Merges known-equivalent Colossal Cave location strings for session map identity.
+ * Safe no-op for other fingerprints.
+ */
+export function canonicalExplorationFingerprint(fp: string): string {
+  const t = fp.replace(/\s+/g, " ").trim();
+  if (t.length === 0) return fp;
+  if (matchesOutdoorRoadStartFingerprint(t)) {
+    return CANONICAL_OUTDOOR_ROAD_START_FINGERPRINT;
+  }
+  return fp;
+}
+
+/**
  * True for YOU ARE / YOU'RE lines that describe inventory or meta state, not place.
  * Skipped so carrying lines do not overwrite room identity.
  */
@@ -170,7 +222,10 @@ function hasPlaceLikeProse(text: string): boolean {
     (u.includes("YOU ARE IN") && u.includes("BUILDING")) ||
     (u.includes("YOU ARE") && u.includes("FOREST")) ||
     (u.includes("YOU ARE") && u.includes("VALLEY")) ||
-    (u.includes("YOU ARE") && u.includes("CAVE"))
+    (u.includes("YOU ARE") && u.includes("CAVE")) ||
+    /** Stock Colossal Cave LTEXT without a YOU ARE line (stream slit, mist pit, …). */
+    u.includes("AT YOUR FEET") ||
+    u.includes("THIS IS A LOW ROOM")
   );
 }
 
@@ -231,6 +286,26 @@ export function locationFingerprintFromGameOutputStrict(
   const line = extractLocationLineForFingerprint(text);
   if (line === null || line.length === 0) return null;
   return fingerprintLocationFromExcerpt(line);
+}
+
+/**
+ * Fingerprint for session map and turn logs: canonical YOU ARE/YOU'RE line first, then any
+ * {@link hasPlaceLikeProse} blob (rooms that omit YOU ARE), then the previous room when the
+ * output is e.g. OK-only or otherwise not place-like.
+ */
+export function sessionLocationFingerprintFromGameOutput(
+  text: string,
+  previousFingerprint: string | null,
+): string {
+  const prevCanon =
+    previousFingerprint !== null && previousFingerprint.length > 0
+      ? canonicalExplorationFingerprint(previousFingerprint)
+      : null;
+  const strict = locationFingerprintFromGameOutputStrict(text);
+  if (strict !== null) return canonicalExplorationFingerprint(strict);
+  const loose = fingerprintLocationFromGameOutput(text);
+  if (loose.length > 0) return canonicalExplorationFingerprint(loose);
+  return prevCanon ?? "";
 }
 
 /** Primaries that manipulate objects / look / inventory — not drawn on the location-only graph. */
@@ -893,11 +968,12 @@ export class InferredExplorationMap {
       if (t.length > 0) fp = fingerprintLocationFromExcerpt(t.slice(-600));
     }
     if (fp !== null && fp.length > 0) {
-      this.lastFingerprint = fp;
+      const canon = canonicalExplorationFingerprint(fp);
+      this.lastFingerprint = canon;
       this.currentVec = { x: 0, y: 0, z: 0 };
-      this.cellKeyToFingerprint.set(vecKey(this.currentVec), fp);
-      if (!isMazeFingerprint(fp)) {
-        this.landmarkFpToVec.set(fp, this.currentVec);
+      this.cellKeyToFingerprint.set(vecKey(this.currentVec), canon);
+      if (!isMazeFingerprint(canon)) {
+        this.landmarkFpToVec.set(canon, this.currentVec);
       }
     }
     const db = options?.adventureDb;
@@ -978,8 +1054,9 @@ export class InferredExplorationMap {
   }
 
   /**
-   * Motion primaries not yet marked `same` or `reject` from current cell (for Try-next line).
-   * @param excludeLineKeys — optional normalized GETIN keys (e.g. NULL transitions) to skip.
+   * Motion primaries worth suggesting as **fresh** tries from this cell (Try-next line).
+   * Excludes `same` / `reject`, optional NULL keys, and travel/exit primaries that already
+   * **moved** the player from this cell (those belong in **Known exits**, not as “try next”).
    */
   getUntriedMotionPrimaries(excludeLineKeys?: ReadonlySet<string>): string[] {
     const m = this.exitOutcomes.get(this.currentCellKey());
@@ -987,6 +1064,7 @@ export class InferredExplorationMap {
     if (m) {
       for (const [p, k] of m) {
         if (k === "same" || k === "reject") dead.add(p);
+        else if (k === "moved" && isBlockedTravelOrExitPrimary(p)) dead.add(p);
       }
     }
     return this.orderEscapePrimariesForCell(this.currentCellKey()).filter(
@@ -1065,13 +1143,13 @@ export class InferredExplorationMap {
         canonicalMotionPrimaryForDedup(primary),
       );
       const fromGraphId = graphNodeIdFromCellKey(cellBeforeKey);
-      const roomFpStrict = locationFingerprintFromGameOutputStrict(
+      const fpStrict = locationFingerprintFromGameOutputStrict(
         gameOutputForFingerprint,
       );
-      const fp =
-        roomFpStrict ??
-        this.lastFingerprint ??
-        fingerprintLocationFromGameOutput(gameOutputForFingerprint);
+      const fp = sessionLocationFingerprintFromGameOutput(
+        gameOutputForFingerprint,
+        this.lastFingerprint,
+      );
 
       const isLocal = isNonLocationObjectPrimary(primary);
 
@@ -1098,7 +1176,7 @@ export class InferredExplorationMap {
           return;
         }
         const sameRoom =
-          roomFpStrict === null ||
+          fpStrict === null ||
           (this.lastFingerprint !== null && fp === this.lastFingerprint);
         if (sameRoom) {
           const mazeGridMove =
@@ -1110,7 +1188,7 @@ export class InferredExplorationMap {
           }
         }
         this.setOutcome(cellBeforeKey, primary, "moved");
-        if (roomFpStrict !== null) {
+        if (fpStrict !== null) {
           this.lastFingerprint = fp;
           this.cellKeyToFingerprint.set(vecKey(this.currentVec), fp);
         }
@@ -1248,13 +1326,19 @@ export class InferredExplorationMap {
     }
   }
 
-  formatPromptLines(options?: { compact?: boolean }): string[] {
+  formatPromptLines(options?: {
+    compact?: boolean;
+    /** Normalized GETIN keys (e.g. NULL / no-progress) to omit from "try next" options. */
+    excludeLineKeys?: ReadonlySet<string>;
+  }): string[] {
     const compact = options?.compact ?? false;
     const v = this.currentVec;
     const n = this.getDiscoveredRoomCount();
     const { travel: deadTravel, other: deadOther } =
       this.partitionDeadEndPrimariesFromCurrentCell();
-    const tryNext = this.getUntriedMotionPrimaries().slice(0, 12);
+    const tryNext = this.getUntriedMotionPrimaries(
+      options?.excludeLineKeys,
+    ).slice(0, 12);
     const head = compact
       ? `Inferred position (x,y,z)=(${v.x},${v.y},${v.z}); rooms~${n}.`
       : `Inferred position (3D layout hint; connectivity = session FSM edges): (x,y,z) = (${v.x}, ${v.y}, ${v.z}). East=+x, North=+y, Up=+z.`;

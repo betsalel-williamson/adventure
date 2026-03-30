@@ -110,7 +110,7 @@ describe("MLX system prompt variants (ADVENTURE_LLM_MLX_SYSTEM_VARIANT)", () => 
     expect(full.length).toBeGreaterThan(compact.length);
     expect(compact.length).toBeGreaterThan(core.length);
     expect(core.length).toBeGreaterThan(bare.length);
-    expect(full).toContain("GAME ENGINE STATE");
+    expect(full).toContain("Cand");
     expect(compact).toContain("GETIN");
     expect(core).toContain("GETIN");
     expect(bare).toContain("JSON");
@@ -124,6 +124,12 @@ describe("MLX system prompt variants (ADVENTURE_LLM_MLX_SYSTEM_VARIANT)", () => 
     expect(mlxAutoplaySystemPrompt(true)).toBe(
       mlxAutoplaySystemPromptForVariant(true, "full"),
     );
+  });
+
+  it("mlxAutoplaySystemPromptForVariant appends loot funnel instructions when active", () => {
+    const p = mlxAutoplaySystemPromptForVariant(true, "core", "full", true);
+    expect(p).toMatch(/Loot gate/i);
+    expect(p).toContain("Cand_Move");
   });
 });
 
@@ -185,6 +191,16 @@ describe("compact NL prompts", () => {
     expect(full).toMatch(/adventure\.dat RTEXT|Official in-game HELP/i);
     expect(compact).not.toMatch(/Official in-game HELP/);
     expect(compact.startsWith(body)).toBe(true);
+  });
+
+  it("buildAutoplayPlannerPrompt omits HELP when includeDatHelpInSystem is false", () => {
+    const body = "ctx";
+    const p = buildAutoplayPlannerPrompt(db, body, {
+      compact: false,
+      includeDatHelpInSystem: false,
+    });
+    expect(p).not.toMatch(/Official in-game HELP/);
+    expect(p.startsWith(body)).toBe(true);
   });
 
   it("split planner body merges without appending global JSON footer (system already defines keys)", () => {

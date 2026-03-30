@@ -77,14 +77,52 @@ function insertMissingColonsAfterQuotedKeys(input: string): string {
 }
 
 /**
+ * First `{`…`}` span with brace depth respecting JSON string rules.
+ * A greedy `/\{[\s\S]*\}/` can swallow two concatenated objects and break JSON.parse.
+ */
+export function extractFirstBalancedJsonObject(input: string): string | null {
+  const start = input.indexOf("{");
+  if (start < 0) return null;
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = start; i < input.length; i++) {
+    const c = input[i]!;
+    if (inString) {
+      if (escape) {
+        escape = false;
+      } else if (c === "\\") {
+        escape = true;
+      } else if (c === '"') {
+        inString = false;
+      }
+      continue;
+    }
+    if (c === '"') {
+      inString = true;
+      continue;
+    }
+    if (c === "{") {
+      depth += 1;
+    } else if (c === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        return input.slice(start, i + 1);
+      }
+    }
+  }
+  return null;
+}
+
+/**
  * Parse JSON from model output that may include markdown fences or prose.
  */
 export function parseJsonObjectFromLlmText(text: string): unknown {
   const trimmed = text.trim();
   const fence = /^```(?:json)?\s*([\s\S]*?)```$/m.exec(trimmed);
   const jsonStr = fence ? fence[1]!.trim() : trimmed;
-  const objMatch = jsonStr.match(/\{[\s\S]*\}/);
-  const toParse = objMatch ? objMatch[0]! : jsonStr;
+  const balanced = extractFirstBalancedJsonObject(jsonStr);
+  const toParse = balanced ?? jsonStr;
   const withColons = insertMissingColonsAfterQuotedKeys(toParse);
   const normalized = normalizePythonJsonLiteralsInJsonText(withColons);
   return JSON.parse(normalized) as unknown;

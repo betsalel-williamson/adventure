@@ -37,6 +37,70 @@ export function recentTextSuggestsIndoorBuildingNavigation(
   return false;
 }
 
+/**
+ * True when recent room text suggests UP/DOWN travel (grates, pits, stairs, ladders, chasms);
+ * used to surface vertical motion in Cand_Move without extra prose.
+ */
+export function recentTextSuggestsVerticalPassageNavigation(
+  text: string,
+): boolean {
+  const u = text.replace(/\r\n/g, "\n").toUpperCase();
+  const hasWord = (re: RegExp) => re.test(u);
+
+  // --- Grate / stream depression ---
+  if (u.includes("GRATE")) {
+    if (u.includes("OUTSIDE GRATE")) return true;
+    if (u.includes("METAL GRATE")) return true;
+    if (u.includes("STEEL GRATE")) return true;
+    if (u.includes("STREAM") && u.includes("GRATE")) return true;
+    if (u.includes("DEPRESSION") && u.includes("GRATE")) return true;
+    if (u.includes("TWENTY FOOT") && u.includes("GRATE")) return true;
+    if (u.includes("TWENTY-FOOT") && u.includes("GRATE")) return true;
+    if (u.includes("20") && u.includes("FOOT") && u.includes("GRATE"))
+      return true;
+  }
+
+  // --- Pit / hole (avoid short substrings like arbitrary "PIT") ---
+  if (
+    hasWord(/\bPIT\b/) &&
+    (u.includes("BOTTOM") ||
+      u.includes("EDGE") ||
+      u.includes("BRINK") ||
+      u.includes("DEEP") ||
+      u.includes("SHALLOW"))
+  ) {
+    return true;
+  }
+  if (u.includes("CHASM") || u.includes("ABYSS") || u.includes("CREVASSE")) {
+    return true;
+  }
+
+  // --- Stairs / ladder ---
+  if (hasWord(/\b(LADDER|STAIRS?|STEPS)\b/)) return true;
+
+  // --- Shaft / well (vertical) ---
+  if (u.includes("BOTTOM OF THE WELL") || u.includes("BOTTOM OF A WELL")) {
+    return true;
+  }
+  if (u.includes("SHAFT") && (u.includes("VERTICAL") || u.includes("NARROW"))) {
+    return true;
+  }
+
+  // --- Prose cues ---
+  if (u.includes("CLIMB") && /\b(LADDER|STAIRS?|STEPS|ROPE)\b/.test(u)) {
+    return true;
+  }
+
+  return false;
+}
+
+/** Backward-compatible alias of {@link recentTextSuggestsVerticalPassageNavigation}. */
+export function recentTextSuggestsGrateDescentNavigation(
+  text: string,
+): boolean {
+  return recentTextSuggestsVerticalPassageNavigation(text);
+}
+
 /** Motion tokens to surface first when {@link recentTextSuggestsIndoorBuildingNavigation} is true. */
 const INDOOR_EXIT_MOTION_FIRST: readonly string[] = [
   "OUT",
@@ -45,6 +109,9 @@ const INDOOR_EXIT_MOTION_FIRST: readonly string[] = [
   "EXIT",
   "ENTER",
 ];
+
+/** Motion tokens to pull ahead when {@link recentTextSuggestsVerticalPassageNavigation} is true. */
+const VERTICAL_PASSAGE_MOTION_FIRST: readonly string[] = ["DOWN", "UP"];
 
 const COMPASS_MOTION_DEPRIORITIZE: readonly string[] = [
   "NORTH",
@@ -222,6 +289,66 @@ export function matchSecondaryToObjectAtabWord(
  * When at least one such object noun is present, TAKE/GET and those nouns are listed
  * before compass and other motion so the planner tends to pick up items before traveling.
  */
+/** LOOK/EXAMI stay in **Cand_Act** even when travel motion is suppressed for loot funnel. */
+const LOOT_FUNNEL_KEEP_MOTION_CLASS1: ReadonlySet<string> = new Set([
+  "LOOK",
+  "EXAMI",
+]);
+
+/** Class-1 travel words allowed through loot funnel when vertical-passage context applies. */
+const LOOT_FUNNEL_VERTICAL_PASSAGE_MOTION: ReadonlySet<string> = new Set([
+  "DOWN",
+  "UP",
+]);
+
+/**
+ * Object-class ATAB words that appear in recent room text but are not already matched as
+ * carried in `structuredInventoryLines` (same matching as {@link buildSituationalCandidateTokens}
+ * `inventorySubtractText`). Use for the loot gate: **Room.Items − Inv.Items**.
+ */
+export function listVisibleRoomObjectsNotCarried(
+  db: AdventureDatabase,
+  recentGameText: string,
+  structuredInventoryLines: readonly string[],
+  /** ATAB object words: TAKE/GET already failed for these in the current room (session-learned). */
+  takeFailureAtabWords?: readonly string[],
+): string[] {
+  const tail = stripInjectedCommandLinesForObjectHints(recentGameText);
+  const inRoom = listVisibleAdventureObjectsInText(db, tail);
+  if (inRoom.length === 0) return [];
+  const invJoined = structuredInventoryLines.join("\n").trim();
+  const carried =
+    invJoined.length > 0
+      ? new Set(listVisibleAdventureObjectsInText(db, invJoined))
+      : new Set<string>();
+  const failed = new Set(
+    (takeFailureAtabWords ?? [])
+      .map((w) => w.trim().toUpperCase())
+      .filter((w) => w.length > 0),
+  );
+  return inRoom.filter((w) => !carried.has(w) && !failed.has(w));
+}
+
+/**
+ * True when at least one adventure.dat object word appears in recent room text but not in
+ * parsed inventory — SLM planner should funnel to TAKE/GET before travel.
+ */
+export function shouldPrioritizeLootFunnel(
+  db: AdventureDatabase,
+  recentGameText: string,
+  structuredInventoryLines: readonly string[],
+  takeFailureAtabWords?: readonly string[],
+): boolean {
+  return (
+    listVisibleRoomObjectsNotCarried(
+      db,
+      recentGameText,
+      structuredInventoryLines,
+      takeFailureAtabWords,
+    ).length > 0
+  );
+}
+
 export function buildSituationalCandidateTokens(
   db: AdventureDatabase,
   recentGameText: string,
@@ -232,6 +359,7 @@ export function buildSituationalCandidateTokens(
     indoorLeaveBuilding?: boolean;
     /**
      * Motion and travel before TAKE/object nouns — exploration-first ordering (see autoplay prompt mode).
+     * Forced off when {@link lootFunnel} is true.
      */
     exploreFirst?: boolean;
     /**
@@ -239,6 +367,22 @@ export function buildSituationalCandidateTokens(
      * from the object slice so KEYS is not listed as “room” when you only carry it.
      */
     inventorySubtractText?: string;
+    /**
+     * Omit these ATAB object words from the object slice (e.g. TAKE/GET already failed this session
+     * in the current room — fixed scenery like GRATE).
+     */
+    takeFailureSubtractWords?: readonly string[];
+    /**
+     * SLM loot funnel: when {@link shouldPrioritizeLootFunnel} holds (room object words not yet carried),
+     * omit travel **Cand_Move** tokens from the list (except LOOK/EXAMI are re-added via verb/defer paths).
+     */
+    lootFunnel?: boolean;
+    /**
+     * When non-empty after trim, object matching, vertical-passage heuristics, and visible-object
+     * counts use this slice instead of `recentGameText` (e.g. latest room block only). Stale nouns
+     * from earlier rooms in the tail are ignored.
+     */
+    objectHintScopeText?: string;
   },
 ): string[] {
   const maxTotal = options?.maxTotal ?? DEFAULT_MAX_TOTAL;
@@ -274,9 +418,16 @@ export function buildSituationalCandidateTokens(
 
   const deferMotion = new Set(DEFER_OBSERVATION_MOTION_TO_TAIL);
 
-  const exploreFirst = options?.exploreFirst === true;
-  const textForObjects =
-    stripInjectedCommandLinesForObjectHints(recentGameText);
+  const lootFunnel = options?.lootFunnel === true;
+  const exploreFirst = options?.exploreFirst === true && !lootFunnel;
+  const scopeOpt = options?.objectHintScopeText;
+  const scopedSource =
+    scopeOpt !== undefined && scopeOpt.trim().length > 0
+      ? scopeOpt
+      : recentGameText;
+  const textForObjects = stripInjectedCommandLinesForObjectHints(scopedSource);
+  const verticalPassageNav =
+    recentTextSuggestsVerticalPassageNavigation(textForObjects);
   const tokensInText = tokenizeUpperWords(textForObjects);
   const carriedFromInventory = new Set<string>();
   const invSub = options?.inventorySubtractText?.trim();
@@ -285,9 +436,15 @@ export function buildSituationalCandidateTokens(
       carriedFromInventory.add(w);
     }
   }
+  const takeFailSubtract = new Set<string>();
+  for (const raw of options?.takeFailureSubtractWords ?? []) {
+    const w = raw.trim().toUpperCase();
+    if (w.length > 0) takeFailSubtract.add(w);
+  }
   let visibleRoomObjectCount = 0;
   for (const w of objectSet.keys()) {
     if (carriedFromInventory.has(w)) continue;
+    if (takeFailSubtract.has(w)) continue;
     if (objectAtabWordInGameText(w, tokensInText)) visibleRoomObjectCount++;
   }
   const motionCap =
@@ -318,6 +475,7 @@ export function buildSituationalCandidateTokens(
   for (const w of [...objectSet.keys()].sort((a, b) => a.localeCompare(b))) {
     if (objects.length >= MAX_OBJECTS) break;
     if (carriedFromInventory.has(w)) continue;
+    if (takeFailSubtract.has(w)) continue;
     if (objectAtabWordInGameText(w, tokensInText)) push(objects, w);
   }
 
@@ -344,6 +502,15 @@ export function buildSituationalCandidateTokens(
     if (exitFirst.length > 0) {
       const rest = motionWorking.filter((x) => !exitFirst.includes(x));
       motionWorking = [...exitFirst, ...rest];
+    }
+  }
+  if (verticalPassageNav) {
+    const verticalFirst = VERTICAL_PASSAGE_MOTION_FIRST.filter((x) =>
+      motionWorking.includes(x),
+    );
+    if (verticalFirst.length > 0) {
+      const rest = motionWorking.filter((x) => !verticalFirst.includes(x));
+      motionWorking = [...verticalFirst, ...rest];
     }
   }
   let motionOrdered = motionWorking;
@@ -419,6 +586,25 @@ export function buildSituationalCandidateTokens(
     seen.add(t);
     out.push(t);
   }
+
+  if (lootFunnel && roomListsTakeableObjects) {
+    const filtered = out.filter((raw) => {
+      const t = raw.trim().toUpperCase();
+      if (LOOT_FUNNEL_KEEP_MOTION_CLASS1.has(t)) return true;
+      if (
+        verticalPassageNav &&
+        LOOT_FUNNEL_VERTICAL_PASSAGE_MOTION.has(t) &&
+        motionSet.has(t)
+      ) {
+        return true;
+      }
+      const idx = findVocabIndex(db, t);
+      if (idx === 0) return true;
+      return ktabClass(db.ktab[idx]!) !== CLASS_MOTION;
+    });
+    return filtered.slice(0, maxTotal);
+  }
+
   return out;
 }
 
@@ -484,14 +670,73 @@ function plannerHintForToken(db: AdventureDatabase, token: string): string {
 
 const DEFER_OBSERVE_SET = new Set(DEFER_OBSERVATION_MOTION_TO_TAIL);
 
+export type FormatSituationalCandidatesOptions = {
+  /**
+   * When true, emit a single comma-separated token line (for SLMs — avoids long per-token gloss).
+   * Ignored when {@link slmGrouped} is true.
+   * @default false
+   */
+  flatList?: boolean;
+  /**
+   * When true, emit **Cand_Move:** / **Cand_Act:** / **Cand_Obj:** (function buckets for SLMs).
+   * @default false
+   */
+  slmGrouped?: boolean;
+  /**
+   * When true with {@link slmGrouped}, empty **Cand_Move** shows a deferred message instead of "(none)".
+   */
+  lootFunnelDeferCandMove?: boolean;
+};
+
 /**
- * Markdown section for the planner: grouped “token — hint” lines, pickup before travel.
+ * Markdown section for the planner: grouped “token — hint” lines, pickup before travel;
+ * or {@link FormatSituationalCandidatesOptions.flatList} for a compact comma-separated list.
  */
+function bucketCandidatesForSlmPlanner(
+  db: AdventureDatabase,
+  candidates: readonly string[],
+): { move: string[]; act: string[]; obj: string[] } {
+  const move: string[] = [];
+  const act: string[] = [];
+  const obj: string[] = [];
+  const sm = new Set<string>();
+  const sa = new Set<string>();
+  const so = new Set<string>();
+  const push = (arr: string[], s: Set<string>, t: string) => {
+    if (s.has(t)) return;
+    s.add(t);
+    arr.push(t);
+  };
+
+  for (const raw of candidates) {
+    const t = raw.trim().toUpperCase();
+    if (t.length === 0) continue;
+    if (t === "TAKE" || t === "GET") {
+      push(act, sa, t);
+      continue;
+    }
+    if (DEFER_OBSERVE_SET.has(t)) {
+      push(act, sa, t);
+      continue;
+    }
+    const cls = vocabClassForToken(db, t);
+    if (cls === CLASS_OBJECT) push(obj, so, t);
+    else if (cls === CLASS_MOTION) push(move, sm, t);
+    else if (cls === CLASS_VERB) push(act, sa, t);
+    else if (cls === CLASS_MISC) push(act, sa, t);
+    else push(move, sm, t);
+  }
+  return { move, act, obj };
+}
+
 export function formatSituationalCandidatesSection(
   db: AdventureDatabase,
   candidates: readonly string[],
   appendix?: string,
+  options?: FormatSituationalCandidatesOptions,
 ): string {
+  const flatList = options?.flatList === true;
+  const slmGrouped = options?.slmGrouped === true;
   const appendixBlock =
     appendix !== undefined && appendix.trim().length > 0
       ? `\n\n${appendix.trim()}`
@@ -499,6 +744,35 @@ export function formatSituationalCandidatesSection(
   if (candidates.length === 0) {
     return `## Situation candidates (heuristic)
 (no narrowed list — use vocabulary and transcript below)${appendixBlock}`;
+  }
+
+  if (slmGrouped) {
+    const { move, act, obj } = bucketCandidatesForSlmPlanner(db, candidates);
+    const moveDefer = options?.lootFunnelDeferCandMove === true;
+    const moveDisplay =
+      move.length > 0
+        ? move.join(", ")
+        : moveDefer && (act.length > 0 || obj.length > 0)
+          ? "(deferred — TAKE/GET **Items** first; travel hidden)"
+          : "(none)";
+    const lines: string[] = [
+      "## Situation candidates (heuristic)",
+      "",
+      `**Cand_Act:** ${act.length > 0 ? act.join(", ") : "(none)"}`,
+    ];
+    if (obj.length > 0) {
+      lines.push(`**Cand_Obj:** ${obj.join(", ")}`);
+    }
+    lines.push(`**Cand_Move:** ${moveDisplay}`);
+    return `${lines.join("\n")}${appendixBlock}`;
+  }
+
+  if (flatList) {
+    const list = [...candidates]
+      .map((t) => t.trim().toUpperCase())
+      .filter((t) => t.length > 0)
+      .join(", ");
+    return `## Situation candidates (heuristic)\n\n${list}${appendixBlock}`;
   }
 
   const pickupVerb: string[] = [];
