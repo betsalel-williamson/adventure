@@ -8,10 +8,12 @@
 #                       for future first-class providers (e.g. openai for ChatGPT API).
 #   providers.google  — legacy alias for providers.api.google (omit if you use providers.api)
 #
-# Model catalog: strings or { id, label? }. Use API id strings from vendor docs, e.g.
+# Google: use model code strings from each model’s doc page under
 #   https://ai.google.dev/gemini-api/docs/models
+# and the deprecations list https://ai.google.dev/gemini-api/docs/deprecations
+# (e.g. do not use gemini-3-pro-preview — shut down; migrate to gemini-3.1-pro-preview).
 #
-# Text / general multimodal chat models only (skip image-only, TTS, Veo, etc. unless you need them).
+# Below: general text / multimodal chat models only (omit image-only, TTS, Live API–first, Veo, Lyria, etc.).
 
 version: 1
 
@@ -33,21 +35,24 @@ providers:
   api:
     google:
       models:
-        # --- Gemini 2.5 (stable workhorses) ---
+        # --- Gemini 3 (preview text models; see models index) ---
+        - id: gemini-3.1-pro-preview
+          label: Gemini 3.1 Pro (Preview)
+        - id: gemini-3-flash-preview
+          label: Gemini 3 Flash (Preview)
+        - id: gemini-3.1-flash-lite-preview
+          label: Gemini 3.1 Flash-Lite (Preview)
+        # --- Gemini 2.5 (stable text; model code on each doc page) ---
         - id: gemini-2.5-flash
           label: Gemini 2.5 Flash
         - id: gemini-2.5-flash-lite
           label: Gemini 2.5 Flash-Lite
         - id: gemini-2.5-pro
           label: Gemini 2.5 Pro
-        # --- Gemini 3 (preview; verify ids in AI Studio / docs) ---
-        - id: gemini-3-flash-preview
-          label: Gemini 3 Flash (Preview)
-        - id: gemini-3.1-flash-lite-preview
-          label: Gemini 3.1 Flash-Lite (Preview)
-        - id: gemini-3.1-pro-preview
-          label: Gemini 3.1 Pro (Preview)
-        # --- Legacy / deprecating (migrate per Google deprecations page) ---
+        # --- Version alias (see “Model version name patterns” on models index) ---
+        - id: gemini-flash-latest
+          label: gemini-flash-latest (rolling alias)
+        # --- Legacy (check deprecations before production) ---
         - id: gemini-1.5-flash
           label: Gemini 1.5 Flash (legacy)
         - id: gemini-1.5-pro

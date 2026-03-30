@@ -59,6 +59,15 @@ function entryId(e: z.infer<typeof ModelEntrySchema>): string {
   return (typeof e === "string" ? e : e.id).trim();
 }
 
+/**
+ * A→Z ordering for dashboard model pickers (locale-aware; numeric substrings sort naturally).
+ */
+export function sortWebDashboardModelIds(ids: readonly string[]): string[] {
+  return [...ids].sort((a, b) =>
+    a.localeCompare(b, undefined, { sensitivity: "base", numeric: true }),
+  );
+}
+
 function modelsFromBlock(
   block: z.infer<typeof ProviderBlockSchema> | undefined,
 ): string[] {
@@ -83,13 +92,15 @@ function resolveConfigPath(): string {
   return defaultConfigPath();
 }
 
+/** Default Gemini text/chat ids; order mirrors `text-llm-web-presets.yaml` and the models index. @see https://ai.google.dev/gemini-api/docs/models */
 const DEFAULT_GOOGLE_TEXT_MODELS: readonly string[] = [
+  "gemini-3.1-pro-preview",
+  "gemini-3-flash-preview",
+  "gemini-3.1-flash-lite-preview",
   "gemini-2.5-flash",
   "gemini-2.5-flash-lite",
   "gemini-2.5-pro",
-  "gemini-3-flash-preview",
-  "gemini-3.1-flash-lite-preview",
-  "gemini-3.1-pro-preview",
+  "gemini-flash-latest",
   "gemini-1.5-flash",
   "gemini-1.5-pro",
   "gemini-2.0-flash",
@@ -137,8 +148,20 @@ export function parseTextLlmWebPresetsYaml(
   }
   const prov = parsed.data.providers ?? {};
   const apiRaw = prov.api ?? {};
-  const googleBlock = apiRaw.google !== undefined ? apiRaw.google : prov.google;
-  const google = modelsFromBlock(googleBlock);
+  const apiGoogleBlock = apiRaw.google;
+  const legacyGoogleBlock = prov.google;
+  const apiGoogleIds = modelsFromBlock(apiGoogleBlock);
+  const legacyGoogleIds = modelsFromBlock(legacyGoogleBlock);
+  /**
+   * If `providers.api.google` exists but has no `models` (empty object or `models: []`),
+   * fall back to legacy `providers.google` instead of dropping the curated list.
+   */
+  const google =
+    apiGoogleBlock !== undefined
+      ? apiGoogleIds.length > 0
+        ? apiGoogleIds
+        : legacyGoogleIds
+      : legacyGoogleIds;
   return {
     mlx: modelsFromBlock(prov.mlx),
     http: modelsFromBlock(prov.http),

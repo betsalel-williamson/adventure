@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   parseTextLlmWebPresetsYaml,
   DEFAULT_TEXT_LLM_WEB_PRESETS,
+  sortWebDashboardModelIds,
 } from "./textLlmWebPresetsConfig.js";
 
 describe("parseTextLlmWebPresetsYaml", () => {
@@ -57,6 +58,33 @@ providers:
     expect(n.google).toEqual(["from-api"]);
   });
 
+  it("falls back to legacy providers.google when api.google has no models", () => {
+    const n = parseTextLlmWebPresetsYaml(`
+version: 1
+providers:
+  google:
+    models:
+      - gemini-from-legacy
+  api:
+    google: {}
+`);
+    expect(n.google).toEqual(["gemini-from-legacy"]);
+  });
+
+  it("falls back to legacy when api.google has empty models array", () => {
+    const n = parseTextLlmWebPresetsYaml(`
+version: 1
+providers:
+  google:
+    models:
+      - gemini-from-legacy
+  api:
+    google:
+      models: []
+`);
+    expect(n.google).toEqual(["gemini-from-legacy"]);
+  });
+
   it("defaults missing provider blocks to empty lists", () => {
     const n = parseTextLlmWebPresetsYaml(
       `version: 1\nproviders:\n  mlx:\n    models: []\n`,
@@ -82,5 +110,15 @@ describe("DEFAULT_TEXT_LLM_WEB_PRESETS", () => {
     expect(typeof DEFAULT_TEXT_LLM_WEB_PRESETS.futureApiProviders).toBe(
       "object",
     );
+  });
+});
+
+describe("sortWebDashboardModelIds", () => {
+  it("orders lexically with numeric-aware segments", () => {
+    expect(sortWebDashboardModelIds(["m10", "m2", "m1"])).toEqual([
+      "m1",
+      "m2",
+      "m10",
+    ]);
   });
 });
