@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Adventure — autoplay dashboard</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -46,7 +47,10 @@
     <main class="page-main">
       <div class="layout-dashboard">
         <div class="side-left-column">
-          <header class="dashboard-brand" aria-label="Adventure language-model dashboard">
+          <header
+            class="dashboard-brand"
+            aria-label="Adventure language-model dashboard"
+          >
             <span class="dashboard-brand-mark" aria-hidden="true">▸</span>
             <span class="dashboard-brand-text"
               >Adventure<span class="dashboard-brand-llm">LM</span></span
@@ -56,7 +60,10 @@
             class="side side-left"
             aria-label="Planner and heuristic state"
           >
-            <section class="panel prompt-projects-panel" aria-label="Prompt projects">
+            <section
+              class="panel prompt-projects-panel"
+              aria-label="Prompt projects"
+            >
               <div class="panel-hint-row">
                 <h2>Projects</h2>
                 <button
@@ -70,11 +77,15 @@
                 </button>
               </div>
               <p class="small muted">
-                Saved presets (prompt patch + generation params + subsystem stubs).
+                Saved presets (prompt patch + generation params + subsystem
+                stubs).
               </p>
               <label class="prompt-lab-label"
                 >Active
-                <select id="prompt-project-select" aria-label="Prompt project"></select>
+                <select
+                  id="prompt-project-select"
+                  aria-label="Prompt project"
+                ></select>
               </label>
               <div class="prompt-project-actions">
                 <button type="button" id="prompt-project-new">New</button>
@@ -84,10 +95,17 @@
                 </button>
                 <button type="button" id="prompt-project-delete">Delete</button>
               </div>
-              <p id="prompt-project-status" class="small muted" aria-live="polite"></p>
+              <p
+                id="prompt-project-status"
+                class="small muted"
+                aria-live="polite"
+              ></p>
             </section>
 
-            <section class="panel llm-gen-panel" aria-label="LLM generation params">
+            <section
+              class="panel llm-gen-panel"
+              aria-label="LLM generation params"
+            >
               <div class="panel-hint-row">
                 <h2>LLM generation</h2>
                 <button
@@ -101,8 +119,8 @@
                 </button>
               </div>
               <p class="small muted">
-                Applies to the current provider (interpret + autoplay). Values persist
-                on model swap when compatible.
+                Applies to the current provider (interpret + autoplay). Values
+                persist on model swap when compatible.
               </p>
               <p id="llm-gen-provider" class="mono small">—</p>
               <div id="llm-gen-fields" class="llm-gen-fields"></div>
@@ -196,9 +214,14 @@
                       id="manual-controls-slot-crt"
                       class="manual-controls-slot manual-controls-slot--crt"
                     >
-                      <div id="manual-controls-group" class="manual-controls-group">
+                      <div
+                        id="manual-controls-group"
+                        class="manual-controls-group"
+                      >
                         <span class="transcript-terminal-input-wrap">
-                          <span class="transcript-terminal-prompt" aria-hidden="true"
+                          <span
+                            class="transcript-terminal-prompt"
+                            aria-hidden="true"
                             >&gt;&nbsp;</span
                           >
                           <input
@@ -211,7 +234,9 @@
                             disabled
                           />
                         </span>
-                        <button type="button" id="manual-send" disabled>Send</button>
+                        <button type="button" id="manual-send" disabled>
+                          Send
+                        </button>
                         <button
                           type="button"
                           id="manual-end-session"
@@ -342,7 +367,10 @@
               >
               <label class="inline-field"
                 >Notes →
-                <select id="prompt-model-notes-target" aria-label="Model notes target">
+                <select
+                  id="prompt-model-notes-target"
+                  aria-label="Model notes target"
+                >
                   <option value="system">system</option>
                   <option value="user_top">user top</option>
                 </select>
@@ -386,8 +414,14 @@
               spellcheck="false"
             ></textarea>
             <div class="prompt-lab-actions">
-              <button type="button" id="prompt-experiment-apply">Apply patch</button>
-              <button type="button" id="prompt-experiment-reset" class="btn-quiet">
+              <button type="button" id="prompt-experiment-apply">
+                Apply patch
+              </button>
+              <button
+                type="button"
+                id="prompt-experiment-reset"
+                class="btn-quiet"
+              >
                 Reload from server
               </button>
             </div>
@@ -793,10 +827,10 @@
     <template id="help-tpl-planner-prompt">
       <div class="help-dialog-prose">
         <p>
-          <strong>Patch fields</strong> change how the autoplay planner prompt is
-          built before each LLM call (prefix/suffix, optional system replace or
-          append, model notes). Click <strong>Apply patch</strong> to send them
-          to the server.
+          <strong>Patch fields</strong> change how the autoplay planner prompt
+          is built before each LLM call (prefix/suffix, optional system replace
+          or append, model notes). Click <strong>Apply patch</strong> to send
+          them to the server.
         </p>
         <p>
           <strong>Last sent</strong> shows the effective planner payload
@@ -830,10 +864,11 @@
         <p>
           <strong>Projects</strong> are named presets stored in the browser:
           prompt-lab patch fields, LLM generation parameters, and related
-          subsystem stubs. Use <strong>Active</strong> / <strong>Load</strong> to
-          apply one to the live dashboard; <strong>New</strong>,
-          <strong>Save to disk</strong>, and <strong>Delete</strong> manage the
-          list (exports/imports depend on how the server exposes project files).
+          subsystem stubs. Use <strong>Active</strong> /
+          <strong>Load</strong> to apply one to the live dashboard;
+          <strong>New</strong>, <strong>Save to disk</strong>, and
+          <strong>Delete</strong> manage the list (exports/imports depend on how
+          the server exposes project files).
         </p>
       </div>
     </template>
@@ -842,14 +877,14 @@
         <p>
           Fields here map to the <strong>current text model provider</strong>
           (temperature, top-p, max tokens, and similar). They apply to
-          <strong>interpret</strong> and <strong>autoplay</strong> calls when the
-          backend supports them.
+          <strong>interpret</strong> and <strong>autoplay</strong> calls when
+          the backend supports them.
         </p>
         <p>
-          <strong>Apply params</strong> sends the values to the server. Where the
-          provider API allows, settings can persist when you switch models in the
-          same family; incompatible fields are ignored or reset per server
-          behavior.
+          <strong>Apply params</strong> sends the values to the server. Where
+          the provider API allows, settings can persist when you switch models
+          in the same family; incompatible fields are ignored or reset per
+          server behavior.
         </p>
       </div>
     </template>
