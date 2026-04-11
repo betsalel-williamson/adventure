@@ -2,6 +2,10 @@ import fs from "node:fs";
 import path from "node:path";
 import BetterSqlite3 from "better-sqlite3";
 import type { Database } from "better-sqlite3";
+import {
+  assertRevisionEligibleForLiveTag,
+  SUBSYSTEM_LIVE_REVISION_TAG_NAME,
+} from "./subsystemPromoteGate.js";
 import { SUBSYSTEM_WAL_STORE_MIGRATIONS } from "./subsystemWalStoreMigrations.js";
 
 const META_HEAD_KEY = "head_revision_id" as const;
@@ -158,6 +162,11 @@ export class SubsystemWalStore {
     readonly revisionId: number;
   }): void {
     this.assertRevisionExists(input.revisionId);
+    if (input.name === SUBSYSTEM_LIVE_REVISION_TAG_NAME) {
+      assertRevisionEligibleForLiveTag(
+        this.listPromotionEventsForRevision(input.revisionId),
+      );
+    }
     const now = new Date().toISOString();
     this.db
       .prepare(

@@ -165,4 +165,66 @@ describe("subsystemServerSync (ADR0008)", () => {
     expect(store.getRevisionTag("release")).toBe(2);
     store.close();
   });
+
+  it("throws when live tag is synced without qualifying test_pass (ADR0009)", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "subsync-live-"));
+    const dbPath = path.join(dir, "r.db");
+    const store = openServerSubsystemReplicaStore(dbPath);
+    expect(() =>
+      applySubsystemReplicaSync(store.getDatabase(), {
+        clientHeadRevisionId: 2,
+        revisions: [
+          {
+            id: 2,
+            parentRevisionId: 1,
+            createdAtIso: "2026-04-10T12:00:00.000Z",
+            fileChanges: [],
+            tags: [
+              {
+                name: "live",
+                createdAtIso: "2026-04-10T12:00:01.000Z",
+                updatedAtIso: "2026-04-10T12:00:01.000Z",
+              },
+            ],
+          },
+        ],
+      }),
+    ).toThrow(/ADR0009/);
+    store.close();
+  });
+
+  it("applies live tag when test_pass is in the same revision batch (ADR0009)", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "subsync-live-ok-"));
+    const dbPath = path.join(dir, "r.db");
+    const store = openServerSubsystemReplicaStore(dbPath);
+    const r = applySubsystemReplicaSync(store.getDatabase(), {
+      clientHeadRevisionId: 2,
+      revisions: [
+        {
+          id: 2,
+          parentRevisionId: 1,
+          createdAtIso: "2026-04-10T12:00:00.000Z",
+          fileChanges: [{ path: "a.js", content: "// ok" }],
+          promotions: [
+            {
+              id: 10,
+              kind: "test_pass",
+              createdAtIso: "2026-04-10T12:00:00.500Z",
+              detailJson: JSON.stringify({ casesRun: 2, casesFailed: 0 }),
+            },
+          ],
+          tags: [
+            {
+              name: "live",
+              createdAtIso: "2026-04-10T12:00:01.000Z",
+              updatedAtIso: "2026-04-10T12:00:01.000Z",
+            },
+          ],
+        },
+      ],
+    });
+    expect(r.status).toBe("applied");
+    expect(store.getRevisionTag("live")).toBe(2);
+    store.close();
+  });
 });

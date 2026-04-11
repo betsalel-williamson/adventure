@@ -6,7 +6,7 @@
 
 - **Authors** should not accidentally **break autoplay** with a syntax error or bad hook: changes need **verification** before they steer the live game.
 - **Teams** want **regression safety**: the same **Red → Green → Refactor** discipline used in the repo applies to subsystem code.
-- **“Deploy to frontend”** in this program means **promote a revision to live**, not a separate HTTP deployment—users need a **clear gate** (tests green) before promotion.
+- **“Deploy to frontend”** in this program means **promote a revision to live** (revision tag `live`), not a separate HTTP deployment—users need a **clear gate** (tests green) before promotion.
 
 ### Technical context
 
@@ -36,7 +36,7 @@ The **live** dashboard path will run **browser-orchestrated glue and orchestrati
 
 **Negative**
 
-- Authors must maintain tests; empty test suite policy must be defined (fail closed vs open).
+- Authors must maintain tests; **empty test suite policy: fail closed** — a `test_pass` row must include `casesRun >= 1` and `casesFailed === 0` (see implementation).
 
 ## Rationale
 
@@ -44,7 +44,13 @@ User explicitly requested **TDD** and running tests **before deploying** subsyst
 
 ## Status
 
-Proposed
+Accepted
+
+## Implementation
+
+- **Gate logic (pure):** [`adventure-llm/src/browser/subsystemPromoteGate.ts`](../../adventure-llm/src/browser/subsystemPromoteGate.ts) — `revisionHasQualifyingTestPass`, `assertRevisionEligibleForLiveTag`, `LivePromotionBlockedError`.
+- **Tests:** [`adventure-llm/src/browser/subsystemPromoteGate.test.ts`](../../adventure-llm/src/browser/subsystemPromoteGate.test.ts); integration in [`subsystemWalStore.test.ts`](../../adventure-llm/src/browser/subsystemWalStore.test.ts) and [`subsystemServerSync.test.ts`](../../adventure-llm/src/cli/subsystemServerSync.test.ts).
+- **Enforcement:** `SubsystemWalStore.putRevisionTag` blocks tag `live` without a qualifying `test_pass` promotion on that revision; `applySubsystemReplicaSync` applies the same rule server-side (promotion rows are applied before tags). `/api/subsystem-sync` returns **400** when the gate throws.
 
 ## References
 

@@ -6,7 +6,7 @@ This document describes the **target architecture** for evolving [`adventure-llm
 
 **Scope:** Strategic direction and boundaries. **As-built** behavior of the package today remains documented in [adventure-engine.md](./adventure-engine.md) until each migration lands.
 
-**Related decisions:** [ADR0004](../decisions/ADR0004-backend-llm-packaging-and-discovery.md) through [ADR0013](../decisions/ADR0013-dashboard-xstate-cognition-panel.md), indexed under [adventure-llm-cognition-adr-index.md](../decisions/adventure-llm-cognition-adr-index.md).
+**Related decisions:** [ADR0004](../decisions/ADR0004-backend-llm-packaging-and-discovery.md) through [ADR0014](../decisions/ADR0014-two-step-nl-glue-package-then-browser.md), indexed under [adventure-llm-cognition-adr-index.md](../decisions/adventure-llm-cognition-adr-index.md).
 
 ## Business and system context
 
@@ -31,6 +31,7 @@ Decisions are recorded in ADRs (not duplicated here). Dependency order for imple
 
 - **ADR0004** — Backend **packaging** + **discovery** API for logical requests.
 - **ADR0005** — **Browser-orchestrated** autoplay: client-owned glue state and loop; not “ship `adventure.dat` to the browser” as the primary goal.
+- **ADR0014** — **Two-step** migration of **NL/SLM glue** (interpret/situational/vocab/mode policy): **extract a dedicated package** under Node first, then **consume from the browser** (operationalizes ADR0005 for `vocab` / `text` / `nl/*`).
 - **ADR0006–ADR0008** — Client **SQLite WAL** (store module **implemented** — [ADR0006](../decisions/ADR0006-client-sqlite-wal-subsystem-store.md) **Implementation**), **revision control / tags / replay / revert** ([ADR0007](../decisions/ADR0007-subsystem-revision-control-and-replay.md) store **implemented**; UI forward work), **server replica + HTTP sync** ([ADR0008](../decisions/ADR0008-server-subsystem-replica-and-sync.md) **`POST /api/subsystem-sync`** + apply module **implemented**; browser **invoke** sync + restore UX forward work).
 - **ADR0009** — **TDD** and **promote-to-live** gate.
 - **ADR0010** — **Monaco** second tab + **cross-tab** sync.

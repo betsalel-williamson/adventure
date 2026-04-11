@@ -7,6 +7,10 @@ import path from "node:path";
 import BetterSqlite3 from "better-sqlite3";
 import type { Database } from "better-sqlite3";
 import {
+  assertRevisionEligibleForLiveTag,
+  SUBSYSTEM_LIVE_REVISION_TAG_NAME,
+} from "../browser/subsystemPromoteGate.js";
+import {
   migrateSubsystemWalStore,
   SubsystemWalStore,
 } from "../browser/subsystemWalStore.js";
@@ -243,6 +247,24 @@ function revisionExists(db: Database, revisionId: number): boolean {
   return row !== undefined;
 }
 
+function promotionEventsForLiveGate(
+  db: Database,
+  revisionId: number,
+): readonly { readonly kind: string; readonly detail: unknown }[] {
+  const rows = db
+    .prepare(
+      `SELECT kind, detail_json FROM promotion_records WHERE revision_id = ? ORDER BY id ASC`,
+    )
+    .all(revisionId) as ReadonlyArray<{
+    readonly kind: string;
+    readonly detail_json: string;
+  }>;
+  return rows.map((r) => ({
+    kind: r.kind,
+    detail: JSON.parse(r.detail_json) as unknown,
+  }));
+}
+
 /**
  * Apply a client-originated subsystem sync batch to the server replica (idempotent).
  */
@@ -348,16 +370,6 @@ export function applySubsystemReplicaSync(
       for (const ch of rev.fileChanges) {
         insFile.run(rev.id, ch.path, ch.content);
       }
-      if (rev.tags !== undefined) {
-        for (const t of rev.tags) {
-          insTag.run({
-            name: t.name,
-            revisionId: rev.id,
-            createdAt: t.createdAtIso,
-            updatedAt: t.updatedAtIso,
-          });
-        }
-      }
       if (rev.promotions !== undefined) {
         for (const p of rev.promotions) {
           insPromo.run({
@@ -366,6 +378,21 @@ export function applySubsystemReplicaSync(
             kind: p.kind,
             createdAt: p.createdAtIso,
             detailJson: p.detailJson,
+          });
+        }
+      }
+      if (rev.tags !== undefined) {
+        for (const t of rev.tags) {
+          if (t.name === SUBSYSTEM_LIVE_REVISION_TAG_NAME) {
+            assertRevisionEligibleForLiveTag(
+              promotionEventsForLiveGate(db, rev.id),
+            );
+          }
+          insTag.run({
+            name: t.name,
+            revisionId: rev.id,
+            createdAt: t.createdAtIso,
+            updatedAt: t.updatedAtIso,
           });
         }
       }

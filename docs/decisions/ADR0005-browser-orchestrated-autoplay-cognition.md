@@ -95,6 +95,7 @@ Proposed
 - `adventure-llm/public/browserAutoplayOrchestrator.js` (client loop; to align with XState machine)
 - `adventure-llm/src/nl/autoplaySessionMemory.ts` (glue: turn log, heuristics, inferred map inputs)
 - `adventure-llm/src/nl/inferredExplorationMap.ts`, `explorationGraphViz.ts` (graph / map glue)
+- [ADR0014](ADR0014-two-step-nl-glue-package-then-browser.md) — **staged migration** of NL/SLM glue (`vocab`, `text`, `nl/*` interpret/situational/mode policy): **package extract (Node)** then **browser**; complements this ADR’s scope statement
 - [ADR0004](ADR0004-backend-llm-packaging-and-discovery.md)
 - [ADR0006](ADR0006-client-sqlite-wal-subsystem-store.md) — client SQLite subsystem store (schema + API **implemented**; browser WASM/OPFS + optional glue tables **forward work** — see ADR **Implementation**)
 - [ADR0007](ADR0007-subsystem-revision-control-and-replay.md) — replay semantics with cognition (subsystem tree at R + tags/revert in store — see ADR **Implementation**; typed event replay and UI forward work)

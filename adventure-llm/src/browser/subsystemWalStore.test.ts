@@ -2,6 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { SUBSYSTEM_LIVE_REVISION_TAG_NAME } from "./subsystemPromoteGate.js";
 import {
   openSubsystemWalStore,
   type SubsystemWalStore,
@@ -134,6 +135,40 @@ describe("subsystemWalStore (ADR0006)", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]?.kind).toBe("test_pass");
     expect(rows[0]?.detail).toEqual({ suite: "gate" });
+    store.close();
+  });
+
+  it("blocks live tag without qualifying test_pass (ADR0009)", () => {
+    const store = openTempStore();
+    store.appendRevision({
+      expectedHeadRevisionId: 1,
+      changes: [{ path: "x.js", content: "" }],
+    });
+    expect(() =>
+      store.putRevisionTag({
+        name: SUBSYSTEM_LIVE_REVISION_TAG_NAME,
+        revisionId: 2,
+      }),
+    ).toThrow(/ADR0009/);
+    store.close();
+  });
+
+  it("allows live tag after qualifying test_pass (ADR0009)", () => {
+    const store = openTempStore();
+    store.appendRevision({
+      expectedHeadRevisionId: 1,
+      changes: [{ path: "x.js", content: "" }],
+    });
+    store.recordPromotionEvent({
+      revisionId: 2,
+      kind: "test_pass",
+      detail: { casesRun: 1, casesFailed: 0 },
+    });
+    store.putRevisionTag({
+      name: SUBSYSTEM_LIVE_REVISION_TAG_NAME,
+      revisionId: 2,
+    });
+    expect(store.getRevisionTag(SUBSYSTEM_LIVE_REVISION_TAG_NAME)).toBe(2);
     store.close();
   });
 

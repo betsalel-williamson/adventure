@@ -68,6 +68,7 @@ import {
   type BenchmarkRunConfigJson,
   type BenchmarkRunMetricsJson,
 } from "./benchmarkRunsDb.js";
+import { LivePromotionBlockedError } from "../browser/subsystemPromoteGate.js";
 import {
   applySubsystemReplicaSync,
   getServerSubsystemReplicaStoreForWorkspace,
@@ -835,6 +836,15 @@ export function createAutoplayDashboardServer(
           cookieOpts(sess, newSession),
         );
       } catch (e) {
+        if (e instanceof LivePromotionBlockedError) {
+          jsonResponseWithSessionCookie(
+            res,
+            400,
+            { error: e.message },
+            cookieOpts(sess, newSession),
+          );
+          return;
+        }
         jsonResponseWithSessionCookie(
           res,
           500,
