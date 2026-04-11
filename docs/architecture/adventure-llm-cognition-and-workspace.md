@@ -31,7 +31,7 @@ Decisions are recorded in ADRs (not duplicated here). Dependency order for imple
 
 - **ADR0004** — Backend **packaging** + **discovery** API for logical requests.
 - **ADR0005** — **Browser-orchestrated** autoplay: client-owned glue state and loop; not “ship `adventure.dat` to the browser” as the primary goal.
-- **ADR0006–ADR0008** — Client **SQLite WAL** (store module **implemented** — [ADR0006](../decisions/ADR0006-client-sqlite-wal-subsystem-store.md) **Implementation**), **revision control / tags / replay / revert** ([ADR0007](../decisions/ADR0007-subsystem-revision-control-and-replay.md) store **implemented**; UI forward work), **server replica + sync**.
+- **ADR0006–ADR0008** — Client **SQLite WAL** (store module **implemented** — [ADR0006](../decisions/ADR0006-client-sqlite-wal-subsystem-store.md) **Implementation**), **revision control / tags / replay / revert** ([ADR0007](../decisions/ADR0007-subsystem-revision-control-and-replay.md) store **implemented**; UI forward work), **server replica + HTTP sync** ([ADR0008](../decisions/ADR0008-server-subsystem-replica-and-sync.md) **`POST /api/subsystem-sync`** + apply module **implemented**; browser **invoke** sync + restore UX forward work).
 - **ADR0009** — **TDD** and **promote-to-live** gate.
 - **ADR0010** — **Monaco** second tab + **cross-tab** sync.
 - **ADR0011** — **Subsystem module contract** (dynamic JS, sandbox).
@@ -73,7 +73,7 @@ The **target** integration point for the dashboard path is a **single orchestrat
 - **Engine** inputs from **SSE** (for example `getin_prompt_ready`, `transcript_delta`, `plan_applied`).
 - **Logical LLM** steps via **`POST /api/autoplay-plan`** and the existing packaging layer ([ADR0004](../decisions/ADR0004-backend-llm-packaging-and-discovery.md)).
 - **GETIN / queue** submission when **browser-orchestrated** autoplay is enabled ([ADR0005](../decisions/ADR0005-browser-orchestrated-autoplay-cognition.md)).
-- **Future / integration:** **Glue** checkpoints persisted through the same store as subsystems ([ADR0006](../decisions/ADR0006-client-sqlite-wal-subsystem-store.md); optional tables not yet added), **sync** lifecycle events ([ADR0008](../decisions/ADR0008-server-subsystem-replica-and-sync.md)), **promote** transitions ([ADR0009](../decisions/ADR0009-tdd-promote-gate-subsystems.md)), and **`BroadcastChannel`** from the workspace tab ([ADR0010](../decisions/ADR0010-monaco-workspace-second-tab-cross-tab-sync.md)) as **typed machine events**, keeping one locus of control instead of scattered booleans.
+- **Future / integration:** **Glue** checkpoints persisted through the same store as subsystems ([ADR0006](../decisions/ADR0006-client-sqlite-wal-subsystem-store.md); optional tables not yet added), **sync** lifecycle **UI / actor events** (server **`POST /api/subsystem-sync`** exists per [ADR0008](../decisions/ADR0008-server-subsystem-replica-and-sync.md); client must call it and map responses to **pending / complete / fork**), **promote** transitions ([ADR0009](../decisions/ADR0009-tdd-promote-gate-subsystems.md)), and **`BroadcastChannel`** from the workspace tab ([ADR0010](../decisions/ADR0010-monaco-workspace-second-tab-cross-tab-sync.md)) as **typed machine events**, keeping one locus of control instead of scattered booleans.
 
 **Sandboxed subsystems** remain **message-passing** peers ([ADR0011](../decisions/ADR0011-subsystem-module-contract-dynamic-js.md)). Development builds may attach **Stately Inspector** or structured `actor.subscribe` logging for legibility ([ADR0005](../decisions/ADR0005-browser-orchestrated-autoplay-cognition.md) risk C). The **production dashboard** should still expose a **dedicated cognition panel** in the map column ([ADR0013](../decisions/ADR0013-dashboard-xstate-cognition-panel.md)) so orchestration state is visible without DevTools.
 
@@ -98,7 +98,7 @@ The **target** integration point for the dashboard path is a **single orchestrat
 
 - **World truth:** `adventure.dat` + binary (unchanged).
 - **Subsystem authority:** Client SQLite (files, revisions, test/promotion rows, **`revision_tags`** — schema v2; see [ADR0007](../decisions/ADR0007-subsystem-revision-control-and-replay.md)) ([ADR0006](../decisions/ADR0006-client-sqlite-wal-subsystem-store.md)). **Inferred glue state** (map, modes, heuristics) for the dashboard path should live in the same durable persistence story — not `sessionStorage` — so multi-tab workspace and reconnect stay consistent ([ADR0005](../decisions/ADR0005-browser-orchestrated-autoplay-cognition.md)).
-- **Replica:** Server SQLite for backup and inspection ([ADR0008](../decisions/ADR0008-server-subsystem-replica-and-sync.md)).
+- **Replica:** Server SQLite for backup and inspection ([ADR0008](../decisions/ADR0008-server-subsystem-replica-and-sync.md)); default path pattern **`adventure-llm/.cache/subsystem-replica/<workspaceId>.db`** (optional env **`ADVENTURE_LLM_SUBSYSTEM_REPLICA_DIR`**).
 - **Logical LLM payloads:** Not persisted as full vendor HTTP bodies in the client; optional debug logs remain governed by existing env ([adventure-engine.md](./adventure-engine.md)).
 
 ## Security considerations

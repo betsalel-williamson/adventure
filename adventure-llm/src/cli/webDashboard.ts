@@ -68,6 +68,11 @@ import {
   type BenchmarkRunConfigJson,
   type BenchmarkRunMetricsJson,
 } from "./benchmarkRunsDb.js";
+import {
+  applySubsystemReplicaSync,
+  getServerSubsystemReplicaStoreForWorkspace,
+  parseSubsystemSyncHttpBody,
+} from "./subsystemServerSync.js";
 import { collectHostRuntimeInfo } from "./hostRuntimeInfo.js";
 import { readGitWorktreeMeta } from "./gitWorktreeMeta.js";
 import {
@@ -796,6 +801,49 @@ export function createAutoplayDashboardServer(
         },
         cookieOpts(sess, newSession),
       );
+      return;
+    }
+
+    if (pathname === "/api/subsystem-sync" && req.method === "POST") {
+      if (sess === undefined) return;
+      try {
+        const body = await readJsonBody(req);
+        const parsed = parseSubsystemSyncHttpBody(body);
+        if (parsed === null) {
+          jsonResponseWithSessionCookie(
+            res,
+            400,
+            {
+              error: "Expected workspaceId, clientHeadRevisionId, revisions[]",
+            },
+            cookieOpts(sess, newSession),
+          );
+          return;
+        }
+        const replica = getServerSubsystemReplicaStoreForWorkspace(
+          packageRoot,
+          parsed.workspaceId,
+        );
+        const sync = applySubsystemReplicaSync(
+          replica.getDatabase(),
+          parsed.input,
+        );
+        jsonResponseWithSessionCookie(
+          res,
+          200,
+          { ok: true, sync },
+          cookieOpts(sess, newSession),
+        );
+      } catch (e) {
+        jsonResponseWithSessionCookie(
+          res,
+          500,
+          {
+            error: e instanceof Error ? e.message : "Subsystem sync failed",
+          },
+          cookieOpts(sess, newSession),
+        );
+      }
       return;
     }
 

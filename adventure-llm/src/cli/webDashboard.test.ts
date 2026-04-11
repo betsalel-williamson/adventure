@@ -8,6 +8,7 @@ import {
   openBenchmarkRunsDb,
   resetBenchmarkRunsDbSingleton,
 } from "./benchmarkRunsDb.js";
+import { resetServerSubsystemReplicaStoreSingletonForTests } from "./subsystemServerSync.js";
 import { collectHostRuntimeInfo } from "./hostRuntimeInfo.js";
 import { readGitWorktreeMeta } from "./gitWorktreeMeta.js";
 import { createAutoplayDashboardServer } from "./webDashboard.js";
@@ -26,7 +27,50 @@ describe("createAutoplayDashboardServer", () => {
     delete process.env.ADVENTURE_LLM_PROMPT_PROJECTS_DIR;
     delete process.env.ADVENTURE_LLM_BENCHMARK_DB;
     delete process.env.ADVENTURE_LLM_BENCHMARK_RUNS;
+    delete process.env.ADVENTURE_LLM_SUBSYSTEM_REPLICA_DIR;
     resetBenchmarkRunsDbSingleton();
+    resetServerSubsystemReplicaStoreSingletonForTests();
+  });
+
+  it("POST /api/subsystem-sync applies a linear batch (ADR0008)", async () => {
+    const replicaDir = mkdtempSync(path.join(tmpdir(), "adv-subrepl-"));
+    process.env.ADVENTURE_LLM_SUBSYSTEM_REPLICA_DIR = replicaDir;
+    const server = testHttpDashboard();
+    await new Promise<void>((resolve) => {
+      server.listen(0, "127.0.0.1", () => resolve());
+    });
+    const addr = server.address();
+    const port =
+      typeof addr === "object" && addr !== null ? addr.port : undefined;
+    expect(port).toBeDefined();
+    const r = await fetch(`http://127.0.0.1:${port}/api/subsystem-sync`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        workspaceId: "ws-dashboard-test",
+        clientHeadRevisionId: 2,
+        revisions: [
+          {
+            id: 2,
+            parentRevisionId: 1,
+            createdAtIso: "2026-04-10T12:00:00.000Z",
+            fileChanges: [{ path: "note.txt", content: "synced" }],
+          },
+        ],
+      }),
+    });
+    expect(r.ok).toBe(true);
+    const j = (await r.json()) as {
+      ok?: boolean;
+      sync?: { status?: string; serverHeadRevisionId?: number };
+    };
+    expect(j.ok).toBe(true);
+    expect(j.sync?.status).toBe("applied");
+    expect(j.sync?.serverHeadRevisionId).toBe(2);
+    await new Promise<void>((resolve, reject) => {
+      server.close((err) => (err ? reject(err) : resolve()));
+    });
+    rmSync(replicaDir, { recursive: true, force: true });
   });
 
   it("GET /api/session includes browserOrchestratedAutoplay", async () => {

@@ -14,7 +14,7 @@ The dashboard **map hero column** (`adventure-llm/public/index.html`, `.map-hero
 1. **Session FSM (Mermaid)** — session-learned **exploration graph** (directed edges, rejected moves, non-move actions); _game-derived_, not the autoplay orchestrator.
 2. **Exploration map** — inferred **(x, y, z)** grid view of the same exploration model.
 
-The **cognition orchestration** machine ([ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md))—`browserAutoplayCognitionMachine` and the imperative `browserAutoplayOrchestrator.js` path—is **orthogonal**: it sequences SSE, `POST /api/autoplay-plan`, GETIN submission, and (as integration completes) sync/promote/subsystem-store events ([ADR0006](ADR0006-client-sqlite-wal-subsystem-store.md), [ADR0007](ADR0007-subsystem-revision-control-and-replay.md), [ADR0008](ADR0008-server-subsystem-replica-and-sync.md), [ADR0009](ADR0009-tdd-promote-gate-subsystems.md)). That deserves its **own** visible surface so it is not confused with the **session exploration FSM**.
+The **cognition orchestration** machine ([ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md))—`browserAutoplayCognitionMachine` and the imperative `browserAutoplayOrchestrator.js` path—is **orthogonal**: it sequences SSE, `POST /api/autoplay-plan`, GETIN submission, and (as integration completes) **client-driven** sync/promote/subsystem-store events from [ADR0006](ADR0006-client-sqlite-wal-subsystem-store.md), [ADR0007](ADR0007-subsystem-revision-control-and-replay.md), [ADR0008](ADR0008-server-subsystem-replica-and-sync.md) (**`POST /api/subsystem-sync`** is implemented server-side; the browser actor still needs to invoke it), and [ADR0009](ADR0009-tdd-promote-gate-subsystems.md). That deserves its **own** visible surface so it is not confused with the **session exploration FSM**.
 
 **Naming:** In UI copy, use labels such as **Cognition** / **Autoplay orchestration** / **Planner FSM**—never “Session FSM” for the XState panel, to avoid clashing with the existing Mermaid card.
 
@@ -59,7 +59,7 @@ Proposed
 - [ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md) — browser orchestration, XState machine, Stately Inspector note
 - [ADR0006](ADR0006-client-sqlite-wal-subsystem-store.md) — subsystem SQLite store module (orchestration may surface head/promote-style events)
 - [ADR0007](ADR0007-subsystem-revision-control-and-replay.md) — tags / replay-at-revision in store (orchestration may surface tag or revert events when wired)
-- [ADR0008](ADR0008-server-subsystem-replica-and-sync.md) — sync lifecycle (when wired into the actor)
+- [ADR0008](ADR0008-server-subsystem-replica-and-sync.md) — sync lifecycle (**HTTP** landed; display **sync pending / fork** when the actor invokes `POST /api/subsystem-sync`)
 - [ADR0009](ADR0009-tdd-promote-gate-subsystems.md) — tests can assert transitions; panel aids manual verification
 - `adventure-llm/public/index.html` — `.map-hero-column-body`, `.map-fsm-card`, `.map-hero`
 - `adventure-llm/public/dashboard.css` — map column layout

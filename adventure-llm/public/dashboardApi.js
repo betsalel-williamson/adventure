@@ -8,6 +8,13 @@ export function createDashboardApi(ports) {
   const { fetch: f } = ports;
   return {
     ensureSession: () => f("/api/session", cred),
+    postSubsystemSync: (body) =>
+      f("/api/subsystem-sync", {
+        ...cred,
+        method: "POST",
+        headers: jsonHeaders,
+        body: JSON.stringify(body),
+      }),
     getAdventureDatabase: () => f("/api/adventure-database", cred),
     postAutoplayPlan: (body) =>
       f("/api/autoplay-plan", {

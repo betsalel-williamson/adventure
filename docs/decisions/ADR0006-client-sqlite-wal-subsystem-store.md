@@ -64,6 +64,7 @@ User explicitly requested **WAL SQLite** with **client authoritative** semantics
 | Store API (`SubsystemWalStore`, `openSubsystemWalStore`, `migrateSubsystemWalStore`) | [`adventure-llm/src/browser/subsystemWalStore.ts`](../../adventure-llm/src/browser/subsystemWalStore.ts)                     |
 | Cross-tab **BroadcastChannel** name and message shapes (MVP)                         | [`adventure-llm/src/browser/subsystemWalChannel.ts`](../../adventure-llm/src/browser/subsystemWalChannel.ts)                 |
 | Automated tests (WAL, revisions, head concurrency, durability; tags / replay / revert per [ADR0007](ADR0007-subsystem-revision-control-and-replay.md)) | [`adventure-llm/src/browser/subsystemWalStore.test.ts`](../../adventure-llm/src/browser/subsystemWalStore.test.ts)           |
+| Server replica apply + `POST /api/subsystem-sync` ([ADR0008](ADR0008-server-subsystem-replica-and-sync.md)) | [`adventure-llm/src/cli/subsystemServerSync.ts`](../../adventure-llm/src/cli/subsystemServerSync.ts), [`webDashboard.ts`](../../adventure-llm/src/cli/webDashboard.ts) |
 
 **Schema:** Migration **v1** — `store_metadata`, `revisions` (linear parent chain), `revision_file_changes` (per-revision path deltas; `NULL` content = delete), `promotion_records` (test/promotion events with JSON detail). Migration **v2** adds **`revision_tags`** (named pointers to revisions; see [ADR0007](ADR0007-subsystem-revision-control-and-replay.md) **Implementation**).
 
@@ -79,5 +80,5 @@ Accepted
 - [`adventure-llm/src/browser/subsystemWalStore.ts`](../../adventure-llm/src/browser/subsystemWalStore.ts) (client subsystem store implementation)
 - [ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md) (browser glue checkpointing uses this store)
 - [ADR0007](ADR0007-subsystem-revision-control-and-replay.md)
-- [ADR0008](ADR0008-server-subsystem-replica-and-sync.md)
+- [ADR0008](ADR0008-server-subsystem-replica-and-sync.md) — server replica + HTTP sync (**Implementation** in ADR0008)
 - [ADR0010](ADR0010-monaco-workspace-second-tab-cross-tab-sync.md) (cross-tab coordination)

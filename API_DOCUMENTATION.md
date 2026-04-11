@@ -11,6 +11,8 @@ The local web server is started with `npm run web` from `adventure-llm/` (or
 
 When **`ADVENTURE_LLM_BROWSER_ORCHESTRATED_AUTOPLAY=1`** is set on the server, the dashboard may use **browser-orchestrated** cognition ([`docs/decisions/ADR0005-browser-orchestrated-autoplay-cognition.md`](docs/decisions/ADR0005-browser-orchestrated-autoplay-cognition.md)): the client builds planner context, calls **`POST /api/autoplay-plan`**, and submits GETIN lines via **`POST /api/autoplay-engine-input`** while the server streams game text over SSE. **`GET /api/session`** includes **`browserOrchestratedAutoplay: true`** when that mode is active.
 
+**Subsystem replica sync** ([`docs/decisions/ADR0008-server-subsystem-replica-and-sync.md`](docs/decisions/ADR0008-server-subsystem-replica-and-sync.md)): after establishing a session cookie, the client may **`POST /api/subsystem-sync`** with workspace-scoped revision batches; the server stores a **better-sqlite3** replica (default under `adventure-llm/.cache/subsystem-replica/`, optional env **`ADVENTURE_LLM_SUBSYSTEM_REPLICA_DIR`**). Does not require browser-orchestrated autoplay env.
+
 ## Static UI
 
 | Method | Path | Notes                                     |
@@ -66,6 +68,47 @@ required. Responses are JSON unless noted.
 ```
 
 `browserOrchestratedAutoplay` is **`true`** when the server was started with **`ADVENTURE_LLM_BROWSER_ORCHESTRATED_AUTOPLAY=1`**.
+
+### `POST /api/subsystem-sync`
+
+**200** — Apply a **client-originated** subsystem history batch to the **server replica** for a workspace ([ADR0008](docs/decisions/ADR0008-server-subsystem-replica-and-sync.md)). Requires the same **`adventure_session`** cookie as other `/api/*` routes (call after **`GET /api/session`** if needed).
+
+Body (minimum shape):
+
+```json
+{
+  "workspaceId": "my-workspace",
+  "clientHeadRevisionId": 2,
+  "revisions": [
+    {
+      "id": 2,
+      "parentRevisionId": 1,
+      "createdAtIso": "2026-04-10T12:00:00.000Z",
+      "fileChanges": [{ "path": "subsystem/foo.js", "content": "// …" }]
+    }
+  ]
+}
+```
+
+Optional per revision: **`tags`** (`name`, `createdAtIso`, `updatedAtIso`), **`promotions`** (`id`, `kind`, `createdAtIso`, `detailJson`) aligned with the client SQLite schema.
+
+**200** response:
+
+```json
+{
+  "ok": true,
+  "sync": {
+    "status": "applied",
+    "serverHeadRevisionId": 2,
+    "appliedRevisionIds": [2],
+    "clientBehindServer": false
+  }
+}
+```
+
+**`sync.status`** is **`applied`** (new rows written), **`noop`** (idempotent retry or no-op; **`clientBehindServer`** may be **`true`** when the batch is empty and the client head is behind the server), or **`fork`** (non-linear history; **`message`** explains the reason). Fork responses are still **HTTP 200** with **`ok: true`** so the client can branch on `sync.status`.
+
+**400** — Invalid body or **`workspaceId`** (must match `[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}`). **500** — Apply failure.
 
 ### `GET /api/autoplay-mode`
 

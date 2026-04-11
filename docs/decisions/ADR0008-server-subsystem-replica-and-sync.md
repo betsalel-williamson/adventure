@@ -18,8 +18,8 @@ If **inferred glue checkpoints** are stored in that client DB ([ADR0005](ADR0005
 
 ## Decision
 
-- After session establishment (`/api/session` or equivalent), run a **subsystem sync** phase: client sends **workspace id**, **last acked revision**, and **deltas** (WAL frames, batched events, or full export if divergence).
-- Server applies updates **idempotently** and returns acknowledgment / `server_head_revision` for diagnostics.
+- After session establishment (`GET /api/session` or equivalent), run a **subsystem sync** phase: client sends **workspace id**, **client head revision id**, and a batch of **revisions** (explicit revision ids, parent ids, file deltas, optional **`revision_tags`** and **`promotion_records`** payloads—same schema as the client store).
+- Server applies updates **idempotently** via **`POST /api/subsystem-sync`** (see **Implementation**) and returns a structured result including **`serverHeadRevisionId`** and **`status`**: **`applied`**, **`noop`** (including **client behind server** when the batch is empty), or **`fork`** (non-linear history).
 - **Default push policy**: when client and server share a **linear** history, **client wins** on push (server does not overwrite newer client revisions with stale server rows).
 
 ### Forks, data loss, and multi-device
@@ -50,14 +50,31 @@ If **inferred glue checkpoints** are stored in that client DB ([ADR0005](ADR0005
 
 User required **WAL SQLite** with **client authoritative** data and **sync to backend on connect**; a replica plus idempotent apply matches that model.
 
+## Implementation
+
+**Location (package [`adventure-llm`](../../adventure-llm/)):**
+
+| Area | Path |
+| ---- | ---- |
+| Sync batch apply (linear push, fork detection, idempotent retries, behind-server noop) + HTTP body parser + workspace id validation | [`adventure-llm/src/cli/subsystemServerSync.ts`](../../adventure-llm/src/cli/subsystemServerSync.ts) |
+| Vitest (apply, fork, behind, tags) | [`adventure-llm/src/cli/subsystemServerSync.test.ts`](../../adventure-llm/src/cli/subsystemServerSync.test.ts) |
+| **`POST /api/subsystem-sync`** route (session cookie; same `/api` session resolution as other dashboard JSON routes) | [`adventure-llm/src/cli/webDashboard.ts`](../../adventure-llm/src/cli/webDashboard.ts) |
+| HTTP integration test | [`adventure-llm/src/cli/webDashboard.test.ts`](../../adventure-llm/src/cli/webDashboard.test.ts) |
+| Client `fetch` helper | [`adventure-llm/public/dashboardApi.js`](../../adventure-llm/public/dashboardApi.js) (`postSubsystemSync`) |
+
+Replica databases use the **same migrations** as the client store ([`subsystemWalStoreMigrations.ts`](../../adventure-llm/src/browser/subsystemWalStoreMigrations.ts)) via `SubsystemWalStore` / `migrateSubsystemWalStore`. Default directory: **`adventure-llm/.cache/subsystem-replica/<workspaceId>.db`**. Override with env **`ADVENTURE_LLM_SUBSYSTEM_REPLICA_DIR`** (absolute or resolved path for the **directory** containing `<workspaceId>.db` files).
+
+**Not in this slice:** browser-side **calling** sync after session (orchestration / XState events for **sync pending / complete / fork** per ADR0005), **restore-from-server** download of a full replica into the client, and **glue snapshot** rows in sync batches (schema for glue in client DB still optional per ADR0006).
+
 ## Status
 
-Proposed
+Accepted
 
 ## References
 
 - `adventure-llm/src/cli/benchmarkRunsDb.ts`
 - `adventure-llm/src/cli/webDashboardSession.ts`
+- [`API_DOCUMENTATION.md`](../../API_DOCUMENTATION.md) — `POST /api/subsystem-sync`
 - [ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md)
 - [ADR0006](ADR0006-client-sqlite-wal-subsystem-store.md)
 - [ADR0007](ADR0007-subsystem-revision-control-and-replay.md)
