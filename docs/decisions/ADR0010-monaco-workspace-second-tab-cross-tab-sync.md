@@ -14,6 +14,8 @@ Monaco Editor is the practical “VS Code–like” surface without hosting full
 
 **SQLite access:** See [ADR0006](ADR0006-client-sqlite-wal-subsystem-store.md)—**OPFS** implies a **single DB owner** (`SharedWorker` **or** exclusive writer tab). **BroadcastChannel** is for **events** (e.g. promoted revision, head changed), **not** a substitute for safe concurrent SQLite access.
 
+**Why not `sessionStorage` for glue:** [ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md) rejects **sessionStorage** / **localStorage** as the authoritative store for **inferred map, inventory, modes** — per-tab isolation breaks Dashboard ↔ Workspace coherence, volatility on tab close defeats durable workspace expectations, and ~5MB caps are too small. **Ephemeral UI** (panel state) may still use `sessionStorage`; **cognitive glue** follows SQLite + OPFS per ADR0006.
+
 ## Decision
 
 - Provide a **dedicated route** (e.g. `public/workspace.html` + `workspace.js`) opened via **“Open workspace in new tab”** (`window.open` or `target=_blank`).
@@ -50,5 +52,6 @@ Proposed
 
 - `adventure-llm/public/index.html`
 - `adventure-llm/src/cli/webDashboardSession.ts`
+- [ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md)
 - [ADR0006](ADR0006-client-sqlite-wal-subsystem-store.md)
 - [ADR0009](ADR0009-tdd-promote-gate-subsystems.md)

@@ -12,9 +12,11 @@
 
 Subsystem code is user-authored JS ([ADR0011](ADR0011-subsystem-module-contract-dynamic-js.md)) stored in SQLite ([ADR0006](ADR0006-client-sqlite-wal-subsystem-store.md)) with revision history ([ADR0007](ADR0007-subsystem-revision-control-and-replay.md)).
 
+The **live** dashboard path will run **browser-orchestrated glue and orchestration** ([ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md)): subsystems plug into that loop. Tests should include **pure glue** tests (transcript slices, state) and **integration** tests that **mock** logical LLM HTTP (e.g. MSW) so promotion is never gated on real provider calls.
+
 ## Decision
 
-- Require **automated tests** to pass before a **candidate revision** can be **promoted** to the **live** runtime that drives cognition ([ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md)).
+- Require **automated tests** to pass before a **candidate revision** can be **promoted** to the **live** runtime that drives **glue and cognition** in the browser ([ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md)).
 - Use **Vitest** for shared Node tests (packaging, pure helpers) and **Vitest browser** or **happy-dom** where appropriate for workspace harness tests; extend `npm test` / `check` so CI enforces green builds.
 - UX: **Run tests** → all pass → **Promote** enabled; failed tests block promotion.
 
@@ -45,6 +47,7 @@ Proposed
 ## References
 
 - `adventure-llm/package.json` (scripts)
+- [ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md)
 - [ADR0006](ADR0006-client-sqlite-wal-subsystem-store.md)
 - [ADR0007](ADR0007-subsystem-revision-control-and-replay.md)
 - [ADR0010](ADR0010-monaco-workspace-second-tab-cross-tab-sync.md)

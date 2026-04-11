@@ -12,6 +12,8 @@
 
 Revision data lives in the client SQLite store ([ADR0006](ADR0006-client-sqlite-wal-subsystem-store.md)). This ADR defines the **VC semantics**, not the storage engine.
 
+**Cognition replay:** “Run cognition as-of revision R” ([ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md)) combines **subsystem file tree at R** with **game/trace inputs**; inferred glue state may be reconstructed from checkpoints + transcript tail per ADR0005 mitigations, not assumed identical to live Fortran truth without validation.
+
 ## Decision
 
 - Use **monotonic revisions** per workspace (integer or ULID); each commit records changed files and a **parent** pointer. Start with a **linear** mainline; a DAG is optional later.
@@ -46,5 +48,6 @@ Proposed
 
 ## References
 
+- [ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md)
 - [ADR0006](ADR0006-client-sqlite-wal-subsystem-store.md)
 - [ADR0009](ADR0009-tdd-promote-gate-subsystems.md)

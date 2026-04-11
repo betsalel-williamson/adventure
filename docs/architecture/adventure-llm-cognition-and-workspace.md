@@ -18,7 +18,7 @@ This document describes the **target architecture** for evolving [`adventure-llm
 
 | Driver | Implication |
 |--------|-------------|
-| **Iteration speed** | Cognition orchestration moves to the browser ([ADR0005](../decisions/ADR0005-browser-orchestrated-autoplay-cognition.md)); Fortran + pool stay on the server. |
+| **Iteration speed** | **Glue** (map/inventory/modes/heuristics over streamed text) moves to the browser ([ADR0005](../decisions/ADR0005-browser-orchestrated-autoplay-cognition.md)); Fortran + pool stay on the server. |
 | **Correctness vs vendors** | Packaging stays centralized in Node; discovery API for authoring UI ([ADR0004](../decisions/ADR0004-backend-llm-packaging-and-discovery.md)). |
 | **Audit and replay** | Subsystem history in **SQLite WAL** on the client; **revisions** and **tags** ([ADR0006](../decisions/ADR0006-client-sqlite-wal-subsystem-store.md), [ADR0007](../decisions/ADR0007-subsystem-revision-control-and-replay.md)). |
 | **Backup** | **Client-authoritative** data; **server replica** + **sync on connect** ([ADR0008](../decisions/ADR0008-server-subsystem-replica-and-sync.md)). |
@@ -30,7 +30,7 @@ This document describes the **target architecture** for evolving [`adventure-llm
 Decisions are recorded in ADRs (not duplicated here). Dependency order for implementation: see [adventure-llm-cognition-adr-index.md](../decisions/adventure-llm-cognition-adr-index.md).
 
 - **ADR0004** — Backend **packaging** + **discovery** API for logical requests.
-- **ADR0005** — **Browser-orchestrated** autoplay cognition loop.
+- **ADR0005** — **Browser-orchestrated** autoplay: client-owned glue state and loop; not “ship `adventure.dat` to the browser” as the primary goal.
 - **ADR0006–ADR0008** — Client **SQLite WAL**, **revision control / replay**, **server replica + sync**.
 - **ADR0009** — **TDD** and **promote-to-live** gate.
 - **ADR0010** — **Monaco** second tab + **cross-tab** sync.
@@ -62,16 +62,18 @@ flowchart TB
   Sqlite -->|"sync_on_session"| Replica
 ```
 
-- **Semantic** assembly (memory, planner content, subsystem hooks) is a **browser** concern once migration is complete for the dashboard path.
+- **Glue** assembly (inferred map, inventory/mode heuristics, planner-facing memory, subsystem hooks) over **streamed text** is a **browser** concern once migration is complete for the dashboard path — distinct from loading the full parsed game database in the client as the simulation authority.
 - **Packaging** (OpenAI chat + `json_schema`, Gemini `responseSchema`, MLX stdio merge rules) remains **Node** ([ADR0004](../decisions/ADR0004-backend-llm-packaging-and-discovery.md)).
 
 ## Process view (target dashboard path)
 
-1. Browser opens SSE for game text; maintains **AutoplaySessionMemory**-equivalent state client-side (or shared library).
+1. Browser opens SSE for game text; maintains **client-authoritative glue state** (directed/inferred map, inventory model, move/search/act (or similar) modes, heuristics) in JavaScript — today partly embodied server-side by types such as `AutoplaySessionMemory` and related NL modules, to be ported or replaced behind a stable client module boundary.
 2. Browser builds **logical** interpret/planner payloads; POSTs to Node; Node **packages** and calls pooled `TextLlm`.
 3. Browser sends GETIN via existing session APIs; Fortran stream returns new text.
 4. Subsystem edits **commit** to client SQLite; **tests** run; **promote** updates live hooks; **BroadcastChannel** notifies the dashboard tab ([ADR0009](../decisions/ADR0009-tdd-promote-gate-subsystems.md), [ADR0010](../decisions/ADR0010-monaco-workspace-second-tab-cross-tab-sync.md)).
 5. On session connect, **subsystem sync** updates server **replica** ([ADR0008](../decisions/ADR0008-server-subsystem-replica-and-sync.md)).
+
+**Reconnect / refresh (glue vs engine):** Tab refresh or reconnect must not assume glue state can be rebuilt by replaying the full transcript (token and latency limits). **Checkpoint inferred glue state** (map, inventory model, modes) to the same **durable client store** (SQLite + OPFS / IndexedDB) as subsystems on each turn, then **hydrate** on load and fetch only a **bounded transcript tail or diff** from the server. Do not use `sessionStorage` as the durable store for that glue — see [ADR0005](../decisions/ADR0005-browser-orchestrated-autoplay-cognition.md) risks and mitigations.
 
 **CLI:** May retain the **legacy** full pipeline in Node ([`cli/main.ts`](../../adventure-llm/src/cli/main.ts)) until explicitly aligned with the shared client library.
 
@@ -83,7 +85,7 @@ flowchart TB
 ## Data view
 
 - **World truth:** `adventure.dat` + binary (unchanged).
-- **Subsystem authority:** Client SQLite (files, revisions, tags, test/promotion metadata) ([ADR0006](../decisions/ADR0006-client-sqlite-wal-subsystem-store.md), [ADR0007](../decisions/ADR0007-subsystem-revision-control-and-replay.md)).
+- **Subsystem authority:** Client SQLite (files, revisions, tags, test/promotion metadata) ([ADR0006](../decisions/ADR0006-client-sqlite-wal-subsystem-store.md), [ADR0007](../decisions/ADR0007-subsystem-revision-control-and-replay.md)). **Inferred glue state** (map, modes, heuristics) for the dashboard path should live in the same durable persistence story — not `sessionStorage` — so multi-tab workspace and reconnect stay consistent ([ADR0005](../decisions/ADR0005-browser-orchestrated-autoplay-cognition.md)).
 - **Replica:** Server SQLite for backup and inspection ([ADR0008](../decisions/ADR0008-server-subsystem-replica-and-sync.md)).
 - **Logical LLM payloads:** Not persisted as full vendor HTTP bodies in the client; optional debug logs remain governed by existing env ([adventure-engine.md](./adventure-engine.md)).
 
@@ -96,6 +98,7 @@ flowchart TB
 ## Operational considerations
 
 - **Observability:** Existing JSONL debug paths apply to Node packaging and Fortran I/O; client may add structured logs for promote/test events (future).
+- **Orchestration UX:** Sequential LLM steps should surface **explicit progress** in the dashboard (e.g. planning vs map update) so latency is legible ([ADR0005](../decisions/ADR0005-browser-orchestrated-autoplay-cognition.md)).
 - **Offline:** Queue subsystem sync when disconnected ([ADR0008](../decisions/ADR0008-server-subsystem-replica-and-sync.md)).
 
 ## References

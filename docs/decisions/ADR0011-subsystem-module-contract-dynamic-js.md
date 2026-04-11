@@ -4,13 +4,15 @@
 
 ### User needs and motivations
 
-- **Authors** want to write **plain JavaScript** subsystems that plug into cognition ([ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md)) with a **small, documented API**—not fork the whole `adventure-llm` repo.
+- **Authors** want to write **plain JavaScript** subsystems that plug into **browser-orchestrated glue and policy** ([ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md))—map/inventory/mode hooks, prompt shaping—with a **small, documented API**—not fork the whole `adventure-llm` repo.
 - **Security-conscious operators** need **sandboxing**: user code must not access Node or arbitrary browser capabilities.
 - **Testability** ([ADR0009](ADR0009-tdd-promote-gate-subsystems.md)) requires a **stable contract** so tests can mock hooks and assert behavior.
 
 ### Technical context
 
 Subsystem sources live in SQLite ([ADR0006](ADR0006-client-sqlite-wal-subsystem-store.md)) and are **materialized** for execution. Optional TypeScript authoring is a separate ADR ([ADR0012](ADR0012-optional-ts-transpile-subsystem-authoring.md)).
+
+Hooks execute in the **sandboxed** contexts below; the **orchestration loop** that calls them lives in the privileged dashboard code path ([ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md)). Integration tests should **mock** logical LLM traffic (e.g. MSW) per ADR0005 / [ADR0009](ADR0009-tdd-promote-gate-subsystems.md).
 
 **Same-origin XSS:** **Pasteable** or **third-party shared** subsystem code must **not** run with access to **cookies**, **storage**, or the **dashboard DOM** on the app origin.
 

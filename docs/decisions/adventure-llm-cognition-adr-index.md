@@ -7,7 +7,7 @@ This index links the split decisions for the thin-backend + browser cognition + 
 **Suggested implementation order** (dependencies first):
 
 1. [ADR0004](ADR0004-backend-llm-packaging-and-discovery.md) — Backend LLM packaging and discovery API  
-2. [ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md) — Browser-orchestrated autoplay cognition loop  
+2. [ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md) — Browser-orchestrated autoplay: **glue** (map, inventory, modes, heuristics) and client state; engine + dat stay server-side  
 3. [ADR0006](ADR0006-client-sqlite-wal-subsystem-store.md) — Client-authoritative SQLite WAL subsystem store  
 4. [ADR0007](ADR0007-subsystem-revision-control-and-replay.md) — Subsystem revision control, tags, and replay  
 5. [ADR0008](ADR0008-server-subsystem-replica-and-sync.md) — Server subsystem replica and sync on connect  
@@ -23,7 +23,7 @@ Parent planning context: Cursor plan `thin_backend_vs_code_prompts_074321ee` (se
 | Plan theme | ADRs |
 |------------|------|
 | Logical LLM API + packaging registry | ADR0004 |
-| Browser autoplay / cognition loop | ADR0005 |
+| Browser autoplay / glue + client cognition loop | ADR0005 |
 | SQLite WAL + VC + replay + sync | ADR0006, ADR0007, ADR0008 |
 | TDD + promote gate | ADR0009 |
 | Monaco second tab + BroadcastChannel | ADR0010 |

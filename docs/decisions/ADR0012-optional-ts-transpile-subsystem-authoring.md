@@ -11,6 +11,8 @@
 
 Transpilation in the browser can use **`typescript.transpileModule`** in a **Worker**, or **esbuild-wasm** for larger trees. Both add payload and CPU cost.
 
+Compiled subsystems remain **inputs to the browser glue/orchestration** story ([ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md)); TS does not change the server/client boundary for LLM packaging ([ADR0004](ADR0004-backend-llm-packaging-and-discovery.md)).
+
 ## Decision
 
 - **Default**: subsystem authoring is **JavaScript** with **JSDoc** for IntelliSense in Monaco.
@@ -43,5 +45,7 @@ Proposed
 
 ## References
 
+- [ADR0004](ADR0004-backend-llm-packaging-and-discovery.md)
+- [ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md)
 - [ADR0010](ADR0010-monaco-workspace-second-tab-cross-tab-sync.md)
 - [ADR0011](ADR0011-subsystem-module-contract-dynamic-js.md)

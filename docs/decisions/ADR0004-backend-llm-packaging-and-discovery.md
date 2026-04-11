@@ -10,7 +10,7 @@
 
 ### Technical context
 
-Today, semantic prompt text and packaging are intertwined in providers under `adventure-llm/src/nl/providers/`. Moving cognition to the browser requires a **clear boundary**: the client sends **logical** requests; the server applies **provider-specific packaging** only.
+Today, semantic prompt text and packaging are intertwined in providers under `adventure-llm/src/nl/providers/`. Moving **orchestration and glue** to the browser ([ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md)) requires a **clear boundary**: the client sends **logical** requests; the server applies **provider-specific packaging** only.
 
 ## Decision
 
@@ -45,7 +45,7 @@ Profiles should include machine-usable constraints so the **workspace** can vali
 
 ## Rationale
 
-Packaging is **integration knowledge** tied to process boundaries and secrets; it belongs on the server. Semantic content is **product behavior** and should evolve in the client subsystem workspace.
+Packaging is **integration knowledge** tied to process boundaries and secrets; it belongs on the server. Semantic content and **glue policy** are **product behavior** and evolve in the browser per [ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md); packaging stays on the server.
 
 ## Status
 
@@ -57,4 +57,4 @@ Proposed
 - `adventure-llm/src/nl/providers/mlxLmStdioTextLlm.ts`
 - `adventure-llm/src/nl/providers/googleGenerativeAiTextLlm.ts`
 - `adventure-llm/src/nl/adventureNlPrompts.ts` (`effectivePlannerSendPayload`)
-- [ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md) (consumer of logical requests)
+- [ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md) (browser builds logical requests after client-side **glue**; Node packages and calls the model)
