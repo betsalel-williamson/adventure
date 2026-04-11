@@ -13,7 +13,7 @@ Today `runAutoplaySessionWithTextLlm` in `autoplayRunner.ts` orchestrates Fortra
 
 **What “cognition” means here (scope):**
 
-- **In scope to move client-side:** the **glue code** built on top of game output — not the Fortran simulation and not the raw `adventure.dat` as the authority for “what the game world is.” Concretely, this includes (today mostly in `adventure-lm/src/nl/`): **directed / inferred graph map**, **inventory heuristics**, **spatial or XYZ-style map reasoning** where present, **rules for switching modes** (e.g. move vs search vs act), object-hint scoping, stagnation/oscillation guards, and any similar **derived state and policy** that turns transcript + history into planner context and the next GETIN.
+- **In scope to move client-side:** the **glue code** built on top of game output — not the Fortran simulation and not the raw `adventure.dat` as the authority for “what the game world is.” Concretely, this includes (today mostly in `adventure-nl/src/nl/`): **directed / inferred graph map**, **inventory heuristics**, **spatial or XYZ-style map reasoning** where present, **rules for switching modes** (e.g. move vs search vs act), object-hint scoping, stagnation/oscillation guards, and any similar **derived state and policy** that turns transcript + history into planner context and the next GETIN.
 - **Explicitly not the goal:** shipping a full **parsed game database** (`adventure.dat` / `loadDatFile` semantics) to the browser so the client “runs” the same data layer as Node. Parser vocabulary and dat-backed features may remain server-side for packaging and validation ([ADR0004](ADR0004-backend-llm-packaging-and-discovery.md)); the **behavioral glue** that consumes **text the server already streams** should live in client JavaScript with **client-authoritative state** for that glue.
 
 **Game truth vs inferred truth:** The server/Fortran process is **authoritative** for simulation. The client maintains an **observer’s mental model** (inferred map, heuristics, modes). Tests should treat glue as **pure logic** over transcript slices where possible, decoupled from engine I/O.
@@ -77,7 +77,7 @@ Today `runAutoplaySessionWithTextLlm` in `autoplayRunner.ts` orchestrates Fortra
 | **Workspace ↔ dashboard**    | **`BroadcastChannel`** messages translate to machine events (hot reload after promote).                                                                                                            | [ADR0010](ADR0010-monaco-workspace-second-tab-cross-tab-sync.md) |
 | **Subsystem sandbox**        | Privileged orchestrator **sends** typed messages; sandbox **returns** results—same mental model as `postMessage`, aligns with [ADR0011](ADR0011-subsystem-module-contract-dynamic-js.md).          | [ADR0011](ADR0011-subsystem-module-contract-dynamic-js.md)       |
 
-**As-built today:** a minimal **`browserAutoplayCognitionMachine`** (XState v5) exists under `adventure-lm/src/browser/autoplayCognitionMachine.ts` (unit-tested); the live **`browserAutoplayOrchestrator.js`** path is still **imperative** and should **converge** on driving (or embedding) that machine so LLM prompt assembly, guards, and engine I/O are not scattered. Optional **Stately Inspector** (or `actor.subscribe` logging) for dev builds only—see [`docs/architecture/adventure-lm-cognition-and-workspace.md`](../architecture/adventure-lm-cognition-and-workspace.md). **In-dashboard** orchestration visibility is specified in [ADR0013](ADR0013-dashboard-xstate-cognition-panel.md) (third card in the map column, distinct from Session FSM Mermaid).
+**As-built today:** a minimal **`browserAutoplayCognitionMachine`** (XState v5) exists under `adventure-nl/src/browser/autoplayCognitionMachine.ts` (unit-tested); the live **`browserAutoplayOrchestrator.js`** path is still **imperative** and should **converge** on driving (or embedding) that machine so LLM prompt assembly, guards, and engine I/O are not scattered. Optional **Stately Inspector** (or `actor.subscribe` logging) for dev builds only—see [`docs/architecture/adventure-nl-cognition-and-workspace.md`](../architecture/adventure-nl-cognition-and-workspace.md). **In-dashboard** orchestration visibility is specified in [ADR0013](ADR0013-dashboard-xstate-cognition-panel.md) (third card in the map column, distinct from Session FSM Mermaid).
 
 ## Rationale
 
@@ -89,13 +89,13 @@ Proposed
 
 ## References
 
-- `adventure-lm/src/cli/autoplayRunner.ts` (CLI / optional server-orchestrated web path)
-- `adventure-lm/src/cli/webDashboard.ts`, `browserEngineBridge.ts`, `engineGetinQueue.ts`
-- `adventure-lm/src/browser/autoplayCognitionMachine.ts`, `cognitionBundle.ts` (esbuild → `public/generated/`)
-- `adventure-lm/public/browserAutoplayOrchestrator.js` (client loop; to align with XState machine)
-- `adventure-lm/src/nl/autoplaySessionMemory.ts` (glue: turn log, heuristics, inferred map inputs)
-- `adventure-lm/src/nl/inferredExplorationMap.ts`, `explorationGraphViz.ts` (graph / map glue)
-- [ADR0014](ADR0014-two-step-lm-glue-package-then-browser.md) — **staged migration** of NL/SLM glue (`vocab`, `text`, `nl/*` interpret/situational/mode policy): **package extract (Node)** then **browser**; complements this ADR’s scope statement
+- `adventure-nl/src/cli/autoplayRunner.ts` (CLI / optional server-orchestrated web path)
+- `adventure-nl/src/cli/webDashboard.ts`, `browserEngineBridge.ts`, `engineGetinQueue.ts`
+- `adventure-nl/src/browser/autoplayCognitionMachine.ts`, `cognitionBundle.ts` (esbuild → `public/generated/`)
+- `adventure-nl/public/browserAutoplayOrchestrator.js` (client loop; to align with XState machine)
+- `adventure-nl/src/nl/autoplaySessionMemory.ts` (glue: turn log, heuristics, inferred map inputs)
+- `adventure-nl/src/nl/inferredExplorationMap.ts`, `explorationGraphViz.ts` (graph / map glue)
+- [ADR0014](ADR0014-two-step-nl-glue-package-then-browser.md) — **staged migration** of NL/SLM glue (`vocab`, `text`, `nl/*` interpret/situational/mode policy): **package extract (Node)** then **browser**; complements this ADR’s scope statement
 - [ADR0004](ADR0004-backend-llm-packaging-and-discovery.md)
 - [ADR0006](ADR0006-client-sqlite-wal-subsystem-store.md) — client SQLite subsystem store (schema + API **implemented**; browser WASM/OPFS + optional glue tables **forward work** — see ADR **Implementation**)
 - [ADR0007](ADR0007-subsystem-revision-control-and-replay.md) — replay semantics with cognition (subsystem tree at R + tags/revert in store — see ADR **Implementation**; typed event replay and UI forward work)

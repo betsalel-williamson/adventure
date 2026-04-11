@@ -1,8 +1,8 @@
-# ADR0002: Constructive phrasing for adventure-lm planner and rules text
+# ADR0002: Constructive phrasing for adventure-nl planner and rules text
 
 ## Context
 
-Autoplay and interpret prompts in `adventure-lm` steer small models (e.g. MLX) toward valid GETIN JSON and sensible play. Early drafts leaned on prohibitive language: “do not repeat,” “avoid LOOK,” “not motion,” long lists of dead ends mixed with imperatives. That style correlates with two problems: models overweight the negated action (same failure mode as “don’t think of a pink elephant”), and prompts read like scolding rather than a clear next step. Separately, a numbered **RECENT MOVES** block in the planner user message primed imitation of the last commands and was removed; prompt copy was updated in the same period to favor constructive instructions.
+Autoplay and interpret prompts in `adventure-nl` steer small models (e.g. MLX) toward valid GETIN JSON and sensible play. Early drafts leaned on prohibitive language: “do not repeat,” “avoid LOOK,” “not motion,” long lists of dead ends mixed with imperatives. That style correlates with two problems: models overweight the negated action (same failure mode as “don’t think of a pink elephant”), and prompts read like scolding rather than a clear next step. Separately, a numbered **RECENT MOVES** block in the planner user message primed imitation of the last commands and was removed; prompt copy was updated in the same period to favor constructive instructions.
 
 ## Decision
 
@@ -23,7 +23,7 @@ Autoplay and interpret prompts in `adventure-lm` steer small models (e.g. MLX) t
 - **Positive:** Prompts read as actionable checklists; less accidental priming of forbidden tokens; easier to extend with new “prefer X when Y” lines.
 - **Negative:** Occasional redundancy between sections (**Try next** vs **EXPLORATION MAP**); longer positive sentences; reviewers must still verify that prohibitive constraints remain where the parser requires them.
 - **Operational:** Planner user messages no longer include `### RECENT MOVES` / `## Turn log`; state comes from **AT THIS NODE**, map lines, **CANDIDATES**, and **LOCAL SESSION MAP**.
-- **Browser-orchestrated autoplay** ([ADR0005](./ADR0005-browser-orchestrated-autoplay-cognition.md)): the **same** constructive copy and planner assembly rules apply; the **caller** moves from in-process Node to the **client** (logical `plannerUserPrompt` → `POST /api/autoplay-plan`). Prompt authors should assume **one orchestration hub** sequences interpret/planner steps and surfaces progress—see that ADR and [`docs/architecture/adventure-lm-cognition-and-workspace.md`](../architecture/adventure-lm-cognition-and-workspace.md).
+- **Browser-orchestrated autoplay** ([ADR0005](./ADR0005-browser-orchestrated-autoplay-cognition.md)): the **same** constructive copy and planner assembly rules apply; the **caller** moves from in-process Node to the **client** (logical `plannerUserPrompt` → `POST /api/autoplay-plan`). Prompt authors should assume **one orchestration hub** sequences interpret/planner steps and surfaces progress—see that ADR and [`docs/architecture/adventure-nl-cognition-and-workspace.md`](../architecture/adventure-nl-cognition-and-workspace.md).
 
 ## Rationale
 
@@ -35,9 +35,9 @@ Accepted.
 
 ## References
 
-- [ADR0001-adventure-lm-text-llm-providers.md](./ADR0001-adventure-lm-text-llm-providers.md) — provider and pipeline context for the same package.
+- [ADR0001-adventure-nl-text-llm-providers.md](./ADR0001-adventure-nl-text-llm-providers.md) — provider and pipeline context for the same package.
 - [ADR0005-browser-orchestrated-autoplay-cognition.md](./ADR0005-browser-orchestrated-autoplay-cognition.md) — client-owned loop; prompts unchanged in spirit, packaging still server-side ([ADR0004](./ADR0004-backend-llm-packaging-and-discovery.md)).
-- [adventure-lm/src/nl/adventureNlPrompts.ts](../../adventure-lm/src/nl/adventureNlPrompts.ts) — `ADVENTURE_LM_PARSER_TOKEN_RULES`, MLX system/task blocks, `linesForAutoplayPlannerContextBody`.
-- [adventure-lm/src/nl/autoplaySessionMemory.ts](../../adventure-lm/src/nl/autoplaySessionMemory.ts) — planner user assembly, alerts, **CURRENT SESSION** framing (no numbered turn log in planner body).
-- [adventure-lm/src/nl/inferredExplorationMap.ts](../../adventure-lm/src/nl/inferredExplorationMap.ts) — `formatPromptLines`, `graphEdgeLabelFromCommand`.
-- [guidelines/adventure-lm/autoplay-planner-context.md](../../guidelines/adventure-lm/autoplay-planner-context.md) — autoplay modes and prompt hygiene (if present).
+- [adventure-nl/src/nl/adventureNlPrompts.ts](../../adventure-nl/src/nl/adventureNlPrompts.ts) — `ADVENTURE_NL_PARSER_TOKEN_RULES`, MLX system/task blocks, `linesForAutoplayPlannerContextBody`.
+- [adventure-nl/src/nl/autoplaySessionMemory.ts](../../adventure-nl/src/nl/autoplaySessionMemory.ts) — planner user assembly, alerts, **CURRENT SESSION** framing (no numbered turn log in planner body).
+- [adventure-nl/src/nl/inferredExplorationMap.ts](../../adventure-nl/src/nl/inferredExplorationMap.ts) — `formatPromptLines`, `graphEdgeLabelFromCommand`.
+- [guidelines/adventure-nl/autoplay-planner-context.md](../../guidelines/adventure-nl/autoplay-planner-context.md) — autoplay modes and prompt hygiene (if present).

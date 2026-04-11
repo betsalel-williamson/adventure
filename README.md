@@ -1,10 +1,12 @@
 # adventure
 
 **Classic Colossal Cave Adventure, restored for modern Fortran, plus optional
-TypeScript + language-model tooling** that can drive autoplay and stream a local web
-dashboard (transcript, inferred map, session diagram).
+TypeScript tooling** (natural-language play, text-model backends, autoplay, and a
+local web dashboard: transcript, inferred map, session diagram).
 
-![Adventure LM autoplay web dashboard: transcript, state panels, map, and Mermaid FSM](docs/adventure-lm-dashboard.png)
+![Autoplay web dashboard: transcript, state panels, map, and Mermaid FSM](docs/adventure-nl-dashboard.png)
+
+**Naming:** In this repo, **NL** means **natural language** (free-form player text mapped to parser tokens, plus prompts and planner glue). The TypeScript package directory is **`adventure-nl/`**; environment variables for that stack use the prefix **`ADVENTURE_NL_`** (see `adventure-nl/.env.example`). Backends are still **text / language models** (Gemini, MLX, OpenAI-compatible HTTP)—the **`-nl`** suffix marks the **natural-language product surface**, not the model family.
 
 ## The problem
 
@@ -15,17 +17,18 @@ see structure, state, or how an AI agent reasons move-by-move.
 ## The solution
 
 This repository ships a **buildable Fortran port** (same `adventure.dat`
-mechanics) and, in [`adventure-lm/`](adventure-lm/), an **optional layer** that
-uses the compiled game as an oracle: scripted GETIN-compatible play, optional
-natural-language mapping, and a **local autoplay dashboard** with SSE updates.
+mechanics) and, in [`adventure-nl/`](adventure-nl/) (**NL** = **natural language**;
+see note above), an **optional layer** that uses the compiled game as an oracle:
+scripted GETIN-compatible play, optional natural-language mapping, and a
+**local autoplay dashboard** with SSE updates.
 
 ## Tech stack
 
 - **Fortran 77** — game engine (`gfortran`, `make`)
-- **TypeScript / Node 20+** — `adventure-lm` CLI, tests (Vitest), local HTTP
+- **TypeScript / Node 20+** — `adventure-nl` CLI, tests (Vitest), local HTTP
   dashboard (static ES modules)
 - **Optional text models** — Google Gemini, local MLX weights, or OpenAI-compatible HTTP (hosted LLMs or smaller local models)
-  (see [`adventure-lm/.env.example`](adventure-lm/.env.example))
+  (see [`adventure-nl/.env.example`](adventure-nl/.env.example))
 
 ## Quick start
 
@@ -41,7 +44,7 @@ make
 **Autoplay web dashboard** (needs Node + a configured text-model backend):
 
 ```sh
-make install-lm
+make install-nl
 make run-autoplay-web
 ```
 

@@ -1,12 +1,12 @@
 /adventure
-/adventure-lm/node_modules/
-/adventure-lm/dist/
+/adventure-nl/node_modules/
+/adventure-nl/dist/
 # esbuild output (npm run build → scripts/bundle-browser-cognition.mjs)
-/adventure-lm/public/generated/
-/adventure-lm/reports/
-/adventure-lm/.env
-/adventure-lm/.env.local
-/adventure-lm/.cache/
-/adventure-lm/.prompt-projects/
-/adventure-lm/.venv/
+/adventure-nl/public/generated/
+/adventure-nl/reports/
+/adventure-nl/.env
+/adventure-nl/.env.local
+/adventure-nl/.cache/
+/adventure-nl/.prompt-projects/
+/adventure-nl/.venv/
 sample-code/

@@ -48,13 +48,13 @@ Accepted
 
 ## Implementation
 
-- **Gate logic (pure):** [`adventure-lm/src/browser/subsystemPromoteGate.ts`](../../adventure-lm/src/browser/subsystemPromoteGate.ts) — `revisionHasQualifyingTestPass`, `assertRevisionEligibleForLiveTag`, `LivePromotionBlockedError`.
-- **Tests:** [`adventure-lm/src/browser/subsystemPromoteGate.test.ts`](../../adventure-lm/src/browser/subsystemPromoteGate.test.ts); integration in [`subsystemWalStore.test.ts`](../../adventure-lm/src/browser/subsystemWalStore.test.ts) and [`subsystemServerSync.test.ts`](../../adventure-lm/src/cli/subsystemServerSync.test.ts).
+- **Gate logic (pure):** [`adventure-nl/src/browser/subsystemPromoteGate.ts`](../../adventure-nl/src/browser/subsystemPromoteGate.ts) — `revisionHasQualifyingTestPass`, `assertRevisionEligibleForLiveTag`, `LivePromotionBlockedError`.
+- **Tests:** [`adventure-nl/src/browser/subsystemPromoteGate.test.ts`](../../adventure-nl/src/browser/subsystemPromoteGate.test.ts); integration in [`subsystemWalStore.test.ts`](../../adventure-nl/src/browser/subsystemWalStore.test.ts) and [`subsystemServerSync.test.ts`](../../adventure-nl/src/cli/subsystemServerSync.test.ts).
 - **Enforcement:** `SubsystemWalStore.putRevisionTag` blocks tag `live` without a qualifying `test_pass` promotion on that revision; `applySubsystemReplicaSync` applies the same rule server-side (promotion rows are applied before tags). `/api/subsystem-sync` returns **400** when the gate throws.
 
 ## References
 
-- `adventure-lm/package.json` (scripts)
+- `adventure-nl/package.json` (scripts)
 - [ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md)
 - [ADR0006](ADR0006-client-sqlite-wal-subsystem-store.md) (`promotion_records` and store API — see ADR **Implementation**)
 - [ADR0007](ADR0007-subsystem-revision-control-and-replay.md) (`materializeReplayFiles`, `appendRevisionReverting`, tags — see ADR **Implementation**; **Run tests** then **Promote** UX still forward work)

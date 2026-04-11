@@ -10,7 +10,7 @@
 
 ### Technical context
 
-Today, semantic prompt text and packaging are intertwined in providers under `adventure-lm/src/nl/providers/`. Moving **orchestration and glue** to the browser ([ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md)) requires a **clear boundary**: the client sends **logical** requests; the server applies **provider-specific packaging** only.
+Today, semantic prompt text and packaging are intertwined in providers under `adventure-nl/src/nl/providers/`. Moving **orchestration and glue** to the browser ([ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md)) requires a **clear boundary**: the client sends **logical** requests; the server applies **provider-specific packaging** only.
 
 ## Decision
 
@@ -49,16 +49,16 @@ What the repository **implements today**, so this ADR is not mistaken for unfini
 
 | ADR requirement | Status | Notes |
 |-----------------|--------|--------|
-| **Logical request shape** (interpret vs planner, system/user, repair tail, schema modes) | **Implemented** | `PlannerUserPromptInput`, `InterpretPlayerInputOptions`, and `planAutoplay` / `interpretPlayerInput` options on [`TextLlm`](../../adventure-lm/src/nl/textLlmContract.ts). Interpret vs planner is expressed as methods + options, not a single HTTP DTO (internal contract today). |
-| **Packaging centralized in Node** | **Implemented** | Providers under `adventure-lm/src/nl/providers/` and [`effectivePlannerSendPayload`](../../adventure-lm/src/nl/adventureNlPrompts.ts) (and related helpers). |
-| **Runtime discovery for clients** | **Implemented** | [`buildLlmPackagingDiscoveryPayload`](../../adventure-lm/src/nl/llmPackagingProfile.ts); returned on **`GET /api/text-llm`** as `packaging` ([`webDashboard.ts`](../../adventure-lm/src/cli/webDashboard.ts)). A separate `GET /api/llm/packaging` is optional; extending `/api/text-llm` satisfies the ADR. |
-| **Discovery:** limits tied to packager code paths | **Implemented** | [`llmPackagingConstants.ts`](../../adventure-lm/src/nl/llmPackagingConstants.ts) and profile `limits` / `interpretRecentGameTextMaxChars`. |
-| **Discovery:** JSON schema dialect / wire kind per mode | **Implemented** | `jsonSchemaByMode` and `LlmJsonSchemaWireKind`; HTTP OpenAI JSON Schema reflects `ADVENTURE_LM_HTTP_JSON_SCHEMA` at runtime. |
+| **Logical request shape** (interpret vs planner, system/user, repair tail, schema modes) | **Implemented** | `PlannerUserPromptInput`, `InterpretPlayerInputOptions`, and `planAutoplay` / `interpretPlayerInput` options on [`TextLlm`](../../adventure-nl/src/nl/textLlmContract.ts). Interpret vs planner is expressed as methods + options, not a single HTTP DTO (internal contract today). |
+| **Packaging centralized in Node** | **Implemented** | Providers under `adventure-nl/src/nl/providers/` and [`effectivePlannerSendPayload`](../../adventure-nl/src/nl/adventureNlPrompts.ts) (and related helpers). |
+| **Runtime discovery for clients** | **Implemented** | [`buildLlmPackagingDiscoveryPayload`](../../adventure-nl/src/nl/llmPackagingProfile.ts); returned on **`GET /api/text-llm`** as `packaging` ([`webDashboard.ts`](../../adventure-nl/src/cli/webDashboard.ts)). A separate `GET /api/llm/packaging` is optional; extending `/api/text-llm` satisfies the ADR. |
+| **Discovery:** limits tied to packager code paths | **Implemented** | [`llmPackagingConstants.ts`](../../adventure-nl/src/nl/llmPackagingConstants.ts) and profile `limits` / `interpretRecentGameTextMaxChars`. |
+| **Discovery:** JSON schema dialect / wire kind per mode | **Implemented** | `jsonSchemaByMode` and `LlmJsonSchemaWireKind`; HTTP OpenAI JSON Schema reflects `ADVENTURE_NL_HTTP_JSON_SCHEMA` at runtime. |
 | **Discovery:** enum of `schemaMode` ids | **Implemented** | `supportedSchemaModeIds`: `interpret`, `planner`. |
 | **Profiles per `providerId` / `modelId`** | **Partial** | Profiles are **per `providerId` only** (`byProvider.mlx` / `http` / `google`). **`modelId` does not** vary packaging limits in discovery; the JSON response includes `current.modelId` for UI context. Extend if per-model limits are required. |
 | **HTTP: client sends logical body only; server packages** | **Not implemented** (follows [ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md)) | Planner/interpret **prompt assembly** for autoplay still runs in Node (`autoplayRunner` / cognition). A **`POST`** that accepts logical fields and calls `planAutoplay` is the natural API when the browser owns glue. |
-| **Clear errors when logical request cannot be packaged** | **Partial** | Transport and LLM errors ([`llmErrors.ts`](../../adventure-lm/src/nl/llmErrors.ts)); no dedicated **pre-flight** validation that rejects an oversized or invalid logical payload with a stable 4xx + structured reason before the provider. |
-| **Tests** | **Implemented** | [`llmPackagingProfile.test.ts`](../../adventure-lm/src/nl/llmPackagingProfile.test.ts); [`webDashboard.test.ts`](../../adventure-lm/src/cli/webDashboard.test.ts) asserts `GET /api/text-llm` includes `packaging`. |
+| **Clear errors when logical request cannot be packaged** | **Partial** | Transport and LLM errors ([`llmErrors.ts`](../../adventure-nl/src/nl/llmErrors.ts)); no dedicated **pre-flight** validation that rejects an oversized or invalid logical payload with a stable 4xx + structured reason before the provider. |
+| **Tests** | **Implemented** | [`llmPackagingProfile.test.ts`](../../adventure-nl/src/nl/llmPackagingProfile.test.ts); [`webDashboard.test.ts`](../../adventure-nl/src/cli/webDashboard.test.ts) asserts `GET /api/text-llm` includes `packaging`. |
 
 ## Rationale
 
@@ -70,8 +70,8 @@ Proposed
 
 ## References
 
-- `adventure-lm/src/nl/providers/httpOpenAiCompatibleTextLlm.ts`
-- `adventure-lm/src/nl/providers/mlxLmStdioTextLlm.ts`
-- `adventure-lm/src/nl/providers/googleGenerativeAiTextLlm.ts`
-- `adventure-lm/src/nl/adventureNlPrompts.ts` (`effectivePlannerSendPayload`)
+- `adventure-nl/src/nl/providers/httpOpenAiCompatibleTextLlm.ts`
+- `adventure-nl/src/nl/providers/mlxLmStdioTextLlm.ts`
+- `adventure-nl/src/nl/providers/googleGenerativeAiTextLlm.ts`
+- `adventure-nl/src/nl/adventureNlPrompts.ts` (`effectivePlannerSendPayload`)
 - [ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md) (browser builds logical requests after client-side **glue**; Node packages and calls the model)
