@@ -63,9 +63,9 @@ User explicitly requested **WAL SQLite** with **client authoritative** semantics
 | Migrations (`user_version`), exported SQL for WASM bootstrap                         | [`adventure-llm/src/browser/subsystemWalStoreMigrations.ts`](../../adventure-llm/src/browser/subsystemWalStoreMigrations.ts) |
 | Store API (`SubsystemWalStore`, `openSubsystemWalStore`, `migrateSubsystemWalStore`) | [`adventure-llm/src/browser/subsystemWalStore.ts`](../../adventure-llm/src/browser/subsystemWalStore.ts)                     |
 | Cross-tab **BroadcastChannel** name and message shapes (MVP)                         | [`adventure-llm/src/browser/subsystemWalChannel.ts`](../../adventure-llm/src/browser/subsystemWalChannel.ts)                 |
-| Automated tests (WAL, revisions, head concurrency, durability)                       | [`adventure-llm/src/browser/subsystemWalStore.test.ts`](../../adventure-llm/src/browser/subsystemWalStore.test.ts)           |
+| Automated tests (WAL, revisions, head concurrency, durability; tags / replay / revert per [ADR0007](ADR0007-subsystem-revision-control-and-replay.md)) | [`adventure-llm/src/browser/subsystemWalStore.test.ts`](../../adventure-llm/src/browser/subsystemWalStore.test.ts)           |
 
-**Schema (v1):** `store_metadata`, `revisions` (linear parent chain), `revision_file_changes` (per-revision path deltas; `NULL` content = delete), `promotion_records` (test/promotion events with JSON detail).
+**Schema:** Migration **v1** — `store_metadata`, `revisions` (linear parent chain), `revision_file_changes` (per-revision path deltas; `NULL` content = delete), `promotion_records` (test/promotion events with JSON detail). Migration **v2** adds **`revision_tags`** (named pointers to revisions; see [ADR0007](ADR0007-subsystem-revision-control-and-replay.md) **Implementation**).
 
 **Not in this slice:** lazy-loaded WASM bundle in the dashboard, OPFS path selection, `SharedWorker` as sole DB owner, and optional glue-snapshot tables ([ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md))—those remain forward work on top of this module.
 

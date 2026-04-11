@@ -10,7 +10,7 @@
 
 ### Technical context
 
-Revision data lives in the client SQLite store ([ADR0006](ADR0006-client-sqlite-wal-subsystem-store.md); **Implementation** lists schema paths under `adventure-llm/src/browser/`). This ADR defines the **VC semantics** (tags, replay UX), not the storage engine; linear revisions and file trees at a revision are already modeled in the ADR0006 store API.
+Revision data lives in the client SQLite store ([ADR0006](ADR0006-client-sqlite-wal-subsystem-store.md); **Implementation** lists schema paths under `adventure-llm/src/browser/`). **Tags**, **replay materialization**, and **non-destructive revert** are implemented in that module (see **Implementation** below). **Dashboard UX** (history list, diffs, tag management UI) and orchestration wiring (run tests as-of `revision_id`, then promote per [ADR0009](ADR0009-tdd-promote-gate-subsystems.md)) remain forward work on top of the store API.
 
 **Cognition replay:** “Run cognition as-of revision R” ([ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md)) combines **subsystem file tree at R** with **game/trace inputs**; inferred glue state may be reconstructed from checkpoints + transcript tail per ADR0005 mitigations, not assumed identical to live Fortran truth without validation.
 
@@ -38,15 +38,32 @@ Revision data lives in the client SQLite store ([ADR0006](ADR0006-client-sqlite-
 
 **Negative**
 
-- UI work for history, diff, and tag management.
+- UI work for history, diff, and tag management (store APIs exist; presentation does not).
 
 ## Rationale
 
 User asked for VC **best practices** and **replay**; linear immutable revisions with tags are the smallest model that satisfies audit and debugging needs.
 
+## Implementation
+
+**Location (package [`adventure-llm`](../../adventure-llm/)):**
+
+| Capability | Store API (see [`subsystemWalStore.ts`](../../adventure-llm/src/browser/subsystemWalStore.ts)) |
+| ---------- | ------------------------------------------------------------------------------------------------ |
+| **Tags** | `putRevisionTag`, `getRevisionTag`, `listRevisionTags`, `deleteRevisionTag` |
+| **Replay (materialize tree at R)** | `materializeReplayFiles` (same snapshot as `getFilesAtRevision`; explicit entry for cognition orchestration) |
+| **Revert (no history rewrite)** | `appendRevisionReverting` — appends a revision that restores paths touched in a given revision to their **parent-of-that-revision** state |
+| **Lineage helper** | `getParentRevisionId` |
+
+**Schema:** `revision_tags` table (migration v2 in [`subsystemWalStoreMigrations.ts`](../../adventure-llm/src/browser/subsystemWalStoreMigrations.ts)); `SUBSYSTEM_WAL_STORE_SCHEMA_VERSION` is **2**.
+
+**Tests:** [`subsystemWalStore.test.ts`](../../adventure-llm/src/browser/subsystemWalStore.test.ts) (ADR0007 behaviors under describe `subsystemWalStore revision tags and replay`).
+
+**Not in this slice:** workspace/dashboard UI for tags and history, `BroadcastChannel` notifications for tag changes ([ADR0010](ADR0010-monaco-workspace-second-tab-cross-tab-sync.md)), and glue **event** replay beyond subsystem file trees ([ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md)).
+
 ## Status
 
-Proposed
+Accepted
 
 ## References
 

@@ -71,7 +71,7 @@ Today `runAutoplaySessionWithTextLlm` in `autoplayRunner.ts` orchestrates Fortra
 | Concern                      | How an actor-style model helps                                                                                                                                                                     | Linked ADRs                                                      |
 | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
 | **Durable glue checkpoints** | Transitions can **invoke** “persist snapshot” after a committed turn; state survives refresh when SQLite hydrate completes ([ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md) risk A). | [ADR0006](ADR0006-client-sqlite-wal-subsystem-store.md)          |
-| **Replay / time travel**     | Record **events** (not only snapshots) for “cognition as-of revision R”.                                                                                                                           | [ADR0007](ADR0007-subsystem-revision-control-and-replay.md)      |
+| **Replay / time travel**     | Subsystem **files** at R are materialized via the store ([ADR0007](ADR0007-subsystem-revision-control-and-replay.md) **Implementation**). Record **events** (not only snapshots) for full fidelity “same cognition sequence” replay. | [ADR0007](ADR0007-subsystem-revision-control-and-replay.md)      |
 | **Sync lifecycle**           | **Sync pending / complete / fork** become explicit states or deferred actors—not ad-hoc flags.                                                                                                     | [ADR0008](ADR0008-server-subsystem-replica-and-sync.md)          |
 | **Promote gate**             | **Promoted** revision → `reload live hooks` event into the same machine (or child actor).                                                                                                          | [ADR0009](ADR0009-tdd-promote-gate-subsystems.md)                |
 | **Workspace ↔ dashboard**    | **`BroadcastChannel`** messages translate to machine events (hot reload after promote).                                                                                                            | [ADR0010](ADR0010-monaco-workspace-second-tab-cross-tab-sync.md) |
@@ -97,7 +97,7 @@ Proposed
 - `adventure-llm/src/nl/inferredExplorationMap.ts`, `explorationGraphViz.ts` (graph / map glue)
 - [ADR0004](ADR0004-backend-llm-packaging-and-discovery.md)
 - [ADR0006](ADR0006-client-sqlite-wal-subsystem-store.md) — client SQLite subsystem store (schema + API **implemented**; browser WASM/OPFS + optional glue tables **forward work** — see ADR **Implementation**)
-- [ADR0007](ADR0007-subsystem-revision-control-and-replay.md) — replay semantics with cognition
+- [ADR0007](ADR0007-subsystem-revision-control-and-replay.md) — replay semantics with cognition (subsystem tree at R + tags/revert in store — see ADR **Implementation**; typed event replay and UI forward work)
 - [ADR0008](ADR0008-server-subsystem-replica-and-sync.md) — sync may include glue rows in client DB
 - [ADR0009](ADR0009-tdd-promote-gate-subsystems.md) — tests + MSW before promote
 - [ADR0010](ADR0010-monaco-workspace-second-tab-cross-tab-sync.md) — second tab, `BroadcastChannel`, SharedWorker note

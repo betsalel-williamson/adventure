@@ -10,7 +10,7 @@
 
 ### Technical context
 
-The client SQLite database is **authoritative** ([ADR0006](ADR0006-client-sqlite-wal-subsystem-store.md) — store module and migrations in `adventure-llm/src/browser/`). The server maintains a **replica** (e.g. `better-sqlite3` under `adventure-llm`, similar to `benchmarkRunsDb.ts`).
+The client SQLite database is **authoritative** ([ADR0006](ADR0006-client-sqlite-wal-subsystem-store.md) — store module and migrations in `adventure-llm/src/browser/`). **Tag rows** (`revision_tags`, [ADR0007](ADR0007-subsystem-revision-control-and-replay.md)) are part of the same client-originated state and should replicate with subsystem revisions in sync batches. The server maintains a **replica** (e.g. `better-sqlite3` under `adventure-llm`, similar to `benchmarkRunsDb.ts`).
 
 If **inferred glue checkpoints** are stored in that client DB ([ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md), [ADR0006](ADR0006-client-sqlite-wal-subsystem-store.md)), sync batches should treat them like other client-originated rows: **idempotent** apply, clear conflict rules, and optional **privacy/size** limits if glue snapshots grow large.
 

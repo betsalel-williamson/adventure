@@ -56,5 +56,5 @@ Proposed
 
 - [ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md)
 - [ADR0006](ADR0006-client-sqlite-wal-subsystem-store.md) (file revisions persisted via store module — see ADR **Implementation**)
-- [ADR0007](ADR0007-subsystem-revision-control-and-replay.md)
+- [ADR0007](ADR0007-subsystem-revision-control-and-replay.md) (materialize-at-revision, tags — see ADR **Implementation**)
 - [ADR0009](ADR0009-tdd-promote-gate-subsystems.md)

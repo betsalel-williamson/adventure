@@ -19,6 +19,11 @@ export type PromotionEventRow = {
   readonly detail: unknown;
 };
 
+export type RevisionTagRow = {
+  readonly name: string;
+  readonly revisionId: number;
+};
+
 /**
  * Client-authoritative subsystem history in SQLite WAL mode (ADR0006).
  * Node/tests use better-sqlite3 on a temp file; the browser should run the same
@@ -143,6 +148,123 @@ export class SubsystemWalStore {
       createdAtIso: r.created_at_iso,
       detail: JSON.parse(r.detail_json) as unknown,
     }));
+  }
+
+  /**
+   * ADR0007: Named pointer to a revision (e.g. release tag). Upserts by name.
+   */
+  putRevisionTag(input: {
+    readonly name: string;
+    readonly revisionId: number;
+  }): void {
+    this.assertRevisionExists(input.revisionId);
+    const now = new Date().toISOString();
+    this.db
+      .prepare(
+        `INSERT INTO revision_tags (name, revision_id, created_at_iso, updated_at_iso)
+         VALUES (@name, @revisionId, @now, @now)
+         ON CONFLICT(name) DO UPDATE SET
+           revision_id = excluded.revision_id,
+           updated_at_iso = excluded.updated_at_iso`,
+      )
+      .run({
+        name: input.name,
+        revisionId: input.revisionId,
+        now,
+      });
+  }
+
+  /** ADR0007: Resolve a tag name to a revision id, if present. */
+  getRevisionTag(name: string): number | undefined {
+    const row = this.db
+      .prepare(`SELECT revision_id FROM revision_tags WHERE name = ?`)
+      .get(name) as { readonly revision_id: number } | undefined;
+    return row?.revision_id;
+  }
+
+  /** ADR0007: List all tags (stable order by name). */
+  listRevisionTags(): readonly RevisionTagRow[] {
+    const rows = this.db
+      .prepare(`SELECT name, revision_id FROM revision_tags ORDER BY name ASC`)
+      .all() as ReadonlyArray<{
+      readonly name: string;
+      readonly revision_id: number;
+    }>;
+    return rows.map((r) => ({
+      name: r.name,
+      revisionId: r.revision_id,
+    }));
+  }
+
+  /** ADR0007: Remove a tag. Returns whether a row was deleted. */
+  deleteRevisionTag(name: string): boolean {
+    const result = this.db
+      .prepare(`DELETE FROM revision_tags WHERE name = ?`)
+      .run(name);
+    return result.changes > 0;
+  }
+
+  /**
+   * ADR0007: Materialize the subsystem file tree at a revision for cognition replay
+   * (same snapshot as {@link getFilesAtRevision}; explicit entry point for orchestration).
+   */
+  materializeReplayFiles(revisionId: number): Map<string, string> {
+    return this.getFilesAtRevision(revisionId);
+  }
+
+  /**
+   * ADR0007: Append a revision that restores every path touched in `revisionId` to its
+   * state in the parent of `revisionId` (inverse of that revision's file delta), without
+   * rewriting history.
+   */
+  appendRevisionReverting(input: {
+    readonly expectedHeadRevisionId: number;
+    readonly revisionId: number;
+  }): number {
+    const parentId = this.getParentRevisionId(input.revisionId);
+    if (parentId === null) {
+      throw new Error(
+        "SubsystemWalStore: cannot revert the root revision (no parent)",
+      );
+    }
+    const rows = this.db
+      .prepare(
+        `SELECT path FROM revision_file_changes WHERE revision_id = ? ORDER BY path ASC`,
+      )
+      .all(input.revisionId) as ReadonlyArray<{ readonly path: string }>;
+    const filesAtParent = this.getFilesAtRevision(parentId);
+    const changes: SubsystemFileChange[] = rows.map((r) => {
+      const content = filesAtParent.get(r.path);
+      return {
+        path: r.path,
+        content: content === undefined ? null : content,
+      };
+    });
+    return this.appendRevision({
+      expectedHeadRevisionId: input.expectedHeadRevisionId,
+      changes,
+    });
+  }
+
+  private assertRevisionExists(revisionId: number): void {
+    const row = this.db
+      .prepare(`SELECT 1 AS ok FROM revisions WHERE id = ?`)
+      .get(revisionId) as { readonly ok: number } | undefined;
+    if (!row) {
+      throw new Error(`SubsystemWalStore: unknown revision ${revisionId}`);
+    }
+  }
+
+  getParentRevisionId(revisionId: number): number | null {
+    const row = this.db
+      .prepare(`SELECT parent_revision_id FROM revisions WHERE id = ?`)
+      .get(revisionId) as
+      | { readonly parent_revision_id: number | null }
+      | undefined;
+    if (!row) {
+      throw new Error(`SubsystemWalStore: unknown revision ${revisionId}`);
+    }
+    return row.parent_revision_id;
   }
 
   private revisionChainRootTo(revisionId: number): number[] {

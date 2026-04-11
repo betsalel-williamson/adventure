@@ -4,7 +4,7 @@
  */
 
 /** Monotonic migration id; bump when adding a new `MIGRATION_SQL` entry. */
-export const SUBSYSTEM_WAL_STORE_SCHEMA_VERSION = 1 as const;
+export const SUBSYSTEM_WAL_STORE_SCHEMA_VERSION = 2 as const;
 
 /**
  * Ordered migrations: index i applies version i+1 (PRAGMA user_version becomes i+1).
@@ -43,8 +43,18 @@ export const SUBSYSTEM_WAL_STORE_MIGRATIONS: readonly string[] = [
 
     CREATE INDEX IF NOT EXISTS idx_promotion_records_revision ON promotion_records(revision_id);
   `,
+  `
+    CREATE TABLE IF NOT EXISTS revision_tags (
+      name TEXT PRIMARY KEY NOT NULL,
+      revision_id INTEGER NOT NULL REFERENCES revisions(id),
+      created_at_iso TEXT NOT NULL,
+      updated_at_iso TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_revision_tags_revision ON revision_tags(revision_id);
+  `,
 ];
 
-/** Single concatenated script for consumers that apply one shot (e.g. wasm bootstrap). */
+/** All migrations concatenated for one-shot bootstrap (e.g. wasm); name kept for callers. */
 export const SUBSYSTEM_WAL_STORE_MIGRATION_SQL_V1 =
   SUBSYSTEM_WAL_STORE_MIGRATIONS.join("\n");

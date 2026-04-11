@@ -151,3 +151,166 @@ describe("subsystemWalStore (ADR0006)", () => {
     again.close();
   });
 });
+
+describe("subsystemWalStore revision tags and replay (ADR0007)", () => {
+  const tempPaths: string[] = [];
+
+  afterEach(() => {
+    for (const p of tempPaths) {
+      try {
+        fs.unlinkSync(p);
+      } catch {
+        /* ignore */
+      }
+      try {
+        fs.unlinkSync(`${p}-wal`);
+      } catch {
+        /* ignore */
+      }
+      try {
+        fs.unlinkSync(`${p}-shm`);
+      } catch {
+        /* ignore */
+      }
+    }
+    tempPaths.length = 0;
+  });
+
+  function openTaggedStore(): SubsystemWalStore {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "subsystem-wal-tag-"));
+    const dbPath = path.join(dir, "subsystem.db");
+    tempPaths.push(dbPath);
+    return openSubsystemWalStore(dbPath);
+  }
+
+  it("stores a tag as a named pointer to a revision and resolves it", () => {
+    const store = openTaggedStore();
+    store.appendRevision({
+      expectedHeadRevisionId: 1,
+      changes: [{ path: "x.js", content: "v1" }],
+    });
+    store.putRevisionTag({
+      name: "baseline-before-map-change",
+      revisionId: 2,
+    });
+    expect(store.getRevisionTag("baseline-before-map-change")).toBe(2);
+    const listed = store.listRevisionTags();
+    expect(listed).toEqual([
+      { name: "baseline-before-map-change", revisionId: 2 },
+    ]);
+    store.close();
+  });
+
+  it("updates a tag to point at a new revision without rewriting history", () => {
+    const store = openTaggedStore();
+    store.appendRevision({
+      expectedHeadRevisionId: 1,
+      changes: [{ path: "a.js", content: "1" }],
+    });
+    store.putRevisionTag({ name: "release-2026-04", revisionId: 2 });
+    store.appendRevision({
+      expectedHeadRevisionId: 2,
+      changes: [{ path: "a.js", content: "2" }],
+    });
+    store.putRevisionTag({ name: "release-2026-04", revisionId: 3 });
+    expect(store.getHeadRevisionId()).toBe(3);
+    expect(store.getRevisionTag("release-2026-04")).toBe(3);
+    expect(store.getFilesAtRevision(2).get("a.js")).toBe("1");
+    store.close();
+  });
+
+  it("rejects tagging a revision that does not exist", () => {
+    const store = openTaggedStore();
+    expect(() =>
+      store.putRevisionTag({ name: "nope", revisionId: 999 }),
+    ).toThrow(/unknown revision/i);
+    store.close();
+  });
+
+  it("deletes a tag and persists across reopen", () => {
+    const dir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "subsystem-wal-tag-del-"),
+    );
+    const dbPath = path.join(dir, "subsystem.db");
+    tempPaths.push(dbPath);
+    const store = openSubsystemWalStore(dbPath);
+    store.putRevisionTag({ name: "t", revisionId: 1 });
+    expect(store.deleteRevisionTag("t")).toBe(true);
+    expect(store.deleteRevisionTag("t")).toBe(false);
+    store.close();
+
+    const again = openSubsystemWalStore(dbPath);
+    expect(again.getRevisionTag("t")).toBeUndefined();
+    again.close();
+  });
+
+  it("materializeReplayFiles returns the same tree as getFilesAtRevision", () => {
+    const store = openTaggedStore();
+    store.appendRevision({
+      expectedHeadRevisionId: 1,
+      changes: [{ path: "m.js", content: "replay" }],
+    });
+    const viaReplay = store.materializeReplayFiles(2);
+    const viaGet = store.getFilesAtRevision(2);
+    expect([...viaReplay.entries()].sort()).toEqual(
+      [...viaGet.entries()].sort(),
+    );
+    store.close();
+  });
+
+  it("appendRevisionReverting adds a new revision that restores paths to parent-of-R state", () => {
+    const store = openTaggedStore();
+    store.appendRevision({
+      expectedHeadRevisionId: 1,
+      changes: [
+        { path: "a.txt", content: "old" },
+        { path: "b.txt", content: "gone-soon" },
+      ],
+    });
+    store.appendRevision({
+      expectedHeadRevisionId: 2,
+      changes: [
+        { path: "a.txt", content: "new" },
+        { path: "b.txt", content: null },
+      ],
+    });
+    const headBefore = store.getHeadRevisionId();
+    const rev4 = store.appendRevisionReverting({
+      expectedHeadRevisionId: headBefore,
+      revisionId: 3,
+    });
+    expect(rev4).toBe(4);
+    const files = store.getFilesAtRevision(4);
+    expect(files.get("a.txt")).toBe("old");
+    expect(files.has("b.txt")).toBe(true);
+    expect(files.get("b.txt")).toBe("gone-soon");
+    expect(store.getFilesAtRevision(3).get("a.txt")).toBe("new");
+    store.close();
+  });
+
+  it("rejects reverting the root bootstrap revision", () => {
+    const store = openTaggedStore();
+    expect(() =>
+      store.appendRevisionReverting({
+        expectedHeadRevisionId: 1,
+        revisionId: 1,
+      }),
+    ).toThrow(/root/i);
+    store.close();
+  });
+
+  it("rejects revert when expected head does not match", () => {
+    const store = openTaggedStore();
+    store.appendRevision({
+      expectedHeadRevisionId: 1,
+      changes: [{ path: "z.js", content: "" }],
+    });
+    expect(() =>
+      store.appendRevisionReverting({
+        expectedHeadRevisionId: 1,
+        revisionId: 2,
+      }),
+    ).toThrow(/head/i);
+    store.close();
+  });
+});

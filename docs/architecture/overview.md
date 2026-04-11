@@ -6,7 +6,7 @@ This directory holds **project-level** architecture views for the Colossal Cave 
 
 ## Current direction (adventure-llm)
 
-**Target architecture** (client-side **glue** over streamed text, thin backend for Fortran + `adventure.dat` + model pool + LLM packaging, subsystem workspace with SQLite and ADR0004–ADR0012) is summarized in **[adventure-llm-cognition-and-workspace.md](./adventure-llm-cognition-and-workspace.md)**. **[ADR0006](./decisions/ADR0006-client-sqlite-wal-subsystem-store.md)** subsystem store (schema + API) is **implemented** under `adventure-llm/src/browser/`; browser WASM/OPFS wiring remains forward work per that ADR. **[adventure-engine.md](./adventure-engine.md)** below remains the **as-built** description of the package until each migration step lands; read both when changing `adventure-llm`.
+**Target architecture** (client-side **glue** over streamed text, thin backend for Fortran + `adventure.dat` + model pool + LLM packaging, subsystem workspace with SQLite and ADR0004–ADR0012) is summarized in **[adventure-llm-cognition-and-workspace.md](./adventure-llm-cognition-and-workspace.md)**. **[ADR0006](./decisions/ADR0006-client-sqlite-wal-subsystem-store.md)** subsystem store (schema + API) and **[ADR0007](./decisions/ADR0007-subsystem-revision-control-and-replay.md)** tags / replay / revert APIs are **implemented** under `adventure-llm/src/browser/`; browser WASM/OPFS wiring and VC dashboard UX remain forward work per those ADRs. **[adventure-engine.md](./adventure-engine.md)** below remains the **as-built** description of the package until each migration step lands; read both when changing `adventure-llm`.
 
 ## Documents
 
