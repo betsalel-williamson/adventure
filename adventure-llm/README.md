@@ -20,6 +20,8 @@ npm run build
 
 `npm run build` also emits the **browser cognition** bundle (esbuild) to **`public/generated/`** (gitignored artifacts; see [`docs/decisions/ADR0005-browser-orchestrated-autoplay-cognition.md`](../docs/decisions/ADR0005-browser-orchestrated-autoplay-cognition.md)).
 
+The **subsystem SQLite WAL store** ([`docs/decisions/ADR0006-client-sqlite-wal-subsystem-store.md`](../docs/decisions/ADR0006-client-sqlite-wal-subsystem-store.md)) lives under **`src/browser/`** (`subsystemWalStore*.ts`, `subsystemWalChannel.ts`); Vitest covers it with **`better-sqlite3`** on a temp file. Browser WASM/OPFS integration is forward work per that ADR.
+
 ### Autoplay web dashboard
 
 After `make` at the repo root (so `../adventure` exists), from **`adventure-llm/`**:

@@ -16,7 +16,7 @@ Compiled subsystems remain **inputs to the browser glue/orchestration** story ([
 ## Decision
 
 - **Default**: subsystem authoring is **JavaScript** with **JSDoc** for IntelliSense in Monaco.
-- **Optional** (feature-flagged): allow `.ts` files in the workspace; transpile in a **Worker** before dynamic import; store **both** source and last-known-good emit in SQLite **or** emit on the fly only—**finalize** with performance tests.
+- **Optional** (feature-flagged): allow `.ts` files in the workspace; transpile in a **Worker** before dynamic import; store **both** source and last-known-good emit in the client SQLite subsystem store ([ADR0006](ADR0006-client-sqlite-wal-subsystem-store.md)) **or** emit on the fly only—**finalize** with performance tests.
 - If TS support is deferred, this ADR remains **proposed** until JS contract is stable.
 
 ## Alternatives considered
@@ -47,5 +47,6 @@ Proposed
 
 - [ADR0004](ADR0004-backend-llm-packaging-and-discovery.md)
 - [ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md)
+- [ADR0006](ADR0006-client-sqlite-wal-subsystem-store.md) (subsystem persistence)
 - [ADR0010](ADR0010-monaco-workspace-second-tab-cross-tab-sync.md)
 - [ADR0011](ADR0011-subsystem-module-contract-dynamic-js.md)

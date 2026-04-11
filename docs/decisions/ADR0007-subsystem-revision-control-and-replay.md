@@ -10,7 +10,7 @@
 
 ### Technical context
 
-Revision data lives in the client SQLite store ([ADR0006](ADR0006-client-sqlite-wal-subsystem-store.md)). This ADR defines the **VC semantics**, not the storage engine.
+Revision data lives in the client SQLite store ([ADR0006](ADR0006-client-sqlite-wal-subsystem-store.md); **Implementation** lists schema paths under `adventure-llm/src/browser/`). This ADR defines the **VC semantics** (tags, replay UX), not the storage engine; linear revisions and file trees at a revision are already modeled in the ADR0006 store API.
 
 **Cognition replay:** “Run cognition as-of revision R” ([ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md)) combines **subsystem file tree at R** with **game/trace inputs**; inferred glue state may be reconstructed from checkpoints + transcript tail per ADR0005 mitigations, not assumed identical to live Fortran truth without validation.
 

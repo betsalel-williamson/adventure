@@ -20,7 +20,7 @@ IndexedDB-only blob storage lacks relational queries for revisions, tags, and fi
 
 ## Decision
 
-- Store subsystem **files**, **revisions**, **metadata**, and **test/promotion records** in a **client-side SQLite** database opened in the browser via a **WASM** stack (e.g. wa-sqlite + OPFS, or sql.js with persistence — **finalize in implementation** with integration tests).
+- Store subsystem **files**, **revisions**, **metadata**, and **test/promotion records** in a **client-side SQLite** database opened in the browser via a **WASM** stack (e.g. wa-sqlite + OPFS, or sql.js with persistence). The **schema, migrations, and store API** are implemented in-repo (see **Implementation** below); **Vitest** exercises the same SQL and WAL behavior via **`better-sqlite3`** on a temp file. **Browser** integration loads WASM SQLite, runs the exported migration SQL, and attaches to OPFS (or chosen VFS)—that wiring is **forward work**, not duplicated here.
 - **Optionally extend the same database** (or a clearly versioned sibling schema) to persist **inferred glue snapshots** and reconnect cursors per [ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md) — exact tables TBD; principle is **one durable store**, not parallel ad-hoc browser storage.
 - Enable **WAL** where the chosen stack supports it; checkpoint semantics inform replay and sync.
 - Treat this database as the **source of truth** for subsystem content; server replica is derived.
@@ -54,13 +54,29 @@ IndexedDB-only blob storage lacks relational queries for revisions, tags, and fi
 
 User explicitly requested **WAL SQLite** with **client authoritative** semantics; SQLite delivers structured history in one embedded format shared conceptually with the server replica.
 
+## Implementation
+
+**Location (package [`adventure-llm`](../../adventure-llm/)):**
+
+| Area                                                                                 | Path                                                                                                                         |
+| ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| Migrations (`user_version`), exported SQL for WASM bootstrap                         | [`adventure-llm/src/browser/subsystemWalStoreMigrations.ts`](../../adventure-llm/src/browser/subsystemWalStoreMigrations.ts) |
+| Store API (`SubsystemWalStore`, `openSubsystemWalStore`, `migrateSubsystemWalStore`) | [`adventure-llm/src/browser/subsystemWalStore.ts`](../../adventure-llm/src/browser/subsystemWalStore.ts)                     |
+| Cross-tab **BroadcastChannel** name and message shapes (MVP)                         | [`adventure-llm/src/browser/subsystemWalChannel.ts`](../../adventure-llm/src/browser/subsystemWalChannel.ts)                 |
+| Automated tests (WAL, revisions, head concurrency, durability)                       | [`adventure-llm/src/browser/subsystemWalStore.test.ts`](../../adventure-llm/src/browser/subsystemWalStore.test.ts)           |
+
+**Schema (v1):** `store_metadata`, `revisions` (linear parent chain), `revision_file_changes` (per-revision path deltas; `NULL` content = delete), `promotion_records` (test/promotion events with JSON detail).
+
+**Not in this slice:** lazy-loaded WASM bundle in the dashboard, OPFS path selection, `SharedWorker` as sole DB owner, and optional glue-snapshot tables ([ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md))—those remain forward work on top of this module.
+
 ## Status
 
-Proposed
+Accepted
 
 ## References
 
-- `adventure-llm/src/cli/benchmarkRunsDb.ts` (server SQLite patterns)
+- `adventure-llm/src/cli/benchmarkRunsDb.ts` (server SQLite + WAL patterns)
+- [`adventure-llm/src/browser/subsystemWalStore.ts`](../../adventure-llm/src/browser/subsystemWalStore.ts) (client subsystem store implementation)
 - [ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md) (browser glue checkpointing uses this store)
 - [ADR0007](ADR0007-subsystem-revision-control-and-replay.md)
 - [ADR0008](ADR0008-server-subsystem-replica-and-sync.md)
