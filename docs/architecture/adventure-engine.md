@@ -4,6 +4,10 @@
 
 This document describes the logical structure of the [`adventure-llm`](../../adventure-llm/) TypeScript package: loading the unchanged Crowther `adventure.dat`, driving the built Fortran [`adventure`](../../adventure) binary for subprocess parity, and optional layers for **natural-language interpretation** (multiple LLM backends), **autoplay**, and **imagery**. NL and imagery are **presentation and input** layers; they do not replace the simulation.
 
+### Direction of travel (target architecture)
+
+The repository is moving toward **browser-orchestrated cognition** for the web dashboard, a **thin Node layer** for Fortran + model pooling + **LLM packaging**, and a **versioned subsystem workspace** (see [adventure-llm-cognition-and-workspace.md](./adventure-llm-cognition-and-workspace.md) and [ADR0004–ADR0012](../decisions/adventure-llm-cognition-adr-index.md)). **This document** remains the reference for **how the package is structured today** (Node-driven autoplay loop, current dashboard behavior, CLI) until those changes land; when they do, sections here should be updated to avoid drift.
+
 ## Business and system context
 
 - **Classic core**: Colossal Cave Adventure semantics as shipped in this repository.
@@ -129,6 +133,7 @@ After generation, **post-processing is identical** (`finalizeInterpretedCommand`
 
 ## References
 
+- [adventure-llm-cognition-and-workspace.md](./adventure-llm-cognition-and-workspace.md) — target architecture for browser cognition and subsystem workspace (see ADR index).
 - [`adventure.f`](../../adventure.f) — reference engine implementation.
 - [adventure-fortran-engine.md](./adventure-fortran-engine.md) — `adventure.dat` schema and Fortran loop.
 - [ADR0001: adventure-llm TextLlm providers](../decisions/ADR0001-adventure-llm-text-llm-providers.md) — NL pipeline and cache decisions.

@@ -314,6 +314,40 @@ export function createPromptLab(ports, el) {
         .catch(() => setStatus(el.promptProjectStatusEl, "Save failed.", true));
     });
 
+    el.promptProjectDuplicateBtn?.addEventListener("click", () => {
+      const id = el.promptProjectSelectEl?.value?.trim();
+      if (!id) {
+        setStatus(
+          el.promptProjectStatusEl,
+          "Select a project to duplicate.",
+          true,
+        );
+        return;
+      }
+      const name =
+        globalThis.prompt?.("New project name", "Copy")?.trim() || "Copy";
+      void cf(`/api/prompt-projects/${encodeURIComponent(id)}/duplicate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      })
+        .then(async (r) => {
+          if (!r.ok) {
+            setStatus(el.promptProjectStatusEl, "Duplicate failed.", true);
+            return;
+          }
+          const j = await r.json();
+          await refreshProjectList();
+          if (el.promptProjectSelectEl && j.id) {
+            el.promptProjectSelectEl.value = j.id;
+          }
+          setStatus(el.promptProjectStatusEl, "Duplicated.", false);
+        })
+        .catch(() =>
+          setStatus(el.promptProjectStatusEl, "Duplicate failed.", true),
+        );
+    });
+
     el.promptProjectDeleteBtn?.addEventListener("click", () => {
       const id = el.promptProjectSelectEl?.value?.trim();
       if (!id) return;

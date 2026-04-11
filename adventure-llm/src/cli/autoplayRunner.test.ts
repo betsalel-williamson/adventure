@@ -5,7 +5,9 @@ import type {
   InterpretedCommand,
 } from "../nl/schema.js";
 import {
+  DEFAULT_AUTOPLAY_MAX_MOVES,
   getTextLlmAccessor,
+  resolveAutoplayMaxMoves,
   resolveAutoplayPromptLayout,
 } from "./autoplayRunner.js";
 
@@ -23,6 +25,16 @@ function fakeLlm(modelId: string): TextLlm {
     generateUnstructured: async () => "",
   };
 }
+
+describe("resolveAutoplayMaxMoves", () => {
+  it("defaults to DEFAULT_AUTOPLAY_MAX_MOVES when env unset", () => {
+    const prev = process.env.ADVENTURE_LLM_AUTOPLAY_MAX_MOVES;
+    delete process.env.ADVENTURE_LLM_AUTOPLAY_MAX_MOVES;
+    expect(resolveAutoplayMaxMoves()).toBe(DEFAULT_AUTOPLAY_MAX_MOVES);
+    if (prev === undefined) delete process.env.ADVENTURE_LLM_AUTOPLAY_MAX_MOVES;
+    else process.env.ADVENTURE_LLM_AUTOPLAY_MAX_MOVES = prev;
+  });
+});
 
 describe("resolveAutoplayPromptLayout", () => {
   it("returns repair window consistent with compact flag", () => {

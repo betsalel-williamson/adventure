@@ -77,8 +77,10 @@
                 </button>
               </div>
               <p class="small muted">
-                Saved presets (prompt patch + generation params + subsystem
-                stubs).
+                Saved presets (prompt patch, generation params, max steps,
+                strategy id, optional env allowlist, tags). Use tags like
+                <span class="mono">team:</span>, <span class="mono">model:</span>,
+                <span class="mono">mode:explore</span>.
               </p>
               <label class="prompt-lab-label"
                 >Active
@@ -93,6 +95,9 @@
                 <button type="button" id="prompt-project-save-disk">
                   Save to disk
                 </button>
+                <button type="button" id="prompt-project-duplicate">
+                  Duplicate
+                </button>
                 <button type="button" id="prompt-project-delete">Delete</button>
               </div>
               <p
@@ -100,6 +105,22 @@
                 class="small muted"
                 aria-live="polite"
               ></p>
+            </section>
+
+            <section class="panel" aria-label="Benchmark leaderboard">
+              <h2>Leaderboard</h2>
+              <p class="small muted">
+                Local runs from SQLite (<code>ADVENTURE_LLM_BENCHMARK_RUNS</code>).
+                Set <code>ADVENTURE_LLM_BENCHMARK_EVENT_ID</code> to scope rows.
+              </p>
+              <button type="button" id="benchmark-leaderboard-refresh">
+                Refresh
+              </button>
+              <pre
+                id="benchmark-leaderboard-pre"
+                class="mono small"
+                style="max-height: 12rem; overflow: auto; white-space: pre-wrap"
+              ></pre>
             </section>
 
             <section
@@ -275,7 +296,7 @@
                       </div>
                       <label
                         class="autoplay-pace-label"
-                        title="Delay between autoplay moves. Slowest (3000ms) through fastest (100ms). Saved automatically; applies to the running session."
+                        title="Delay between autoplay moves. None (0ms) for benchmarks; then slowest (3000ms) through fastest (100ms). Saved automatically."
                       >
                         Pace
                         <select
@@ -295,7 +316,7 @@
                           min="1"
                           max="1000000"
                           step="1"
-                          value="300"
+                          value="120"
                           class="autoplay-pace-input"
                         />
                       </label>
@@ -862,13 +883,15 @@
     <template id="help-tpl-prompt-projects">
       <div class="help-dialog-prose">
         <p>
-          <strong>Projects</strong> are named presets stored in the browser:
-          prompt-lab patch fields, LLM generation parameters, and related
-          subsystem stubs. Use <strong>Active</strong> /
-          <strong>Load</strong> to apply one to the live dashboard;
-          <strong>New</strong>, <strong>Save to disk</strong>, and
-          <strong>Delete</strong> manage the list (exports/imports depend on how
-          the server exposes project files).
+          <strong>Projects</strong> are JSON files under
+          <code>.prompt-projects/</code> (or
+          <code>ADVENTURE_LLM_PROMPT_PROJECTS_DIR</code>): prompt-lab patch,
+          generation parameters, optional <strong>max steps</strong>,
+          <strong>strategy</strong> id (<code>default</code>,
+          <code>explore</code>, <code>full</code>), allowlisted env overrides,
+          and tags. <strong>Load</strong> applies a project;
+          <strong>Duplicate</strong> forks with a new id;
+          <strong>Save to disk</strong> overwrites the selected file.
         </p>
       </div>
     </template>

@@ -4,11 +4,16 @@
 
 This directory holds **project-level** architecture views for the Colossal Cave Adventure codebase: the Fortran engine and data file, and the optional `adventure-llm` TypeScript package that wraps the binary with natural language, autoplay, and related tooling.
 
+## Current direction (adventure-llm)
+
+**Target architecture** (browser cognition, thin backend for Fortran + model pool + LLM packaging, subsystem workspace with SQLite and ADR0004–ADR0012) is summarized in **[adventure-llm-cognition-and-workspace.md](./adventure-llm-cognition-and-workspace.md)**. **[adventure-engine.md](./adventure-engine.md)** below remains the **as-built** description of the package until each migration step lands; read both when changing `adventure-llm`.
+
 ## Documents
 
 | Document                                                                                             | Scope                                                                                                                                                                                                                   |
 | ---------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [adventure-engine.md](./adventure-engine.md)                                                         | **`adventure-llm`**: dat loading, subprocess driver, `TextLlm` providers, NL pipeline, cache, CLI interactive vs autoplay, autoplay prompt modes (`explore` / `full`), session memory + guards, web dashboard, imagery. |
+| [adventure-llm-cognition-and-workspace.md](./adventure-llm-cognition-and-workspace.md)                | **Direction of travel** for `adventure-llm`: browser cognition, workspace, client SQLite + sync, packaging API; points to ADR0004–ADR0012.                                                                              |
+| [adventure-engine.md](./adventure-engine.md)                                                         | **`adventure-llm` (as built today)**: dat loading, subprocess driver, `TextLlm` providers, NL pipeline, cache, CLI interactive vs autoplay, autoplay prompt modes (`explore` / `full`), session memory + guards, web dashboard, imagery. |
 | [adventure-fortran-engine.md](./adventure-fortran-engine.md)                                         | **`adventure.f`** and **`adventure.dat`** only: loader, in-memory model, GETIN / ATAB, turn loop.                                                                                                                       |
 | [ADR0001: adventure-llm TextLlm providers](../decisions/ADR0001-adventure-llm-text-llm-providers.md) | Decision record: unified post-parse pipeline, interpret cache keys, interactive session prefix, HTTP retries, debug truncation.                                                                                         |
 

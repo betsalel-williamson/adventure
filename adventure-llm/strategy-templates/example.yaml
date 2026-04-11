@@ -1,0 +1,21 @@
+# Example strategy / project template (human-editable).
+# Import into `.prompt-projects/` via copy-paste or a future CLI; shape matches PromptProjectRecord v2.
+
+version: 1
+project:
+  name: Example benchmark profile
+  description: Duplicate in the UI, then tune tags and envAllowlist.
+  maxMoves: 120
+  tags:
+    - team:example
+    - mode:explore
+    - provider:mlx
+  strategy:
+    id: explore
+  envAllowlist:
+    ADVENTURE_LLM_COMPACT_PROMPTS: "1"
+  subsystemToggles:
+    graph: true
+    xyz: true
+    inventory: true
+    reactionLedger: false

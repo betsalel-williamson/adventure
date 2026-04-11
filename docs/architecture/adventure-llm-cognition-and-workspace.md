@@ -1,0 +1,106 @@
+# Adventure-llm: browser cognition, subsystem workspace, and thin backend (direction of travel)
+
+## Introduction
+
+This document describes the **target architecture** for evolving [`adventure-llm`](../../adventure-llm/): moving **semantic** autoplay and interpret **policy** (prompt structures, session memory strategy, subsystem hooks) to the **browser**, while the **Node** layer focuses on **Fortran session I/O**, **pooled connections** to local and remote **text models**, and **LLM request packaging** (vendor-specific wire formats). Authors gain a **workspace** (Monaco, optional second tab) with **versioned subsystems**, **TDD with a promote-to-live gate**, and **client-authoritative SQLite** synced to a **server replica** on connect.
+
+**Scope:** Strategic direction and boundaries. **As-built** behavior of the package today remains documented in [adventure-engine.md](./adventure-engine.md) until each migration lands.
+
+**Related decisions:** [ADR0004](../decisions/ADR0004-backend-llm-packaging-and-discovery.md) through [ADR0012](../decisions/ADR0012-optional-ts-transpile-subsystem-authoring.md), indexed under [adventure-llm-cognition-adr-index.md](../decisions/adventure-llm-cognition-adr-index.md).
+
+## Business and system context
+
+- **Classic core** (unchanged): Crowther `adventure.dat` and the built `./adventure` binary drive ground-truth simulation ([adventure-fortran-engine.md](./adventure-fortran-engine.md)).
+- **Enhancement (direction):** Experimenters iterate **how** NL and autoplay behave—prompt layout, memory heuristics, subsystem code—**without** redeploying Node or duplicating vendor API rules in the client. The backend stays responsible for **correct** mapping from **logical** LLM requests to each provider’s API ([ADR0004](../decisions/ADR0004-backend-llm-packaging-and-discovery.md)).
+- **Users** of the web dashboard edit subsystems in a **workspace** tab; **promotion** to the live runtime requires **tests** to pass ([ADR0009](../decisions/ADR0009-tdd-promote-gate-subsystems.md)).
+
+## Architectural drivers
+
+| Driver | Implication |
+|--------|-------------|
+| **Iteration speed** | Cognition orchestration moves to the browser ([ADR0005](../decisions/ADR0005-browser-orchestrated-autoplay-cognition.md)); Fortran + pool stay on the server. |
+| **Correctness vs vendors** | Packaging stays centralized in Node; discovery API for authoring UI ([ADR0004](../decisions/ADR0004-backend-llm-packaging-and-discovery.md)). |
+| **Audit and replay** | Subsystem history in **SQLite WAL** on the client; **revisions** and **tags** ([ADR0006](../decisions/ADR0006-client-sqlite-wal-subsystem-store.md), [ADR0007](../decisions/ADR0007-subsystem-revision-control-and-replay.md)). |
+| **Backup** | **Client-authoritative** data; **server replica** + **sync on connect** ([ADR0008](../decisions/ADR0008-server-subsystem-replica-and-sync.md)). |
+| **Safety** | **Promote** only after green tests; sandboxed **dynamic ES modules** ([ADR0009](../decisions/ADR0009-tdd-promote-gate-subsystems.md), [ADR0011](../decisions/ADR0011-subsystem-module-contract-dynamic-js.md)). |
+| **Editor UX** | Monaco in a **second tab**; **BroadcastChannel** for live notifications ([ADR0010](../decisions/ADR0010-monaco-workspace-second-tab-cross-tab-sync.md)). |
+
+## Architectural decisions (summary)
+
+Decisions are recorded in ADRs (not duplicated here). Dependency order for implementation: see [adventure-llm-cognition-adr-index.md](../decisions/adventure-llm-cognition-adr-index.md).
+
+- **ADR0004** — Backend **packaging** + **discovery** API for logical requests.
+- **ADR0005** — **Browser-orchestrated** autoplay cognition loop.
+- **ADR0006–ADR0008** — Client **SQLite WAL**, **revision control / replay**, **server replica + sync**.
+- **ADR0009** — **TDD** and **promote-to-live** gate.
+- **ADR0010** — **Monaco** second tab + **cross-tab** sync.
+- **ADR0011** — **Subsystem module contract** (dynamic JS, sandbox).
+- **ADR0012** — **Optional** in-browser TypeScript for authoring.
+
+## Logical view
+
+```mermaid
+flowchart TB
+  subgraph browser [Browser]
+    Dash[Dashboard_tab]
+    Ws[Workspace_Monaco_tab]
+    Sqlite[Client_SQLite_WAL]
+    Cognition[Cognition_runtime]
+    Dash --> Cognition
+    Ws --> Sqlite
+    Cognition --> Sqlite
+  end
+  subgraph node [Node_adventure_llm]
+    Fortran[Fortran_subprocess]
+    Pool[Text_model_pool]
+    Pack[LLM_packaging_per_provider]
+    Replica[Subsystem_replica_SQLite]
+  end
+  Cognition -->|"logical_LLM_request"| Pack
+  Pack --> Pool
+  Cognition -->|"GETIN_SSE"| Fortran
+  Sqlite -->|"sync_on_session"| Replica
+```
+
+- **Semantic** assembly (memory, planner content, subsystem hooks) is a **browser** concern once migration is complete for the dashboard path.
+- **Packaging** (OpenAI chat + `json_schema`, Gemini `responseSchema`, MLX stdio merge rules) remains **Node** ([ADR0004](../decisions/ADR0004-backend-llm-packaging-and-discovery.md)).
+
+## Process view (target dashboard path)
+
+1. Browser opens SSE for game text; maintains **AutoplaySessionMemory**-equivalent state client-side (or shared library).
+2. Browser builds **logical** interpret/planner payloads; POSTs to Node; Node **packages** and calls pooled `TextLlm`.
+3. Browser sends GETIN via existing session APIs; Fortran stream returns new text.
+4. Subsystem edits **commit** to client SQLite; **tests** run; **promote** updates live hooks; **BroadcastChannel** notifies the dashboard tab ([ADR0009](../decisions/ADR0009-tdd-promote-gate-subsystems.md), [ADR0010](../decisions/ADR0010-monaco-workspace-second-tab-cross-tab-sync.md)).
+5. On session connect, **subsystem sync** updates server **replica** ([ADR0008](../decisions/ADR0008-server-subsystem-replica-and-sync.md)).
+
+**CLI:** May retain the **legacy** full pipeline in Node ([`cli/main.ts`](../../adventure-llm/src/cli/main.ts)) until explicitly aligned with the shared client library.
+
+## Deployment view
+
+- **Single-machine / local dev:** Node serves static `adventure-llm/public/`, Fortran binary beside `adventure.dat`, env-based LLM keys; browser holds SQLite WASM + OPFS (or chosen persistence).
+- **Secrets:** Unchanged principle—keys on server/env for cloud models; browser does not embed production secrets ([adventure-engine.md](./adventure-engine.md) operational section remains relevant).
+
+## Data view
+
+- **World truth:** `adventure.dat` + binary (unchanged).
+- **Subsystem authority:** Client SQLite (files, revisions, tags, test/promotion metadata) ([ADR0006](../decisions/ADR0006-client-sqlite-wal-subsystem-store.md), [ADR0007](../decisions/ADR0007-subsystem-revision-control-and-replay.md)).
+- **Replica:** Server SQLite for backup and inspection ([ADR0008](../decisions/ADR0008-server-subsystem-replica-and-sync.md)).
+- **Logical LLM payloads:** Not persisted as full vendor HTTP bodies in the client; optional debug logs remain governed by existing env ([adventure-engine.md](./adventure-engine.md)).
+
+## Security considerations
+
+- **User-authored JS** in subsystems must not run with same-origin access to storage or the dashboard DOM; use a **Worker** or **strictly sandboxed iframe** and **message-passing only** ([ADR0011](../decisions/ADR0011-subsystem-module-contract-dynamic-js.md)).
+- **OPFS SQLite:** a **single connection owner** (`SharedWorker` or exclusive writer tab) avoids lock contention across tabs ([ADR0006](../decisions/ADR0006-client-sqlite-wal-subsystem-store.md), [ADR0010](../decisions/ADR0010-monaco-workspace-second-tab-cross-tab-sync.md)).
+- **Sync** must be **authenticated** to session; replica is not a public write surface without authorization. **Fork** and **restore** flows prevent silent data loss ([ADR0008](../decisions/ADR0008-server-subsystem-replica-and-sync.md)).
+
+## Operational considerations
+
+- **Observability:** Existing JSONL debug paths apply to Node packaging and Fortran I/O; client may add structured logs for promote/test events (future).
+- **Offline:** Queue subsystem sync when disconnected ([ADR0008](../decisions/ADR0008-server-subsystem-replica-and-sync.md)).
+
+## References
+
+- [adventure-engine.md](./adventure-engine.md) — **current** package architecture (today’s Node-orchestrated dashboard and CLI).
+- [adventure-fortran-engine.md](./adventure-fortran-engine.md) — Fortran and `adventure.dat`.
+- [adventure-llm-cognition-adr-index.md](../decisions/adventure-llm-cognition-adr-index.md) — ADR list and implementation order.
+- Cursor plan: `thin_backend_vs_code_prompts_074321ee` (`.cursor/plans/`) — detailed narrative; this arch doc is the stable entry point in-repo.

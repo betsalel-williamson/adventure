@@ -77,6 +77,14 @@ export function typeTextIntoPre(scrollRoot, pre, text, opts = {}) {
   const charDelayMs = opts.charDelayMs ?? DEFAULT_CHAR_DELAY_MS;
   const finalPauseMs = opts.finalPauseMs ?? TERMINAL_TYPING_PRE_ENTER_MS;
   return new Promise((resolve) => {
+    if (charDelayMs <= 0) {
+      pre.textContent = text;
+      if (scrollRoot) {
+        scrollRoot.scrollTop = scrollRoot.scrollHeight;
+      }
+      window.setTimeout(resolve, finalPauseMs <= 0 ? 0 : finalPauseMs);
+      return;
+    }
     let i = 0;
     const step = () => {
       if (i < text.length) {
@@ -111,6 +119,11 @@ export function typeTextIntoInput(input, text, opts = {}) {
   return new Promise((resolve) => {
     if (!input) {
       window.setTimeout(resolve, 0);
+      return;
+    }
+    if (charDelayMs <= 0) {
+      input.value = src;
+      window.setTimeout(resolve, finalPauseMs <= 0 ? 0 : finalPauseMs);
       return;
     }
     input.value = "";

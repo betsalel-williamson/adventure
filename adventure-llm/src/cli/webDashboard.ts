@@ -39,6 +39,7 @@ import {
   canSwapTextLlmFromBackends,
 } from "../nl/textLlmWebBackends.js";
 import type { ScriptedGetinLine } from "../engine/subprocessEngine.js";
+import { resolveAutoplayPromptMode } from "../nl/adventureNlPrompts.js";
 import {
   runAutoplaySessionWithTextLlm,
   AUTOPLAY_RESUME_PLANNER,
@@ -49,12 +50,34 @@ import {
   type AutoplayUiSink,
 } from "./autoplayRunner.js";
 import {
+  listAutoplayStrategyIds,
+  resolveAutoplayStrategyHooks,
+} from "./autoplayStrategyRegistry.js";
+import {
+  insertBenchmarkRunRow,
+  openBenchmarkRunsDb,
+  queryBenchmarkLeaderboard,
+  type BenchmarkRunConfigJson,
+  type BenchmarkRunMetricsJson,
+} from "./benchmarkRunsDb.js";
+import { collectHostRuntimeInfo } from "./hostRuntimeInfo.js";
+import { readGitWorktreeMeta } from "./gitWorktreeMeta.js";
+import {
+  applyAllowlistedEnvToProcess,
+  mergeEnvAllowlists,
+  restoreEnvFromBackup,
+  sanitizePromptProjectEnvAllowlist,
+  type EnvBackup,
+} from "./promptProjectEnvAllowlist.js";
+import {
   deletePromptProject,
   listPromptProjects,
   newPromptProjectId,
   readPromptProject,
   resolvePromptProjectsDir,
+  upgradePromptProjectToLatest,
   writePromptProject,
+  PROMPT_PROJECT_SCHEMA_LATEST,
   type PromptProjectRecord,
 } from "./promptProjectsStore.js";
 import {
@@ -189,6 +212,16 @@ type DashboardSession = {
   webAutoplayOverrides: AutoplayRunOverrides;
   webPromptExperiment: PromptExperimentPatch;
   activePromptProjectId: string | null;
+  activeStrategyId: string;
+  promptProjectEnvBackup: EnvBackup;
+  readonly benchmarkMeta: {
+    teamName: string | null;
+    tags: readonly string[];
+  };
+  flushBenchmarkRun: (
+    status: "completed" | "failed" | "aborted",
+    failureReason: string | null,
+  ) => void;
   readonly webAutoplayLiveOverrides: AutoplayRunOverrides;
   latestTranscript: string;
   engineLogLineBuffer: string;
@@ -333,6 +366,7 @@ export function createAutoplayDashboardServer(
 
   const db = existsSync(datPath) ? loadDatFile(datPath) : null;
   const promptProjectsDir = resolvePromptProjectsDir(packageRoot);
+  openBenchmarkRunsDb(packageRoot);
 
   async function applyProjectGenerationForSession(
     s: DashboardSession,
@@ -398,6 +432,85 @@ export function createAutoplayDashboardServer(
     let webPromptExperiment: PromptExperimentPatch =
       defaultPromptExperimentPatch();
     let activePromptProjectId: string | null = null;
+    let activeStrategyId = "default";
+    let promptProjectEnvBackup: EnvBackup = new Map();
+    const benchmarkMeta = {
+      teamName: null as string | null,
+      tags: [] as readonly string[],
+    };
+
+    type BenchAcc = {
+      runId: string;
+      startedAtMs: number;
+      plannerMsTotal: number;
+      plannerCalls: number;
+      lastCells: number;
+      lastMoves: number;
+      maxMovesAtStart: number;
+      paceMsAtStart: number;
+      contextCharsAtStart: number;
+    };
+    let benchAcc: BenchAcc | null = null;
+
+    const flushBenchmarkRun = (
+      status: "completed" | "failed" | "aborted",
+      failureReason: string | null,
+    ): void => {
+      if (benchAcc === null) return;
+      const b = benchAcc;
+      benchAcc = null;
+      const wallTimeMs = Math.max(0, Date.now() - b.startedAtMs);
+      const hitMaxMoves = b.lastMoves >= b.maxMovesAtStart;
+      const metrics: BenchmarkRunMetricsJson = {
+        moves: b.lastMoves,
+        cellsDiscovered: b.lastCells,
+        wallTimeMs,
+        plannerMsTotal: b.plannerMsTotal,
+        plannerCalls: b.plannerCalls,
+        hitMaxMoves,
+      };
+      const eventId =
+        process.env.ADVENTURE_LLM_BENCHMARK_EVENT_ID?.trim() || null;
+      const config: BenchmarkRunConfigJson = {
+        maxMoves: b.maxMovesAtStart,
+        paceMs: b.paceMsAtStart,
+        contextChars: b.contextCharsAtStart,
+        providerId: llmSel.textLlmProviderId,
+        modelId: llmSel.textLlmModelId,
+        projectId: activePromptProjectId,
+        strategyId: activeStrategyId === "default" ? null : activeStrategyId,
+        eventId,
+        teamName: benchmarkMeta.teamName,
+        tags: benchmarkMeta.tags,
+      };
+      let llmSessionJsonlPath: string | null = null;
+      const dbg = process.env.ADVENTURE_LLM_DEBUG?.trim();
+      if (dbg === "1" || dbg?.toLowerCase() === "true") {
+        llmSessionJsonlPath = path.join(
+          packageRoot,
+          ".cache",
+          "llm-sessions",
+          `${sessionId}.jsonl`,
+        );
+      }
+      insertBenchmarkRunRow({
+        id: b.runId,
+        createdAtIso: new Date().toISOString(),
+        eventId,
+        dashboardSessionId: sessionId,
+        teamName: benchmarkMeta.teamName,
+        projectId: activePromptProjectId,
+        strategyId: activeStrategyId === "default" ? null : activeStrategyId,
+        git: readGitWorktreeMeta(repoRoot),
+        host: collectHostRuntimeInfo(),
+        config,
+        metrics,
+        status,
+        failureReason,
+        llmSessionJsonlPath,
+      });
+    };
+
     const webAutoplayLiveOverrides: AutoplayRunOverrides = {
       getPaceMs: () =>
         webAutoplayOverrides.paceMs !== undefined
@@ -408,6 +521,10 @@ export function createAutoplayDashboardServer(
           ? webAutoplayOverrides.maxMoves
           : resolveAutoplayMaxMoves(),
       getPlannerPromptExperiment: () => webPromptExperiment,
+      getAutoplayPromptMode: () => {
+        const hooks = resolveAutoplayStrategyHooks(activeStrategyId);
+        return hooks.promptMode ?? resolveAutoplayPromptMode();
+      },
     };
     let latestTranscript = "";
     let engineLogLineBuffer = "";
@@ -456,14 +573,41 @@ export function createAutoplayDashboardServer(
       forwardGameOutputToTerminal: false,
       onSessionStart: (e) => {
         engineLogLineBuffer = "";
-        broadcastSession("session_start", e);
+        benchAcc = {
+          runId: randomUUID(),
+          startedAtMs: Date.now(),
+          plannerMsTotal: 0,
+          plannerCalls: 0,
+          lastCells: 0,
+          lastMoves: 0,
+          maxMovesAtStart: e.maxMoves,
+          paceMsAtStart: e.paceMs,
+          contextCharsAtStart: e.contextChars,
+        };
+        const hostRuntime = collectHostRuntimeInfo();
+        const git = readGitWorktreeMeta(repoRoot);
+        broadcastSession("session_start", {
+          ...e,
+          modelId: llmSel.textLlmModelId,
+          hostRuntime,
+          git,
+        });
       },
       onSessionEnd: () => {
         flushEngineLogBuffer(0);
+        flushBenchmarkRun("completed", null);
         broadcastSession("session_end", {});
       },
       beforePlannerCall: awaitMlxModelReady,
-      onPlannerPhase: (e) => broadcastSession("planner_phase", e),
+      onPlannerPhase: (e) => {
+        if (e.phase === "end" && typeof e.elapsedMs === "number") {
+          if (benchAcc !== null) {
+            benchAcc.plannerMsTotal += e.elapsedMs;
+            benchAcc.plannerCalls += 1;
+          }
+        }
+        broadcastSession("planner_phase", e);
+      },
       onPlannerPrompt: (e) => broadcastSession("planner_prompt", e),
       onTranscriptChunk: (text, step) => {
         latestTranscript += text;
@@ -478,6 +622,10 @@ export function createAutoplayDashboardServer(
       },
       onTurnEnd: (e) => {
         latestTranscript = e.transcriptSoFar;
+        if (benchAcc !== null) {
+          benchAcc.lastMoves = e.moveIndex;
+          benchAcc.lastCells = e.snapshot.map.cells.length;
+        }
         broadcastSession("turn_end", e);
       },
       onPlanApplied: (e) => broadcastSession("plan_applied", e),
@@ -525,6 +673,20 @@ export function createAutoplayDashboardServer(
       set activePromptProjectId(v) {
         activePromptProjectId = v;
       },
+      get activeStrategyId() {
+        return activeStrategyId;
+      },
+      set activeStrategyId(v) {
+        activeStrategyId = v.trim() || "default";
+      },
+      get promptProjectEnvBackup() {
+        return promptProjectEnvBackup;
+      },
+      set promptProjectEnvBackup(v) {
+        promptProjectEnvBackup = v;
+      },
+      flushBenchmarkRun,
+      benchmarkMeta,
       webAutoplayLiveOverrides,
       get latestTranscript() {
         return latestTranscript;
@@ -849,11 +1011,38 @@ export function createAutoplayDashboardServer(
           );
           return;
         }
+        restoreEnvFromBackup(s.promptProjectEnvBackup);
+        s.promptProjectEnvBackup = new Map();
+        s.activeStrategyId = rec.strategy?.id?.trim() || "default";
+        const hooks = resolveAutoplayStrategyHooks(s.activeStrategyId);
+        const mergedAllow = mergeEnvAllowlists(
+          hooks.defaultEnvAllowlist ?? {},
+          sanitizePromptProjectEnvAllowlist(
+            rec.envAllowlist as Record<string, string> | undefined,
+          ),
+        );
+        s.promptProjectEnvBackup = applyAllowlistedEnvToProcess(mergedAllow);
         s.webPromptExperiment = {
           ...defaultPromptExperimentPatch(),
           ...rec.promptExperiment,
         };
         s.activePromptProjectId = idAct;
+        s.benchmarkMeta.teamName = rec.teamName ?? null;
+        s.benchmarkMeta.tags = rec.tags ?? [];
+        if (rec.maxMoves !== undefined) {
+          s.webAutoplayOverrides = {
+            ...s.webAutoplayOverrides,
+            maxMoves: rec.maxMoves,
+          };
+          const paceMs =
+            s.webAutoplayOverrides.paceMs !== undefined
+              ? s.webAutoplayOverrides.paceMs
+              : resolveAutoplayPaceMs();
+          s.broadcast("autoplay_settings", {
+            paceMs,
+            maxMoves: rec.maxMoves,
+          });
+        }
         const gerr = await applyProjectGenerationForSession(s, rec);
         s.broadcast("prompt_project", { activeId: idAct, name: rec.name });
         if (gerr && gerr !== "No text LLM") {
@@ -875,6 +1064,54 @@ export function createAutoplayDashboardServer(
           { ok: true, project: rec },
           cookieOpts(s, ns),
         );
+      });
+      return;
+    }
+
+    const promptProjectDuplicateMatch =
+      /^\/api\/prompt-projects\/([^/]+)\/duplicate$/.exec(pathname);
+    if (promptProjectDuplicateMatch && req.method === "POST") {
+      if (sess === undefined) return;
+      const idSrc = promptProjectDuplicateMatch[1]!;
+      const s = sess;
+      const ns = newSession;
+      readJsonBody(req).then(async (rawBody) => {
+        const body = rawBody as { name?: string } | null;
+        const name =
+          typeof body?.name === "string"
+            ? body.name.trim().slice(0, 120) || "Untitled (copy)"
+            : "Untitled (copy)";
+        const src = await readPromptProject(promptProjectsDir, idSrc);
+        if (!src) {
+          jsonResponseWithSessionCookie(
+            res,
+            404,
+            { error: "Project not found" },
+            cookieOpts(s, ns),
+          );
+          return;
+        }
+        const now = new Date().toISOString();
+        const idNew = newPromptProjectId();
+        const dup: PromptProjectRecord = upgradePromptProjectToLatest({
+          ...src,
+          id: idNew,
+          name,
+          parentProjectId: src.id,
+          createdAt: now,
+          updatedAt: now,
+        });
+        try {
+          await writePromptProject(promptProjectsDir, dup);
+          jsonResponseWithSessionCookie(res, 201, dup, cookieOpts(s, ns));
+        } catch (e) {
+          jsonResponseWithSessionCookie(
+            res,
+            500,
+            { error: e instanceof Error ? e.message : "Write failed" },
+            cookieOpts(s, ns),
+          );
+        }
       });
       return;
     }
@@ -931,8 +1168,12 @@ export function createAutoplayDashboardServer(
               pool.getClientForSession(s),
             );
           }
+          const maxMoves =
+            s.webAutoplayOverrides.maxMoves !== undefined
+              ? s.webAutoplayOverrides.maxMoves
+              : resolveAutoplayMaxMoves();
           const rec: PromptProjectRecord = {
-            schemaVersion: 1,
+            schemaVersion: PROMPT_PROJECT_SCHEMA_LATEST,
             id: idNew,
             name,
             ...(description ? { description } : {}),
@@ -946,6 +1187,10 @@ export function createAutoplayDashboardServer(
               xyz: false,
               reactionLedger: false,
             },
+            maxMoves,
+            ...(s.activeStrategyId !== "default" && s.activeStrategyId !== ""
+              ? { strategy: { id: s.activeStrategyId } }
+              : {}),
           };
           writePromptProject(promptProjectsDir, rec)
             .then(() => {
@@ -1003,21 +1248,26 @@ export function createAutoplayDashboardServer(
       readJsonBody(req).then((rawBody) => {
         try {
           const body = rawBody as PromptProjectRecord | null;
-          if (body === null || body.schemaVersion !== 1 || body.id !== idU) {
+          if (
+            body === null ||
+            (body.schemaVersion !== 1 && body.schemaVersion !== 2) ||
+            body.id !== idU
+          ) {
             jsonResponseWithSessionCookie(
               res,
               400,
               {
-                error: "Expected full project JSON with matching id",
+                error:
+                  "Expected full project JSON with schemaVersion 1 or 2 and matching id",
               },
               cookieOpts(s, ns),
             );
             return;
           }
-          const updated: PromptProjectRecord = {
+          const updated: PromptProjectRecord = upgradePromptProjectToLatest({
             ...body,
             updatedAt: new Date().toISOString(),
-          };
+          });
           writePromptProject(promptProjectsDir, updated)
             .then(() =>
               jsonResponseWithSessionCookie(
@@ -1074,6 +1324,62 @@ export function createAutoplayDashboardServer(
           cookieOpts(s, ns),
         );
       });
+      return;
+    }
+
+    if (pathname === "/api/autoplay-strategies" && req.method === "GET") {
+      if (sess === undefined) return;
+      jsonResponseWithSessionCookie(
+        res,
+        200,
+        { strategies: [...listAutoplayStrategyIds()] },
+        cookieOpts(sess, newSession),
+      );
+      return;
+    }
+
+    if (
+      pathname === "/api/benchmark-runs/leaderboard" &&
+      req.method === "GET"
+    ) {
+      if (sess === undefined) return;
+      const bdb = openBenchmarkRunsDb(packageRoot);
+      if (bdb === null) {
+        jsonResponseWithSessionCookie(
+          res,
+          503,
+          { error: "Benchmark runs disabled (ADVENTURE_LLM_BENCHMARK_RUNS=0)" },
+          cookieOpts(sess, newSession),
+        );
+        return;
+      }
+      const sp = url.searchParams;
+      const eventId = sp.get("eventId") ?? undefined;
+      const includeFailed = sp.get("includeFailed") === "1";
+      const sortRaw = sp.get("sort") ?? "cellsDiscovered";
+      const sort =
+        sortRaw === "moves" ||
+        sortRaw === "wallTimeMs" ||
+        sortRaw === "plannerMsTotal"
+          ? sortRaw
+          : "cellsDiscovered";
+      const limitRaw = Number(sp.get("limit") ?? "50");
+      const limit =
+        Number.isFinite(limitRaw) && limitRaw >= 1 && limitRaw <= 500
+          ? Math.floor(limitRaw)
+          : 50;
+      const rows = queryBenchmarkLeaderboard(bdb, {
+        eventId,
+        includeFailed,
+        sort,
+        limit,
+      });
+      jsonResponseWithSessionCookie(
+        res,
+        200,
+        { runs: rows },
+        cookieOpts(sess, newSession),
+      );
       return;
     }
 
@@ -1628,6 +1934,12 @@ export function createAutoplayDashboardServer(
               err instanceof Error
                 ? err.message
                 : `autoplay failed: ${String(err)}`;
+            sref.flushBenchmarkRun(
+              "failed",
+              err instanceof Error
+                ? err.message.slice(0, 500)
+                : String(err).slice(0, 500),
+            );
             sref.broadcast("session_error", { message: msg });
             if (
               shouldFallbackToClassicForLlmError(err, sref.textLlmProviderId)

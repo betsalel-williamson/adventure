@@ -206,6 +206,7 @@ export {
   formatPlannerPromptPreviews,
   syntheticPlannerResponseFromScripted,
   resolveAutoplayPaceMs,
+  DEFAULT_AUTOPLAY_MAX_MOVES,
   resolveAutoplayMaxMoves,
   resolveAutoplayContextChars,
   resolveAutoplayInstructionsAnswer,

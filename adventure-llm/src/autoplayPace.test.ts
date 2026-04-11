@@ -4,10 +4,16 @@ import {
   snapPaceMsToPreset,
 } from "../public/autoplayPace.js";
 
+const normalMs = AUTOPLAY_PACE_PRESETS.find((p) => p.ms === 500)?.ms ?? 500;
+
 describe("autoplayPace", () => {
+  it("snapPaceMsToPreset preserves zero for benchmark mode", () => {
+    expect(snapPaceMsToPreset(0)).toBe(0);
+  });
+
   it("snapPaceMsToPreset returns Normal ms for non-finite input", () => {
-    expect(snapPaceMsToPreset(NaN)).toBe(AUTOPLAY_PACE_PRESETS[2].ms);
-    expect(snapPaceMsToPreset("x")).toBe(AUTOPLAY_PACE_PRESETS[2].ms);
+    expect(snapPaceMsToPreset(NaN)).toBe(normalMs);
+    expect(snapPaceMsToPreset("x")).toBe(normalMs);
   });
 
   it("snapPaceMsToPreset snaps to nearest preset", () => {

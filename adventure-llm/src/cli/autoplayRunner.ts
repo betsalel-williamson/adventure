@@ -19,6 +19,7 @@ import {
   resolveCompactPrompts,
   resolveStructuredDashboardPrompts,
   resolveVocabHintMaxWords,
+  type AutoplayPromptMode,
 } from "../nl/adventureNlPrompts.js";
 import {
   applyPlannerPromptExperiment,
@@ -121,6 +122,8 @@ export type AutoplayRunOverrides = {
   readonly getMaxMoves?: () => number;
   /** Web dashboard: prompt experiment patch applied after session-memory planner build. */
   readonly getPlannerPromptExperiment?: () => PromptExperimentPatch;
+  /** Override autoplay prompt mode (strategy registry / dashboard) without mutating env. */
+  readonly getAutoplayPromptMode?: () => AutoplayPromptMode;
 };
 
 export type AutoplayUiSink = {
@@ -136,6 +139,8 @@ export type AutoplayUiSink = {
   readonly onPlannerPhase?: (e: {
     phase: "start" | "end";
     providerId: string;
+    /** Present on `end` when timing is available. */
+    elapsedMs?: number;
   }) => void;
   readonly onPlannerPrompt?: (e: {
     userPreview: string;
@@ -361,11 +366,16 @@ export function resolveAutoplayPaceMs(): number {
   return Number.isFinite(n) && n >= 0 ? n : 2000;
 }
 
+/** Default cap when `ADVENTURE_LLM_AUTOPLAY_MAX_MOVES` is unset (benchmark-friendly). */
+export const DEFAULT_AUTOPLAY_MAX_MOVES = 120;
+
 export function resolveAutoplayMaxMoves(): number {
   const v = process.env.ADVENTURE_LLM_AUTOPLAY_MAX_MOVES?.trim();
-  if (v === undefined || v === "") return 300;
+  if (v === undefined || v === "") return DEFAULT_AUTOPLAY_MAX_MOVES;
   const n = Number(v);
-  return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 300;
+  return Number.isFinite(n) && n >= 1
+    ? Math.floor(n)
+    : DEFAULT_AUTOPLAY_MAX_MOVES;
 }
 
 export function resolveAutoplayContextChars(): number {
@@ -434,7 +444,8 @@ export async function runAutoplaySessionWithTextLlm(
     });
     const objectScope = memory.getObjectHintScopeText();
     const indoorLeave = recentTextSuggestsIndoorBuildingNavigation(objectScope);
-    const promptMode = resolveAutoplayPromptMode();
+    const promptMode =
+      overrides?.getAutoplayPromptMode?.() ?? resolveAutoplayPromptMode();
     const invLines = memory.getStructuredInventory();
     const takeFailWords = memory.getRoomTakeFailureObjectAtabWords();
     const lootFunnel = shouldPrioritizeLootFunnel(
@@ -500,6 +511,7 @@ export async function runAutoplaySessionWithTextLlm(
       fullUser: effective.fullUser,
       merged: effective.merged,
     });
+    const plannerT0 = performance.now();
     sink?.onPlannerPhase?.({
       phase: "start",
       providerId: plannerClient.providerId,
@@ -511,9 +523,11 @@ export async function runAutoplaySessionWithTextLlm(
         includeDatHelpInSystem: includeDatHelp,
       });
     } finally {
+      const elapsedMs = Math.max(0, performance.now() - plannerT0);
       sink?.onPlannerPhase?.({
         phase: "end",
         providerId: plannerClient.providerId,
+        elapsedMs,
       });
     }
   };

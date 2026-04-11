@@ -83,7 +83,9 @@ function initAutoplayPaceSelect() {
     opt.textContent = label;
     el.autoplayPaceMsEl.appendChild(opt);
   }
-  el.autoplayPaceMsEl.value = String(AUTOPLAY_PACE_PRESETS[2].ms);
+  const normalPreset =
+    AUTOPLAY_PACE_PRESETS.find((p) => p.ms === 500) ?? AUTOPLAY_PACE_PRESETS[0];
+  el.autoplayPaceMsEl.value = String(normalPreset.ms);
 }
 
 initAutoplayPaceSelect();
@@ -91,9 +93,11 @@ initAutoplayPaceSelect();
 function typingTimingFromPaceSelect() {
   const el = elements;
   const raw = Number(el?.autoplayPaceMsEl?.value);
-  const paceMs = snapPaceMsToPreset(
-    Number.isFinite(raw) ? raw : AUTOPLAY_PACE_PRESETS[2].ms,
-  );
+  const fallbackMs = AUTOPLAY_PACE_PRESETS.find((p) => p.ms === 500)?.ms ?? 500;
+  const paceMs = snapPaceMsToPreset(Number.isFinite(raw) ? raw : fallbackMs);
+  if (paceMs === 0) {
+    return { charDelayMs: 0, finalPauseMs: 0 };
+  }
   const wpm = paceMsToTypingWpm(paceMs);
   return {
     charDelayMs: wpmToCharDelayMs(wpm),
@@ -642,3 +646,43 @@ wireCopyPromptButtonsFromElements();
 wireMapScrollAndResize();
 wireDashboardHelpDialogs();
 wireMermaidFullscreenDialog();
+
+async function refreshBenchmarkLeaderboard() {
+  const el = elements;
+  const pre = el?.benchmarkLeaderboardPreEl;
+  if (!pre) return;
+  pre.textContent = "Loading…";
+  try {
+    const r = await fetch(
+      "/api/benchmark-runs/leaderboard?limit=20&sort=cellsDiscovered",
+      { credentials: "same-origin" },
+    );
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      pre.textContent =
+        typeof j.error === "string"
+          ? j.error
+          : `Leaderboard unavailable (${r.status})`;
+      return;
+    }
+    const runs = Array.isArray(j.runs) ? j.runs : [];
+    if (runs.length === 0) {
+      pre.textContent =
+        "No runs yet. Complete an autoplay session with benchmark DB enabled.";
+      return;
+    }
+    const lines = runs.map(
+      (row) =>
+        `${row.created_at}  cells=${row.cellsDiscovered}  moves=${row.moves}  wallMs=${row.wallTimeMs}  plannerMs=${row.plannerMsTotal}  status=${row.status}${row.team_name ? `  team=${row.team_name}` : ""}`,
+    );
+    pre.textContent = lines.join("\n");
+  } catch (e) {
+    pre.textContent = e instanceof Error ? e.message : "Network error";
+  }
+}
+
+if (elements?.benchmarkLeaderboardRefreshBtn) {
+  elements.benchmarkLeaderboardRefreshBtn.addEventListener("click", () => {
+    void refreshBenchmarkLeaderboard();
+  });
+}

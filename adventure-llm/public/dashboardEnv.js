@@ -72,8 +72,13 @@ export function resolveDashboardElements(doc) {
     promptProjectNewBtn: doc.getElementById("prompt-project-new"),
     promptProjectActivateBtn: doc.getElementById("prompt-project-activate"),
     promptProjectSaveDiskBtn: doc.getElementById("prompt-project-save-disk"),
+    promptProjectDuplicateBtn: doc.getElementById("prompt-project-duplicate"),
     promptProjectDeleteBtn: doc.getElementById("prompt-project-delete"),
     promptProjectStatusEl: doc.getElementById("prompt-project-status"),
+    benchmarkLeaderboardRefreshBtn: doc.getElementById(
+      "benchmark-leaderboard-refresh",
+    ),
+    benchmarkLeaderboardPreEl: doc.getElementById("benchmark-leaderboard-pre"),
     llmGenProviderEl: doc.getElementById("llm-gen-provider"),
     llmGenFieldsEl: doc.getElementById("llm-gen-fields"),
     llmGenApplyBtn: doc.getElementById("llm-gen-apply"),
