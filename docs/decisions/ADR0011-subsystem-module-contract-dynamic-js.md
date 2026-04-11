@@ -4,7 +4,7 @@
 
 ### User needs and motivations
 
-- **Authors** want to write **plain JavaScript** subsystems that plug into **browser-orchestrated glue and policy** ([ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md))—map/inventory/mode hooks, prompt shaping—with a **small, documented API**—not fork the whole `adventure-llm` repo.
+- **Authors** want to write **plain JavaScript** subsystems that plug into **browser-orchestrated glue and policy** ([ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md))—map/inventory/mode hooks, prompt shaping—with a **small, documented API**—not fork the whole `adventure-lm` repo.
 - **Security-conscious operators** need **sandboxing**: user code must not access Node or arbitrary browser capabilities.
 - **Testability** ([ADR0009](ADR0009-tdd-promote-gate-subsystems.md)) requires a **stable contract** so tests can mock hooks and assert behavior.
 

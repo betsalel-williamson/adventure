@@ -1,0 +1,917 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Adventure — autoplay dashboard</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=VT323&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=block"
+    />
+    <link rel="stylesheet" href="/dashboard.css" />
+  </head>
+  <body>
+    <svg
+      class="crt-filters-svg"
+      aria-hidden="true"
+      focusable="false"
+      width="0"
+      height="0"
+    >
+      <defs>
+        <filter id="crt-bubble" x="-8%" y="-8%" width="116%" height="116%">
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.006 0.01"
+            numOctaves="2"
+            result="noise"
+            seed="17"
+          />
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="noise"
+            scale="1.2"
+            xChannelSelector="R"
+            yChannelSelector="G"
+          />
+        </filter>
+      </defs>
+    </svg>
+    <main class="page-main">
+      <div class="layout-dashboard">
+        <div class="side-left-column">
+          <header
+            class="dashboard-brand"
+            aria-label="Adventure language-model dashboard"
+          >
+            <span class="dashboard-brand-mark" aria-hidden="true">▸</span>
+            <span class="dashboard-brand-text"
+              >Adventure<span class="dashboard-brand-llm">LM</span></span
+            >
+          </header>
+          <aside
+            class="side side-left"
+            aria-label="Planner and heuristic state"
+          >
+            <section
+              class="panel prompt-projects-panel"
+              aria-label="Prompt projects"
+            >
+              <div class="panel-hint-row">
+                <h2>Projects</h2>
+                <button
+                  type="button"
+                  class="help-icon-btn"
+                  data-help-template="help-tpl-prompt-projects"
+                  data-help-title="Projects"
+                  aria-label="About prompt projects"
+                >
+                  ?
+                </button>
+              </div>
+              <p class="small muted">
+                Saved presets (prompt patch, generation params, max steps,
+                strategy id, optional env allowlist, tags). Use tags like
+                <span class="mono">team:</span>, <span class="mono">model:</span>,
+                <span class="mono">mode:explore</span>.
+              </p>
+              <label class="prompt-lab-label"
+                >Active
+                <select
+                  id="prompt-project-select"
+                  aria-label="Prompt project"
+                ></select>
+              </label>
+              <div class="prompt-project-actions">
+                <button type="button" id="prompt-project-new">New</button>
+                <button type="button" id="prompt-project-activate">Load</button>
+                <button type="button" id="prompt-project-save-disk">
+                  Save to disk
+                </button>
+                <button type="button" id="prompt-project-duplicate">
+                  Duplicate
+                </button>
+                <button type="button" id="prompt-project-delete">Delete</button>
+              </div>
+              <p
+                id="prompt-project-status"
+                class="small muted"
+                aria-live="polite"
+              ></p>
+            </section>
+
+            <section class="panel" aria-label="Benchmark leaderboard">
+              <h2>Leaderboard</h2>
+              <p class="small muted">
+                Local runs from SQLite (<code>ADVENTURE_LM_BENCHMARK_RUNS</code>).
+                Set <code>ADVENTURE_LM_BENCHMARK_EVENT_ID</code> to scope rows.
+              </p>
+              <button type="button" id="benchmark-leaderboard-refresh">
+                Refresh
+              </button>
+              <pre
+                id="benchmark-leaderboard-pre"
+                class="mono small"
+                style="max-height: 12rem; overflow: auto; white-space: pre-wrap"
+              ></pre>
+            </section>
+
+            <section
+              class="panel llm-gen-panel"
+              aria-label="LLM generation params"
+            >
+              <div class="panel-hint-row">
+                <h2>LLM generation</h2>
+                <button
+                  type="button"
+                  class="help-icon-btn"
+                  data-help-template="help-tpl-llm-generation"
+                  data-help-title="LLM generation"
+                  aria-label="About LLM generation params"
+                >
+                  ?
+                </button>
+              </div>
+              <p class="small muted">
+                Applies to the current provider (interpret + autoplay). Values
+                persist on model swap when compatible.
+              </p>
+              <p id="llm-gen-provider" class="mono small">—</p>
+              <div id="llm-gen-fields" class="llm-gen-fields"></div>
+              <button type="button" id="llm-gen-apply" class="btn-quiet">
+                Apply params
+              </button>
+              <p id="llm-gen-status" class="small muted" aria-live="polite"></p>
+            </section>
+
+            <section class="panel">
+              <h2>Last plan → GETIN</h2>
+              <pre id="last-plan" class="mono small"></pre>
+            </section>
+
+            <section class="panel">
+              <div class="panel-hint-row">
+                <h2>Heuristic state</h2>
+                <button
+                  type="button"
+                  class="help-icon-btn"
+                  data-help-template="help-tpl-heuristic"
+                  data-help-title="Heuristic state"
+                  aria-label="About heuristic state"
+                >
+                  ?
+                </button>
+              </div>
+              <p><strong>Location hint</strong></p>
+              <p id="location-hint" class="mono small">—</p>
+              <p><strong>Inventory (parsed)</strong></p>
+              <ul id="inventory"></ul>
+              <p id="stagnation" class="small muted"></p>
+              <p id="try-next" class="small"></p>
+            </section>
+
+            <section class="panel panel-verb-hints" aria-label="Parser verbs">
+              <div class="panel-hint-row">
+                <h2>Verb hints</h2>
+                <button
+                  type="button"
+                  class="help-icon-btn"
+                  data-help-template="help-tpl-parser-verbs"
+                  data-help-title="Parser verbs"
+                  aria-label="About parser verbs"
+                >
+                  ?
+                </button>
+              </div>
+              <p class="small muted parser-verb-hints-intro">
+                GETIN action words (five-letter forms). Same line = synonyms.
+              </p>
+              <div
+                id="parser-verb-hints"
+                class="parser-verb-hints mono small"
+              ></div>
+            </section>
+          </aside>
+        </div>
+
+        <section
+          class="panel transcript-panel transcript-panel--crt transcript-panel--hero"
+          aria-label="Game transcript"
+        >
+          <div class="panel-hint-row panel-hint-row--transcript">
+            <h2 class="transcript-panel-heading">Game transcript</h2>
+            <button
+              type="button"
+              class="help-icon-btn crt-transcript-help-btn"
+              data-help-template="help-tpl-transcript"
+              data-help-title="Game transcript"
+              aria-label="About the game transcript"
+            >
+              ?
+            </button>
+          </div>
+          <div class="crt-monitor-chassis">
+            <div class="crt-terminal crt-terminal--integrated">
+              <div class="crt-terminal-screen">
+                <div
+                  class="crt-terminal-scanline-sweep"
+                  aria-hidden="true"
+                ></div>
+                <div class="transcript-terminal-column">
+                  <div
+                    id="transcript"
+                    class="transcript-feed transcript-feed--crt"
+                    aria-live="polite"
+                  ></div>
+                  <div class="transcript-terminal-prompt-shell">
+                    <div
+                      id="manual-controls-slot-crt"
+                      class="manual-controls-slot manual-controls-slot--crt"
+                    >
+                      <div
+                        id="manual-controls-group"
+                        class="manual-controls-group"
+                      >
+                        <span class="transcript-terminal-input-wrap">
+                          <span
+                            class="transcript-terminal-prompt"
+                            aria-hidden="true"
+                            >&gt;&nbsp;</span
+                          >
+                          <input
+                            type="text"
+                            id="manual-input"
+                            class="manual-input"
+                            placeholder="Parser command or phrase"
+                            autocomplete="off"
+                            aria-label="Parser command or phrase"
+                            disabled
+                          />
+                        </span>
+                        <button type="button" id="manual-send" disabled>
+                          Send
+                        </button>
+                        <button
+                          type="button"
+                          id="manual-end-session"
+                          class="btn-quiet"
+                          disabled
+                        >
+                          End
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="crt-control-deck">
+                <div
+                  id="crt-bezel-slot"
+                  class="crt-bezel-slot crt-bezel-slot--deck"
+                >
+                  <div class="crt-deck-primary-row">
+                    <div
+                      id="footer-dashboard-chunks"
+                      class="footer-dashboard-chunks crt-deck-dashboard-chunks"
+                    >
+                      <div
+                        id="text-llm-wrap"
+                        class="text-llm-wrap mlx-model-wrap hidden"
+                        aria-hidden="true"
+                      >
+                        <label class="text-llm-label mlx-model-label"
+                          >Text model
+                          <select
+                            id="text-llm-select"
+                            aria-label="Text model provider and weights"
+                          ></select>
+                        </label>
+                      </div>
+                      <label
+                        class="autoplay-pace-label"
+                        title="Delay between autoplay moves. None (0ms) for benchmarks; then slowest (3000ms) through fastest (100ms). Saved automatically."
+                      >
+                        Pace
+                        <select
+                          id="autoplay-pace-ms"
+                          class="autoplay-pace-input"
+                          aria-label="Autoplay pace between moves"
+                        ></select>
+                      </label>
+                      <label
+                        class="autoplay-pace-label"
+                        title="Maximum GETIN lines for this session. Saved automatically; applies when the limit is checked each turn."
+                      >
+                        Max steps
+                        <input
+                          type="number"
+                          id="autoplay-max-moves"
+                          min="1"
+                          max="1000000"
+                          step="1"
+                          value="120"
+                          class="autoplay-pace-input"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                  <div class="crt-deck-secondary-row">
+                    <div id="manual-interpret-container">
+                      <label
+                        class="toggle-label"
+                        title="When checked, your text is interpreted by the language model into parser tokens before sending."
+                      >
+                        <input type="checkbox" id="manual-interpret-toggle" />
+                        <span>Interpret with language model</span>
+                      </label>
+                    </div>
+                    <label class="toggle-label">
+                      <input
+                        type="checkbox"
+                        id="autoplay-toggle"
+                        checked
+                        title="When enabled, the autoplay planner uses the configured text model."
+                      />
+                      <span>Planner autoplay</span>
+                    </label>
+                    <div class="crt-layout-toggle-slot">
+                      <label
+                        class="toggle-label transcript-layout-toggle-label"
+                        title="Chronological transcript with prompt inside the CRT; scroll back through full history. Add ?transcript=terminal or ?transcript=classic to the URL."
+                      >
+                        <input type="checkbox" id="transcript-layout-toggle" />
+                        <span>Terminal layout</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <section class="panel prompt-lab-panel" aria-label="Prompt lab">
+            <div class="panel-hint-row">
+              <h2 class="prompt-lab-heading">Prompt lab</h2>
+              <button
+                type="button"
+                class="help-icon-btn"
+                data-help-template="help-tpl-planner-prompt"
+                data-help-title="Prompt lab"
+                aria-label="About prompt lab"
+              >
+                ?
+              </button>
+            </div>
+            <p id="prompt-lab-subtitle" class="small muted">
+              Autoplay planner only (not manual interpret).
+              <span id="prompt-active-project" class="mono"></span>
+            </p>
+            <div class="prompt-experiment-toolbar">
+              <label class="inline-field"
+                >System mode
+                <select id="prompt-system-mode" aria-label="System patch mode">
+                  <option value="default">default</option>
+                  <option value="append">append</option>
+                  <option value="replace">replace</option>
+                </select>
+              </label>
+              <label class="inline-field checkbox-field"
+                ><input type="checkbox" id="prompt-include-dat-help" checked />
+                Include dat HELP</label
+              >
+              <label class="inline-field"
+                >Notes →
+                <select
+                  id="prompt-model-notes-target"
+                  aria-label="Model notes target"
+                >
+                  <option value="system">system</option>
+                  <option value="user_top">user top</option>
+                </select>
+              </label>
+            </div>
+            <label class="prompt-lab-label" for="prompt-patch-system"
+              >System / instruction text (patch)</label
+            >
+            <textarea
+              id="prompt-patch-system"
+              class="prompt-lab-textarea mono"
+              rows="3"
+              spellcheck="false"
+              aria-label="System patch text"
+            ></textarea>
+            <label class="prompt-lab-label" for="prompt-patch-user-prefix"
+              >User prefix</label
+            >
+            <textarea
+              id="prompt-patch-user-prefix"
+              class="prompt-lab-textarea mono"
+              rows="2"
+              spellcheck="false"
+            ></textarea>
+            <label class="prompt-lab-label" for="prompt-patch-user-suffix"
+              >User suffix</label
+            >
+            <textarea
+              id="prompt-patch-user-suffix"
+              class="prompt-lab-textarea mono"
+              rows="2"
+              spellcheck="false"
+            ></textarea>
+            <label class="prompt-lab-label" for="prompt-patch-model-notes"
+              >Model / formatting notes</label
+            >
+            <textarea
+              id="prompt-patch-model-notes"
+              class="prompt-lab-textarea mono"
+              rows="2"
+              spellcheck="false"
+            ></textarea>
+            <div class="prompt-lab-actions">
+              <button type="button" id="prompt-experiment-apply">
+                Apply patch
+              </button>
+              <button
+                type="button"
+                id="prompt-experiment-reset"
+                class="btn-quiet"
+              >
+                Reload from server
+              </button>
+            </div>
+            <details class="prompt-last-sent" open>
+              <summary class="prompt-summary">
+                <span class="prompt-summary-label">Last sent to model</span>
+              </summary>
+              <div id="prompt-last-split">
+                <div class="prompt-last-sent-head">
+                  <span>System</span>
+                  <button
+                    type="button"
+                    id="copy-prompt-last-system"
+                    class="copy-prompt-btn"
+                    aria-label="Copy last system prompt"
+                    title="Copy"
+                  >
+                    <span
+                      class="material-symbols-outlined dashboard-material-icon"
+                      aria-hidden="true"
+                      >content_copy</span
+                    >
+                  </button>
+                </div>
+                <textarea
+                  id="prompt-last-system"
+                  class="prompt-lab-textarea mono"
+                  rows="6"
+                  readonly
+                  spellcheck="false"
+                  aria-label="Last system prompt sent"
+                ></textarea>
+                <div class="prompt-last-sent-head">
+                  <span>User / context</span>
+                  <button
+                    type="button"
+                    id="copy-prompt-last-user"
+                    class="copy-prompt-btn"
+                    aria-label="Copy last user prompt"
+                    title="Copy"
+                  >
+                    <span
+                      class="material-symbols-outlined dashboard-material-icon"
+                      aria-hidden="true"
+                      >content_copy</span
+                    >
+                  </button>
+                </div>
+                <textarea
+                  id="prompt-last-user"
+                  class="prompt-lab-textarea mono"
+                  rows="6"
+                  readonly
+                  spellcheck="false"
+                  aria-label="Last user prompt sent"
+                ></textarea>
+              </div>
+              <div id="prompt-last-merged-wrap" class="hidden">
+                <div class="prompt-last-sent-head">
+                  <span>Merged prompt</span>
+                  <button
+                    type="button"
+                    id="copy-prompt-last-merged"
+                    class="copy-prompt-btn"
+                    aria-label="Copy merged prompt"
+                    title="Copy"
+                  >
+                    <span
+                      class="material-symbols-outlined dashboard-material-icon"
+                      aria-hidden="true"
+                      >content_copy</span
+                    >
+                  </button>
+                </div>
+                <textarea
+                  id="prompt-last-merged"
+                  class="prompt-lab-textarea mono"
+                  rows="8"
+                  readonly
+                  spellcheck="false"
+                ></textarea>
+              </div>
+            </details>
+          </section>
+
+          <div
+            class="transcript-hero-chunk transcript-hero-chunk--autoplay"
+            aria-label="Autoplay log section"
+          >
+            <div class="panel-hint-row panel-hint-row--sub">
+              <h3 class="transcript-subheading">Autoplay log</h3>
+              <button
+                type="button"
+                class="help-icon-btn"
+                data-help-template="help-tpl-autoplay-log"
+                data-help-title="Autoplay log"
+                aria-label="About the autoplay log"
+              >
+                ?
+              </button>
+            </div>
+            <div
+              id="autoplay-log"
+              class="autoplay-log-feed"
+              aria-live="polite"
+            ></div>
+          </div>
+        </section>
+
+        <div class="map-hero-column">
+          <div class="map-hero-column-body">
+            <section
+              class="panel map-fsm-card"
+              aria-label="Session exploration state machine"
+            >
+              <div class="map-fsm-head">
+                <div class="map-fsm-title-row">
+                  <h3 class="map-fsm-title">Session FSM (Mermaid)</h3>
+                  <button
+                    type="button"
+                    id="mermaid-fullscreen-open"
+                    class="mermaid-fullscreen-open-btn"
+                    aria-label="Open Mermaid graph full screen"
+                    title="View diagram full screen"
+                  >
+                    <span
+                      class="material-symbols-outlined dashboard-material-icon"
+                      aria-hidden="true"
+                      >open_in_full</span
+                    >
+                  </button>
+                  <button
+                    type="button"
+                    class="help-icon-btn"
+                    data-help-template="help-tpl-fsm"
+                    data-help-title="Session FSM graph"
+                    aria-label="About the session FSM graph"
+                  >
+                    ?
+                  </button>
+                </div>
+              </div>
+              <div
+                id="map-mermaid"
+                class="map-mermaid"
+                role="img"
+                aria-label="Mermaid graph"
+              ></div>
+              <p
+                id="map-null-keys"
+                class="map-null-keys small"
+                aria-live="polite"
+              ></p>
+              <details class="map-fsm-details">
+                <summary class="prompt-summary">
+                  <span class="prompt-summary-label">Mermaid source</span>
+                  <button
+                    type="button"
+                    id="copy-mermaid"
+                    class="copy-prompt-btn"
+                    aria-label="Copy Mermaid source"
+                    title="Copy"
+                  >
+                    <span
+                      class="material-symbols-outlined dashboard-material-icon"
+                      aria-hidden="true"
+                      >content_copy</span
+                    >
+                  </button>
+                </summary>
+                <pre id="map-mermaid-src" class="map-fsm-pre mono"></pre>
+              </details>
+              <details class="map-fsm-details">
+                <summary class="prompt-summary">
+                  <span class="prompt-summary-label">Graphviz DOT</span>
+                  <button
+                    type="button"
+                    id="copy-dot"
+                    class="copy-prompt-btn"
+                    aria-label="Copy Graphviz DOT"
+                    title="Copy"
+                  >
+                    <span
+                      class="material-symbols-outlined dashboard-material-icon"
+                      aria-hidden="true"
+                      >content_copy</span
+                    >
+                  </button>
+                </summary>
+                <pre id="map-dot-src" class="map-fsm-pre mono"></pre>
+              </details>
+            </section>
+            <section
+              class="panel map-hero map-hero-center"
+              aria-label="Inferred exploration map"
+            >
+              <div class="map-hero-head">
+                <h2 class="map-hero-title">Exploration map</h2>
+                <div class="map-xyz" aria-live="polite">
+                  <span class="map-xyz-label">Position (x, y, z)</span>
+                  <span id="map-coords" class="map-xyz-value">—</span>
+                </div>
+                <button
+                  type="button"
+                  class="help-icon-btn map-hero-help-btn"
+                  data-help-template="help-tpl-exploration-map"
+                  data-help-title="Exploration map"
+                  aria-label="About the exploration map"
+                >
+                  ?
+                </button>
+              </div>
+              <p class="map-hero-sub map-hero-sub--compact">
+                <label class="inline-z">
+                  Layer <strong>z</strong> =
+                  <input type="number" id="map-z" value="0" step="1" />
+                </label>
+              </p>
+              <p
+                id="map-room-kind"
+                class="map-room-kind small"
+                aria-live="polite"
+              ></p>
+              <div class="map-viewport">
+                <div
+                  id="map-grid"
+                  class="map-grid mono"
+                  role="img"
+                  aria-label="Inferred exploration grid"
+                ></div>
+              </div>
+              <div
+                id="map-legend"
+                class="map-legend"
+                aria-label="Room type legend"
+              ></div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="status-footer" aria-live="polite">
+      <div class="status-footer-inner">
+        <div class="status-line">
+          <span id="session-status" class="footer-status">Connecting…</span>
+          <span
+            id="planner-spinner"
+            class="spinner footer-spinner hidden"
+            aria-hidden="true"
+            >Thinking…</span
+          >
+          <span id="manual-banner" class="manual-banner hidden"
+            >Waiting for your command.</span
+          >
+        </div>
+        <p id="manual-error" class="manual-error" role="alert"></p>
+      </div>
+    </footer>
+
+    <div
+      id="mlx-load-overlay"
+      class="mlx-load-overlay hidden"
+      aria-hidden="true"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="mlx-load-title"
+    >
+      <div class="mlx-load-panel">
+        <h2 id="mlx-load-title" class="mlx-load-title">Loading MLX model…</h2>
+        <pre
+          id="mlx-load-progress"
+          class="mlx-load-progress mono"
+          aria-live="polite"
+          aria-label="MLX worker download and load progress"
+        ></pre>
+        <div class="mlx-load-actions">
+          <button
+            type="button"
+            id="mlx-load-cancel"
+            class="mlx-load-cancel hidden"
+          >
+            Cancel — keep previous model
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <dialog
+      id="mermaid-fullscreen-dialog"
+      class="mermaid-fullscreen-dialog"
+      aria-labelledby="mermaid-fullscreen-dialog-title"
+      aria-modal="true"
+    >
+      <div class="mermaid-fullscreen-panel">
+        <button
+          type="button"
+          id="mermaid-fullscreen-close"
+          class="mermaid-fullscreen-close"
+          aria-label="Close full screen graph"
+        >
+          ×
+        </button>
+        <h2
+          id="mermaid-fullscreen-dialog-title"
+          class="mermaid-fullscreen-title"
+        >
+          Session FSM (Mermaid)
+        </h2>
+        <div
+          id="mermaid-fullscreen-body"
+          class="mermaid-fullscreen-body"
+          role="region"
+          aria-label="Mermaid graph, full size"
+        ></div>
+      </div>
+    </dialog>
+
+    <dialog
+      id="dashboard-help-dialog"
+      class="dashboard-help-dialog"
+      aria-labelledby="dashboard-help-dialog-title"
+    >
+      <div class="dashboard-help-dialog-panel">
+        <button
+          type="button"
+          class="dashboard-help-dialog-close"
+          aria-label="Close"
+        >
+          ×
+        </button>
+        <h2
+          id="dashboard-help-dialog-title"
+          class="dashboard-help-dialog-title"
+        ></h2>
+        <div
+          id="dashboard-help-dialog-body"
+          class="dashboard-help-dialog-body"
+        ></div>
+      </div>
+    </dialog>
+
+    <template id="help-tpl-exploration-map">
+      <div class="help-dialog-prose">
+        <p>
+          <strong>3D layout</strong> (East +x, North +y, Up +z) is a tunnel-like
+          embedding only; <strong>reachability</strong> follows the session FSM
+          in the card below (directed edges, self-loops = no progress).
+        </p>
+        <p>
+          Grid cells are explored rooms (heuristic type); empty cells are unused
+          layout space;
+          <strong>@</strong> is you. Change layer <strong>z</strong> to view
+          other vertical slices.
+        </p>
+      </div>
+    </template>
+    <template id="help-tpl-fsm">
+      <div class="help-dialog-prose">
+        <p>
+          Arrows show observed commands. Self-loops mean a reject, blocked move,
+          or NULL (no location or inventory change). The highlighted node is the
+          current state.
+        </p>
+      </div>
+    </template>
+    <template id="help-tpl-transcript">
+      <div class="help-dialog-prose">
+        <p>
+          Newest game output at the top. Each block header shows the GETIN line
+          for that turn when known (step 0 = opening).
+        </p>
+        <p>
+          Text keeps the engine’s line breaks. Font size scales with the CRT
+          width for readability; very long lines may clip at the edge unless you
+          widen the window.
+        </p>
+      </div>
+    </template>
+    <template id="help-tpl-autoplay-log">
+      <div class="help-dialog-prose">
+        <p>
+          Line-oriented <strong>stdio</strong> from the Fortran game (stdout and
+          stderr combined) plus <strong>planner</strong> lines (GETIN plans,
+          guards, diagnostics). Newest at top; about twelve lines visible—scroll
+          inside the box for more.
+        </p>
+      </div>
+    </template>
+    <template id="help-tpl-heuristic">
+      <div class="help-dialog-prose">
+        <p>
+          <strong>Location hint</strong> and <strong>inventory</strong> are
+          parsed from recent game text for planning; they are heuristics, not
+          guaranteed engine truth.
+        </p>
+        <p>
+          Stagnation messages and suggested moves use the inferred map when
+          available.
+        </p>
+      </div>
+    </template>
+    <template id="help-tpl-planner-prompt">
+      <div class="help-dialog-prose">
+        <p>
+          <strong>Patch fields</strong> change how the autoplay planner prompt
+          is built before each LLM call (prefix/suffix, optional system replace
+          or append, model notes). Click <strong>Apply patch</strong> to send
+          them to the server.
+        </p>
+        <p>
+          <strong>Last sent</strong> shows the effective planner payload
+          (including in-game HELP when enabled). Full bodies for SSE can be
+          capped unless <code>ADVENTURE_LM_SSE_FULL_PROMPTS=1</code> is set on
+          the server.
+        </p>
+        <p>
+          Manual “Interpret with text LLM” does <strong>not</strong> use this
+          patch—only autoplay planner calls do.
+        </p>
+      </div>
+    </template>
+    <template id="help-tpl-parser-verbs">
+      <div class="help-dialog-prose">
+        <p>
+          These are <strong>verb-class</strong> words from the Fortran
+          vocabulary table (<code>adventure.dat</code>): five-character tokens
+          the GETIN parser accepts as the action part of a command. Words on the
+          same row share one KTAB slot (synonyms).
+        </p>
+        <p>
+          Motion (compass directions, <strong>LOOK</strong>, etc.) and object
+          nouns are not listed here; they appear in planner vocabulary and game
+          text.
+        </p>
+      </div>
+    </template>
+    <template id="help-tpl-prompt-projects">
+      <div class="help-dialog-prose">
+        <p>
+          <strong>Projects</strong> are JSON files under
+          <code>.prompt-projects/</code> (or
+          <code>ADVENTURE_LM_PROMPT_PROJECTS_DIR</code>): prompt-lab patch,
+          generation parameters, optional <strong>max steps</strong>,
+          <strong>strategy</strong> id (<code>default</code>,
+          <code>explore</code>, <code>full</code>), allowlisted env overrides,
+          and tags. <strong>Load</strong> applies a project;
+          <strong>Duplicate</strong> forks with a new id;
+          <strong>Save to disk</strong> overwrites the selected file.
+        </p>
+      </div>
+    </template>
+    <template id="help-tpl-llm-generation">
+      <div class="help-dialog-prose">
+        <p>
+          Fields here map to the <strong>current text model provider</strong>
+          (temperature, top-p, max tokens, and similar). They apply to
+          <strong>interpret</strong> and <strong>autoplay</strong> calls when
+          the backend supports them.
+        </p>
+        <p>
+          <strong>Apply params</strong> sends the values to the server. Where
+          the provider API allows, settings can persist when you switch models
+          in the same family; incompatible fields are ignored or reset per
+          server behavior.
+        </p>
+      </div>
+    </template>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

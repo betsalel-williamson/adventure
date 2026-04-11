@@ -44,8 +44,8 @@ Accepted.
 
 ## References
 
-- [`adventure-llm/src/nl/autoplaySessionMemory.ts`](../../adventure-llm/src/nl/autoplaySessionMemory.ts) — `extractLatestRoomDescriptionBlock`, `getObjectHintScopeText`, `buildItemsHereLine`, `buildInteractiveInterpretPrefix`.
-- [`adventure-llm/src/nl/situationalCandidates.ts`](../../adventure-llm/src/nl/situationalCandidates.ts) — `buildSituationalCandidateTokens` (`objectHintScopeText`), `shouldPrioritizeLootFunnel`, `stripInjectedCommandLinesForObjectHints`.
-- [`adventure-llm/src/cli/autoplayRunner.ts`](../../adventure-llm/src/cli/autoplayRunner.ts) — planner call wiring.
-- [Guideline: autoplay planner context](../../guidelines/adventure-llm/autoplay-planner-context.md).
+- [`adventure-lm/src/nl/autoplaySessionMemory.ts`](../../adventure-lm/src/nl/autoplaySessionMemory.ts) — `extractLatestRoomDescriptionBlock`, `getObjectHintScopeText`, `buildItemsHereLine`, `buildInteractiveInterpretPrefix`.
+- [`adventure-lm/src/nl/situationalCandidates.ts`](../../adventure-lm/src/nl/situationalCandidates.ts) — `buildSituationalCandidateTokens` (`objectHintScopeText`), `shouldPrioritizeLootFunnel`, `stripInjectedCommandLinesForObjectHints`.
+- [`adventure-lm/src/cli/autoplayRunner.ts`](../../adventure-lm/src/cli/autoplayRunner.ts) — planner call wiring.
+- [Guideline: autoplay planner context](../../guidelines/adventure-lm/autoplay-planner-context.md).
 - [Architecture: adventure-engine.md](../architecture/adventure-engine.md) — process view for autoplay.

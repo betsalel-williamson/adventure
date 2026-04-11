@@ -4,7 +4,7 @@
 TypeScript + language-model tooling** that can drive autoplay and stream a local web
 dashboard (transcript, inferred map, session diagram).
 
-![Adventure LM autoplay web dashboard: transcript, state panels, map, and Mermaid FSM](docs/adventure-llm-dashboard.png)
+![Adventure LM autoplay web dashboard: transcript, state panels, map, and Mermaid FSM](docs/adventure-lm-dashboard.png)
 
 ## The problem
 
@@ -15,17 +15,17 @@ see structure, state, or how an AI agent reasons move-by-move.
 ## The solution
 
 This repository ships a **buildable Fortran port** (same `adventure.dat`
-mechanics) and, in [`adventure-llm/`](adventure-llm/), an **optional layer** that
+mechanics) and, in [`adventure-lm/`](adventure-lm/), an **optional layer** that
 uses the compiled game as an oracle: scripted GETIN-compatible play, optional
 natural-language mapping, and a **local autoplay dashboard** with SSE updates.
 
 ## Tech stack
 
 - **Fortran 77** — game engine (`gfortran`, `make`)
-- **TypeScript / Node 20+** — `adventure-llm` CLI, tests (Vitest), local HTTP
+- **TypeScript / Node 20+** — `adventure-lm` CLI, tests (Vitest), local HTTP
   dashboard (static ES modules)
 - **Optional text models** — Google Gemini, local MLX weights, or OpenAI-compatible HTTP (hosted LLMs or smaller local models)
-  (see [`adventure-llm/.env.example`](adventure-llm/.env.example))
+  (see [`adventure-lm/.env.example`](adventure-lm/.env.example))
 
 ## Quick start
 
@@ -41,7 +41,7 @@ make
 **Autoplay web dashboard** (needs Node + a configured text-model backend):
 
 ```sh
-make install-llm
+make install-lm
 make run-autoplay-web
 ```
 

@@ -56,15 +56,15 @@ User explicitly requested **WAL SQLite** with **client authoritative** semantics
 
 ## Implementation
 
-**Location (package [`adventure-llm`](../../adventure-llm/)):**
+**Location (package [`adventure-lm`](../../adventure-lm/)):**
 
 | Area                                                                                 | Path                                                                                                                         |
 | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
-| Migrations (`user_version`), exported SQL for WASM bootstrap                         | [`adventure-llm/src/browser/subsystemWalStoreMigrations.ts`](../../adventure-llm/src/browser/subsystemWalStoreMigrations.ts) |
-| Store API (`SubsystemWalStore`, `openSubsystemWalStore`, `migrateSubsystemWalStore`) | [`adventure-llm/src/browser/subsystemWalStore.ts`](../../adventure-llm/src/browser/subsystemWalStore.ts)                     |
-| Cross-tab **BroadcastChannel** name and message shapes (MVP)                         | [`adventure-llm/src/browser/subsystemWalChannel.ts`](../../adventure-llm/src/browser/subsystemWalChannel.ts)                 |
-| Automated tests (WAL, revisions, head concurrency, durability; tags / replay / revert per [ADR0007](ADR0007-subsystem-revision-control-and-replay.md)) | [`adventure-llm/src/browser/subsystemWalStore.test.ts`](../../adventure-llm/src/browser/subsystemWalStore.test.ts)           |
-| Server replica apply + `POST /api/subsystem-sync` ([ADR0008](ADR0008-server-subsystem-replica-and-sync.md)) | [`adventure-llm/src/cli/subsystemServerSync.ts`](../../adventure-llm/src/cli/subsystemServerSync.ts), [`webDashboard.ts`](../../adventure-llm/src/cli/webDashboard.ts) |
+| Migrations (`user_version`), exported SQL for WASM bootstrap                         | [`adventure-lm/src/browser/subsystemWalStoreMigrations.ts`](../../adventure-lm/src/browser/subsystemWalStoreMigrations.ts) |
+| Store API (`SubsystemWalStore`, `openSubsystemWalStore`, `migrateSubsystemWalStore`) | [`adventure-lm/src/browser/subsystemWalStore.ts`](../../adventure-lm/src/browser/subsystemWalStore.ts)                     |
+| Cross-tab **BroadcastChannel** name and message shapes (MVP)                         | [`adventure-lm/src/browser/subsystemWalChannel.ts`](../../adventure-lm/src/browser/subsystemWalChannel.ts)                 |
+| Automated tests (WAL, revisions, head concurrency, durability; tags / replay / revert per [ADR0007](ADR0007-subsystem-revision-control-and-replay.md)) | [`adventure-lm/src/browser/subsystemWalStore.test.ts`](../../adventure-lm/src/browser/subsystemWalStore.test.ts)           |
+| Server replica apply + `POST /api/subsystem-sync` ([ADR0008](ADR0008-server-subsystem-replica-and-sync.md)) | [`adventure-lm/src/cli/subsystemServerSync.ts`](../../adventure-lm/src/cli/subsystemServerSync.ts), [`webDashboard.ts`](../../adventure-lm/src/cli/webDashboard.ts) |
 
 **Schema:** Migration **v1** — `store_metadata`, `revisions` (linear parent chain), `revision_file_changes` (per-revision path deltas; `NULL` content = delete), `promotion_records` (test/promotion events with JSON detail). Migration **v2** adds **`revision_tags`** (named pointers to revisions; see [ADR0007](ADR0007-subsystem-revision-control-and-replay.md) **Implementation**).
 
@@ -76,8 +76,8 @@ Accepted
 
 ## References
 
-- `adventure-llm/src/cli/benchmarkRunsDb.ts` (server SQLite + WAL patterns)
-- [`adventure-llm/src/browser/subsystemWalStore.ts`](../../adventure-llm/src/browser/subsystemWalStore.ts) (client subsystem store implementation)
+- `adventure-lm/src/cli/benchmarkRunsDb.ts` (server SQLite + WAL patterns)
+- [`adventure-lm/src/browser/subsystemWalStore.ts`](../../adventure-lm/src/browser/subsystemWalStore.ts) (client subsystem store implementation)
 - [ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md) (browser glue checkpointing uses this store)
 - [ADR0007](ADR0007-subsystem-revision-control-and-replay.md)
 - [ADR0008](ADR0008-server-subsystem-replica-and-sync.md) — server replica + HTTP sync (**Implementation** in ADR0008)

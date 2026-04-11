@@ -9,7 +9,7 @@
 
 ### Technical context
 
-The dashboard **map hero column** (`adventure-llm/public/index.html`, `.map-hero-column-body`) currently stacks **two** panels:
+The dashboard **map hero column** (`adventure-lm/public/index.html`, `.map-hero-column-body`) currently stacks **two** panels:
 
 1. **Session FSM (Mermaid)** — session-learned **exploration graph** (directed edges, rejected moves, non-move actions); _game-derived_, not the autoplay orchestrator.
 2. **Exploration map** — inferred **(x, y, z)** grid view of the same exploration model.
@@ -48,7 +48,7 @@ The **cognition orchestration** machine ([ADR0005](ADR0005-browser-orchestrated-
 
 ## Rationale
 
-A **third** stacked panel reuses established layout and mental model (card + title + help). The cognition actor is a distinct subsystem from the session-learned graph; giving it a dedicated panel avoids misleading labels and supports the move toward **one orchestration hub** described in [`docs/architecture/adventure-llm-cognition-and-workspace.md`](../architecture/adventure-llm-cognition-and-workspace.md).
+A **third** stacked panel reuses established layout and mental model (card + title + help). The cognition actor is a distinct subsystem from the session-learned graph; giving it a dedicated panel avoids misleading labels and supports the move toward **one orchestration hub** described in [`docs/architecture/adventure-lm-cognition-and-workspace.md`](../architecture/adventure-lm-cognition-and-workspace.md).
 
 ## Status
 
@@ -61,6 +61,6 @@ Proposed
 - [ADR0007](ADR0007-subsystem-revision-control-and-replay.md) — tags / replay-at-revision in store (orchestration may surface tag or revert events when wired)
 - [ADR0008](ADR0008-server-subsystem-replica-and-sync.md) — sync lifecycle (**HTTP** landed; display **sync pending / fork** when the actor invokes `POST /api/subsystem-sync`)
 - [ADR0009](ADR0009-tdd-promote-gate-subsystems.md) — tests can assert transitions; panel aids manual verification
-- `adventure-llm/public/index.html` — `.map-hero-column-body`, `.map-fsm-card`, `.map-hero`
-- `adventure-llm/public/dashboard.css` — map column layout
-- `adventure-llm/src/browser/autoplayCognitionMachine.ts` — machine to display
+- `adventure-lm/public/index.html` — `.map-hero-column-body`, `.map-fsm-card`, `.map-hero`
+- `adventure-lm/public/dashboard.css` — map column layout
+- `adventure-lm/src/browser/autoplayCognitionMachine.ts` — machine to display

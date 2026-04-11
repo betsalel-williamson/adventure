@@ -10,7 +10,7 @@
 
 ### Technical context
 
-Monaco Editor is the practical “VS Code–like” surface without hosting full VS Code. Cross-tab coordination uses **BroadcastChannel**; same-origin tabs share cookies ([`webDashboardSession.ts`](../../adventure-llm/src/cli/webDashboardSession.ts)).
+Monaco Editor is the practical “VS Code–like” surface without hosting full VS Code. Cross-tab coordination uses **BroadcastChannel**; same-origin tabs share cookies ([`webDashboardSession.ts`](../../adventure-lm/src/cli/webDashboardSession.ts)).
 
 **SQLite access:** See [ADR0006](ADR0006-client-sqlite-wal-subsystem-store.md)—**OPFS** implies a **single DB owner** (`SharedWorker` **or** exclusive writer tab). **BroadcastChannel** is for **events** (e.g. promoted revision, head changed), **not** a substitute for safe concurrent SQLite access.
 
@@ -52,8 +52,8 @@ Proposed
 
 ## References
 
-- `adventure-llm/public/index.html`
-- `adventure-llm/src/cli/webDashboardSession.ts`
+- `adventure-lm/public/index.html`
+- `adventure-lm/src/cli/webDashboardSession.ts`
 - [ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md)
 - [ADR0006](ADR0006-client-sqlite-wal-subsystem-store.md) (subsystem store + `subsystemWalChannel` broadcast name/shapes)
 - [ADR0007](ADR0007-subsystem-revision-control-and-replay.md) (tags/replay in store; **BroadcastChannel** tag notifications not yet defined—extend message union when wiring workspace UI)
