@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { loadDatFile } from "../dat/loadDat.js";
-import { interpretedToGetinLine } from "./schema.js";
+import {
+  instructionIntentToHelpCommand,
+  interpretedToGetinLine,
+} from "@adventure-llm/nl-glue";
 import { validateAgainstVocab } from "./gemini.js";
-import { instructionIntentToHelpCommand } from "./intent.js";
 
 const datPath = path.join(
   fileURLToPath(new URL(".", import.meta.url)),

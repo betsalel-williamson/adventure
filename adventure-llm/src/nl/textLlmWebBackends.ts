@@ -1,7 +1,7 @@
 import { mlxWebModelPresetsList } from "./mlxModelPresets.js";
 import { mergeGoogleWebPresetsFromEnv } from "./googleWebModelPresets.js";
 import { mergeHttpWebPresetsFromEnv } from "./httpWebPresets.js";
-import type { TextLlmProviderId } from "./textLlmContract.js";
+import type { TextLlmProviderId } from "@adventure-llm/nl-glue";
 
 export type TextLlmBackendSnapshot = {
   readonly providerId: TextLlmProviderId;

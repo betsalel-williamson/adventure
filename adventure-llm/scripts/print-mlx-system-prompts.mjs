@@ -9,7 +9,7 @@
 import {
   MLX_SYSTEM_PROMPT_VARIANTS,
   mlxAutoplaySystemPromptForVariant,
-} from "../dist/nl/adventureNlPrompts.js";
+} from "@adventure-llm/nl-glue";
 
 const previewLen = 320;
 

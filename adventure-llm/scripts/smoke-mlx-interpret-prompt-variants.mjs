@@ -65,10 +65,8 @@ const PROMPT_VARIANTS = [
 ];
 
 const { loadDatFile } = await import("../dist/dat/loadDat.js");
-const { loadInterpretEvalFixtures } =
-  await import("../dist/nl/interpretEvalFixtures.js");
-const { compareInterpretEval } =
-  await import("../dist/nl/interpretEvalMatch.js");
+const { loadInterpretEvalFixtures } = await import("@adventure-llm/nl-glue");
+const { compareInterpretEval } = await import("@adventure-llm/nl-glue");
 const { interpretWithTextLlm, resolveTextLlmFromEnv } =
   await import("../dist/nl/adventureTextLlm.js");
 

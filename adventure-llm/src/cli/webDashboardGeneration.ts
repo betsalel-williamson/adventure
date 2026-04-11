@@ -1,4 +1,4 @@
-import type { TextLlm } from "../nl/textLlmContract.js";
+import type { TextLlm } from "@adventure-llm/nl-glue";
 import { GoogleGenerativeAiTextLlm } from "../nl/providers/googleGenerativeAiTextLlm.js";
 import { HttpOpenAiCompatibleTextLlm } from "../nl/providers/httpOpenAiCompatibleTextLlm.js";
 import { MlxLmStdioTextLlm } from "../nl/providers/mlxLmStdioTextLlm.js";

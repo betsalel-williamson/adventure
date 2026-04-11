@@ -6,7 +6,7 @@ import {
   LLM_PACKAGING_PLANNER_PREVIEW_MAX_SYSTEM_CHARS,
   LLM_PACKAGING_PLANNER_PREVIEW_MAX_USER_CHARS,
   LLM_PACKAGING_SSE_PROMPT_CAP_CHARS,
-} from "./llmPackagingConstants.js";
+} from "@adventure-llm/nl-glue";
 import { buildLlmPackagingDiscoveryPayload } from "./llmPackagingProfile.js";
 
 describe("buildLlmPackagingDiscoveryPayload", () => {

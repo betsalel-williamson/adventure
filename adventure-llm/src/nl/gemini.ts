@@ -1,6 +1,5 @@
-import type { InterpretedCommand } from "./schema.js";
 import type { AdventureDatabase } from "../dat/types.js";
-import { toA5 } from "../vocab/vocab.js";
+import { toA5, type InterpretedCommand } from "@adventure-llm/nl-glue";
 import { GoogleGenerativeAiTextLlm } from "./providers/googleGenerativeAiTextLlm.js";
 
 export type GeminiInterpreterOptions = {
@@ -12,7 +11,10 @@ export type GeminiInterpreterOptions = {
 };
 
 export { shouldFallbackToClassicForGeminiError } from "./llmErrors.js";
-export { buildVocabHint, type BuildVocabHintOptions } from "./vocabHint.js";
+export {
+  buildVocabHint,
+  type BuildVocabHintOptions,
+} from "@adventure-llm/nl-glue";
 
 /**
  * @deprecated Prefer {@link interpretWithTextLlm} with {@link resolveTextLlmFromEnv} or {@link GoogleGenerativeAiTextLlm}.

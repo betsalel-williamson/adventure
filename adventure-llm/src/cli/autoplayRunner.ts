@@ -9,25 +9,21 @@ import {
 } from "../engine/subprocessEngine.js";
 import {
   AutoplaySessionMemory,
-  gameOutputLooksLikePlayAgainPrompt,
-  type AutoplayUiSnapshot,
-} from "../nl/autoplaySessionMemory.js";
-import { planAutoplayWithTextLlm } from "../nl/adventureTextLlm.js";
-import {
+  buildAutoplayPlannerInvocation,
   effectivePlannerSendPayload,
+  gameOutputLooksLikePlayAgainPrompt,
+  interpretedToGetinLine,
+  planAfterAutoplayGuards,
+  plannerToScriptedGetin,
   resolveCompactPrompts,
   resolveStructuredDashboardPrompts,
-  type AutoplayPromptMode,
-} from "../nl/adventureNlPrompts.js";
-import type { PromptExperimentPatch } from "../nl/promptExperiment.js";
-import { buildAutoplayPlannerInvocation } from "../nl/buildAutoplayPlannerInvocation.js";
-import { planAfterAutoplayGuards } from "../nl/autoplayPlannerGuards.js";
-import { appendInteractionLog, resolveDebugLogPath } from "../nl/llmDebug.js";
-import {
-  interpretedToGetinLine,
   type AutoplayPlannerResponse,
-} from "../nl/schema.js";
-import { plannerToScriptedGetin } from "../nl/plannerToScriptedGetin.js";
+  type AutoplayPromptMode,
+  type AutoplayUiSnapshot,
+  type PromptExperimentPatch,
+} from "@adventure-llm/nl-glue";
+import { planAutoplayWithTextLlm } from "../nl/adventureTextLlm.js";
+import { appendInteractionLog, resolveDebugLogPath } from "../nl/llmDebug.js";
 import {
   DEFAULT_AUTOPLAY_MAX_MOVES,
   maxMovesFromOverrides,
@@ -39,12 +35,10 @@ import {
 import {
   describeMotionGridDelta,
   primaryFromGetinCommand,
-} from "../nl/inferredExplorationMap.js";
-import type {
-  PlannerUserPromptInput,
-  TextLlm,
-  TextLlmProviderId,
-} from "../nl/textLlmContract.js";
+  type PlannerUserPromptInput,
+  type TextLlm,
+  type TextLlmProviderId,
+} from "@adventure-llm/nl-glue";
 
 /** Fixed client or mutable ref (web dashboard text model hot-swap). */
 export type TextLlmSource = TextLlm | { current: TextLlm };

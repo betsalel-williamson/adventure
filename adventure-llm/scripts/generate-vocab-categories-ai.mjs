@@ -30,7 +30,7 @@ const { loadDatFile } = await import("../dist/dat/loadDat.js");
 const { resolveTextLlmFromEnv } =
   await import("../dist/nl/adventureTextLlm.js");
 const { generateAiVocabCategoriesWithLlm } =
-  await import("../dist/nl/vocabCategoriesGenerate.js");
+  await import("@adventure-llm/nl-glue");
 
 async function main() {
   const client = resolveTextLlmFromEnv();

@@ -6,8 +6,8 @@ import {
   runFortranOpenThenFirstCommand,
   type ScriptedGetinLine,
 } from "../engine/subprocessEngine.js";
-import { interpretedToGetinLine } from "../nl/schema.js";
-import type { AutoplayPlannerResponse } from "../nl/schema.js";
+import { interpretedToGetinLine } from "@adventure-llm/nl-glue";
+import type { AutoplayPlannerResponse } from "@adventure-llm/nl-glue";
 import {
   AUTOPLAY_RESUME_PLANNER,
   resolveAutoplayInstructionsAnswer,

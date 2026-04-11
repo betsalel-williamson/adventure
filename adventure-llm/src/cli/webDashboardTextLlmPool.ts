@@ -15,7 +15,7 @@ import { isAllowedGoogleWebModelId } from "../nl/googleWebModelPresets.js";
 import { isAllowedHttpWebModelId } from "../nl/httpWebPresets.js";
 import { isAllowedMlxWebModelId } from "../nl/mlxModelPresets.js";
 import { MlxLmStdioTextLlm } from "../nl/providers/mlxLmStdioTextLlm.js";
-import type { TextLlm, TextLlmProviderId } from "../nl/textLlmContract.js";
+import type { TextLlm, TextLlmProviderId } from "@adventure-llm/nl-glue";
 import {
   googleBackendAvailableFromEnv,
   httpBackendAvailableFromEnv,

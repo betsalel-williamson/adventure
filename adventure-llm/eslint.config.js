@@ -10,11 +10,19 @@ export default tseslint.config(
   {
     ignores: [
       "dist/**",
+      "packages/**/dist/**",
       "node_modules/**",
       "reports/**",
       ".cache/**",
       "public/generated/**",
     ],
+  },
+  {
+    files: ["**/*.cjs"],
+    languageOptions: {
+      sourceType: "commonjs",
+      globals: globals.node,
+    },
   },
   {
     files: ["scripts/**/*.mjs"],

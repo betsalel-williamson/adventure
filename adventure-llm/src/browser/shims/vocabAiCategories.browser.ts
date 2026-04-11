@@ -1,18 +1,48 @@
 /**
- * Browser shim: no filesystem AI vocab cache; keep pure helpers used by {@link buildVocabHint}.
+ * Browser shim: no filesystem AI vocab cache; keep the same exports as
+ * {@link @adventure-llm/nl-glue} `vocabAiCategories` for esbuild (ADR0005 bundle).
  */
 import type { AdventureDatabase } from "../../dat/types.js";
+import { z } from "zod";
 
-type AiVocabCategoryGroup = {
-  readonly id: string;
-  readonly title: string;
-  readonly blurb: string;
-  readonly tokens: readonly string[];
-};
+export const AI_VOCAB_FILE_SCHEMA_VERSION = 1;
 
-type ResolvedAiVocabGroups = {
+const aiGroupSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  blurb: z.string(),
+  tokens: z.array(z.string()),
+});
+
+export const aiVocabFileSchema = z.object({
+  version: z.number().optional(),
+  groups: z.array(aiGroupSchema),
+});
+
+export type AiVocabCategoryGroup = z.infer<typeof aiGroupSchema>;
+export type AiVocabCategoriesFile = z.infer<typeof aiVocabFileSchema>;
+
+/** Five-letter ATAB-style normalization (matches collectGameVocabTokens). */
+export function normalizeVocabToken(raw: string): string {
+  return raw.trim().toUpperCase().slice(0, 5);
+}
+
+export function resolveAiVocabCategoriesPath(): string | null {
+  return null;
+}
+
+export type ResolvedAiVocabGroups = {
   readonly groups: readonly AiVocabCategoryGroup[];
 };
+
+export function loadAiVocabCategoriesForHint(
+  db: AdventureDatabase,
+  jsonPath: string,
+): ResolvedAiVocabGroups | null {
+  void db;
+  void jsonPath;
+  return null;
+}
 
 export function tryLoadAiVocabCategoriesForHint(
   db: AdventureDatabase,

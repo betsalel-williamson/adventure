@@ -1,11 +1,11 @@
 export { loadDatFile, loadDatFromString } from "./dat/loadDat.js";
-export type { AdventureDatabase, LLineRow } from "./dat/types.js";
+export type { AdventureDatabase, LLineRow } from "@adventure-llm/nl-glue";
 export {
   buildMotionGraphFromDat,
   type DatMotionEdge,
 } from "./dat/motionGraphFromDat.js";
 export { getin, type GetinResult } from "./cli/getin.js";
-export { findVocabIndex, ktabK, ktabClass, toA5 } from "./vocab/vocab.js";
+export { findVocabIndex, ktabK, ktabClass, toA5 } from "@adventure-llm/nl-glue";
 export {
   runFortranScript,
   runFortranOpenThenFirstCommand,
@@ -28,7 +28,7 @@ export {
   walkLLineChain,
   getHelpInstructionText,
   HELP_RTEXT_MESSAGE_ID,
-} from "./text/speak.js";
+} from "@adventure-llm/nl-glue";
 export {
   InterpretedCommandSchema,
   AutoplayPlannerResponseSchema,
@@ -36,7 +36,7 @@ export {
   swapInterpretedTokens,
   type InterpretedCommand,
   type AutoplayPlannerResponse,
-} from "./nl/schema.js";
+} from "@adventure-llm/nl-glue";
 export {
   AutoplaySessionMemory,
   gameOutputLooksLikeBlockedMove,
@@ -45,7 +45,7 @@ export {
   normalizeGetinLineKey,
   type AutoplayUiSnapshot,
   type AutoplayUiTurnSnapshot,
-} from "./nl/autoplaySessionMemory.js";
+} from "@adventure-llm/nl-glue";
 export {
   InferredExplorationMap,
   canonicalExplorationFingerprint,
@@ -81,7 +81,7 @@ export {
   type DirectedEdgeKind,
   type DirectedEdgeSnapshot,
   type TriedCommandSnapshot,
-} from "./nl/inferredExplorationMap.js";
+} from "@adventure-llm/nl-glue";
 export {
   collectNeighborhoodNodeIds,
   graphNodeCaptionForSnapshot,
@@ -89,13 +89,13 @@ export {
   inferredMapToLocalDot,
   inferredMapToMermaid,
   shortMermaidPlaceLabelForSnapshot,
-} from "./nl/explorationGraphViz.js";
+} from "@adventure-llm/nl-glue";
 export {
   collectGameVocabTokens,
   openAiAutoplayPlannerJsonSchema,
   openAiInterpretCommandJsonSchema,
   vocabTokensForLlmEnums,
-} from "./nl/gameVocabEnums.js";
+} from "@adventure-llm/nl-glue";
 export {
   buildAutoplayRelevantTokensFilterPrompt,
   buildSituationalCandidateTokens,
@@ -110,7 +110,7 @@ export {
   recentTextSuggestsIndoorBuildingNavigation,
   recentTextSuggestsVerticalPassageNavigation,
   stripInjectedCommandLinesForObjectHints,
-} from "./nl/situationalCandidates.js";
+} from "@adventure-llm/nl-glue";
 export {
   ADVENTURE_LLM_INTERPRET_ROLE,
   ADVENTURE_LLM_INTERPRET_ROLE_COMPACT,
@@ -147,7 +147,7 @@ export {
   type AutoplayPlannerBuildOptions,
   type BuildInterpretPromptOptions,
   type MlxSystemPromptVariant,
-} from "./nl/adventureNlPrompts.js";
+} from "@adventure-llm/nl-glue";
 export {
   LLM_PACKAGING_AUTOPLAY_RECENT_RAW_TAIL_MAX_CHARS,
   LLM_PACKAGING_INTERPRET_RECENT_GAME_CHARS_COMPACT,
@@ -155,7 +155,7 @@ export {
   LLM_PACKAGING_PLANNER_PREVIEW_MAX_SYSTEM_CHARS,
   LLM_PACKAGING_PLANNER_PREVIEW_MAX_USER_CHARS,
   LLM_PACKAGING_SSE_PROMPT_CAP_CHARS,
-} from "./nl/llmPackagingConstants.js";
+} from "@adventure-llm/nl-glue";
 export {
   buildLlmPackagingDiscoveryPayload,
   type LlmJsonSchemaWireKind,
@@ -170,18 +170,18 @@ export {
   type PromptExperimentModelNotesTarget,
   type PromptExperimentPatch,
   type PromptExperimentSystemMode,
-} from "./nl/promptExperiment.js";
+} from "@adventure-llm/nl-glue";
 export {
   loadInterpretEvalFixtures,
   buildInterpretEvalExamplesSection,
   type InterpretEvalFixture,
-} from "./nl/interpretEvalFixtures.js";
+} from "@adventure-llm/nl-glue";
 export {
   compareInterpretEval,
   normalizeInterpretEvalToken,
   type InterpretEvalExpect,
   type InterpretEvalComparison,
-} from "./nl/interpretEvalMatch.js";
+} from "@adventure-llm/nl-glue";
 export {
   tryLoadAiVocabCategoriesForHint,
   loadAiVocabCategoriesForHint,
@@ -190,11 +190,11 @@ export {
   type AiVocabCategoriesFile,
   type AiVocabCategoryGroup,
   type ResolvedAiVocabGroups,
-} from "./nl/vocabAiCategories.js";
+} from "@adventure-llm/nl-glue";
 export {
   buildVocabAiCategorizationPrompt,
   generateAiVocabCategoriesWithLlm,
-} from "./nl/vocabCategoriesGenerate.js";
+} from "@adventure-llm/nl-glue";
 export { chooseNextMoveWithGemini } from "./nl/geminiAutoplay.js";
 export {
   buildVocabHint,
@@ -239,7 +239,7 @@ export type {
   PlannerUserPromptInput,
   TextLlm,
   TextLlmProviderId,
-} from "./nl/textLlmContract.js";
+} from "@adventure-llm/nl-glue";
 export { shouldFallbackToClassicForLlmError } from "./nl/llmErrors.js";
 export { GoogleGenerativeAiTextLlm } from "./nl/providers/googleGenerativeAiTextLlm.js";
 export type { GoogleGenerativeAiTextLlmOptions } from "./nl/providers/googleGenerativeAiTextLlm.js";
@@ -247,7 +247,7 @@ export { HttpOpenAiCompatibleTextLlm } from "./nl/providers/httpOpenAiCompatible
 export type { HttpOpenAiCompatibleTextLlmOptions } from "./nl/providers/httpOpenAiCompatibleTextLlm.js";
 export { MlxLmStdioTextLlm } from "./nl/providers/mlxLmStdioTextLlm.js";
 export type { MlxLmStdioTextLlmOptions } from "./nl/providers/mlxLmStdioTextLlm.js";
-export { instructionIntentToHelpCommand } from "./nl/intent.js";
+export { instructionIntentToHelpCommand } from "@adventure-llm/nl-glue";
 export {
   DEFAULT_GEMINI_TEXT_MODEL,
   DEFAULT_GEMINI_IMAGE_MODEL,

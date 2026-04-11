@@ -3,48 +3,38 @@ import { createInterface } from "node:readline";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { interpretCacheKeyFromBuildOptions } from "../interpretCacheKey.js";
 import {
   AutoplayPlannerResponseSchema,
   InterpretedCommandSchema,
+  buildAutoplayPlannerPrompt,
+  buildAutoplayPlannerPromptParts,
+  buildAutoplayRelevantTokensFilterPrompt,
+  buildInterpretSystemAndUserPrompt,
+  buildSituationalCandidateTokens,
+  coerceAutoplayPlannerJson,
+  coerceInterpretedCommandJson,
+  finalizeAutoplayPlannerResponse,
+  finalizeInterpretedCommand,
+  parseJsonObjectFromLlmText,
+  parseRelevantTokensResponse,
+  recentTextSuggestsIndoorBuildingNavigation,
+  resolveAutoplayPromptMode,
+  resolveCompactPrompts,
+  resolveStructuredDashboardPrompts,
   type AutoplayPlannerResponse,
   type InterpretedCommand,
-} from "../schema.js";
+  type InterpretPlayerInputOptions,
+  type PlannerUserPromptInput,
+  type TextLlm,
+} from "@adventure-llm/nl-glue";
 import type { AdventureDatabase } from "../../dat/types.js";
 import {
   appendInteractionLog,
   resolveCacheDir,
   writeCachedInterpreted,
 } from "../llmDebug.js";
-import { interpretCacheKeyFromBuildOptions } from "../interpretCacheKey.js";
 import { loadCachedInterpretIfHit } from "../interpretDiskCache.js";
-import {
-  finalizeAutoplayPlannerResponse,
-  finalizeInterpretedCommand,
-} from "../textLlmInterpretPipeline.js";
-import {
-  buildAutoplayPlannerPrompt,
-  buildAutoplayPlannerPromptParts,
-  buildInterpretSystemAndUserPrompt,
-  resolveAutoplayPromptMode,
-  resolveCompactPrompts,
-  resolveStructuredDashboardPrompts,
-} from "../adventureNlPrompts.js";
-import {
-  buildAutoplayRelevantTokensFilterPrompt,
-  buildSituationalCandidateTokens,
-  parseRelevantTokensResponse,
-  recentTextSuggestsIndoorBuildingNavigation,
-} from "../situationalCandidates.js";
-import { parseJsonObjectFromLlmText } from "../jsonFromLlmText.js";
-import {
-  coerceAutoplayPlannerJson,
-  coerceInterpretedCommandJson,
-} from "../coerceLlmJson.js";
-import type {
-  InterpretPlayerInputOptions,
-  PlannerUserPromptInput,
-  TextLlm,
-} from "../textLlmContract.js";
 
 export type MlxLmStdioTextLlmOptions = {
   /** Hugging Face repo id, e.g. mlx-community/gemma-2-2b-it */

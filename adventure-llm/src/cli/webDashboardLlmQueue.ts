@@ -1,15 +1,13 @@
 import { runWithWebDashboardLlmLogContext } from "../nl/llmDebug.js";
 import type { AdventureDatabase } from "../dat/types.js";
 import type {
+  AutoplayPlannerResponse,
+  InterpretedCommand,
   InterpretPlayerInputOptions,
   PlannerUserPromptInput,
   TextLlm,
   TextLlmProviderId,
-} from "../nl/textLlmContract.js";
-import type {
-  AutoplayPlannerResponse,
-  InterpretedCommand,
-} from "../nl/schema.js";
+} from "@adventure-llm/nl-glue";
 
 export type LlmSequentialExecutor = {
   run<T>(sessionId: string, fn: () => Promise<T>): Promise<T>;

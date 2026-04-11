@@ -1,8 +1,12 @@
-import { createHash } from "node:crypto";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { mkdir, readFile, writeFile, appendFile } from "node:fs/promises";
 import path from "node:path";
-import type { InterpretedCommand } from "./schema.js";
+import type { InterpretedCommand } from "@adventure-llm/nl-glue";
+import {
+  DEFAULT_INTERPRET_CACHE_SCHEMA_VERSION,
+  interpretCacheKeyMaterialHash,
+  interpretCacheSchemaVersion,
+} from "./interpretCacheKeyMaterial.js";
 
 function isWebDashboardLogSessionId(s: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
@@ -48,31 +52,11 @@ export function resolveCacheDir(): string | null {
   return d ? path.resolve(d) : null;
 }
 
-/** Default schema version for interpret disk cache; bump when key material meaning changes. */
-export const DEFAULT_INTERPRET_CACHE_SCHEMA_VERSION = "2";
-
-/**
- * Effective interpret cache schema version (`ADVENTURE_LLM_CACHE_SCHEMA_VERSION` or default).
- * Change the env var or bump {@link DEFAULT_INTERPRET_CACHE_SCHEMA_VERSION} to invalidate caches.
- */
-export function interpretCacheSchemaVersion(): string {
-  const v = process.env.ADVENTURE_LLM_CACHE_SCHEMA_VERSION?.trim();
-  return v && v.length > 0 ? v : DEFAULT_INTERPRET_CACHE_SCHEMA_VERSION;
-}
-
-/**
- * Hash for interpret cache entries: version, provider, model, user line, prompt layout, recent-game slice.
- */
-export function interpretCacheKeyMaterialHash(
-  parts: readonly string[],
-): string {
-  return createHash("sha256")
-    .update(
-      ["interpret", interpretCacheSchemaVersion(), ...parts].join("\u001e"),
-      "utf8",
-    )
-    .digest("hex");
-}
+export {
+  DEFAULT_INTERPRET_CACHE_SCHEMA_VERSION,
+  interpretCacheKeyMaterialHash,
+  interpretCacheSchemaVersion,
+};
 
 /**
  * @deprecated Prefer {@link interpretCacheKeyFromBuildOptions} in `interpretCacheKey.js` — includes

@@ -1,6 +1,6 @@
-import { recentGameTextSliceForInterpretPrompt } from "./adventureNlPrompts.js";
-import { interpretCacheKeyMaterialHash } from "./llmDebug.js";
-import type { TextLlmProviderId } from "./textLlmContract.js";
+import { recentGameTextSliceForInterpretPrompt } from "@adventure-llm/nl-glue";
+import type { TextLlmProviderId } from "@adventure-llm/nl-glue";
+import { interpretCacheKeyMaterialHash } from "./interpretCacheKeyMaterial.js";
 
 /**
  * Stable cache key for interpret, including layout flags and the same recent-game tail as the prompt.

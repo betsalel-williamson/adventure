@@ -7,7 +7,7 @@ import {
   writeFile,
 } from "node:fs/promises";
 import path from "node:path";
-import type { PromptExperimentPatch } from "../nl/promptExperiment.js";
+import type { PromptExperimentPatch } from "@adventure-llm/nl-glue";
 
 export const PROMPT_PROJECT_SCHEMA_LATEST = 2 as const;
 

@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import type { TextLlm } from "../nl/textLlmContract.js";
+import type { TextLlm } from "@adventure-llm/nl-glue";
 import type {
   AutoplayPlannerResponse,
   InterpretedCommand,
-} from "../nl/schema.js";
+} from "@adventure-llm/nl-glue";
 import {
   DEFAULT_AUTOPLAY_MAX_MOVES,
   getTextLlmAccessor,

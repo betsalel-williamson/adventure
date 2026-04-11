@@ -1,9 +1,24 @@
+import { interpretCacheKeyFromBuildOptions } from "../interpretCacheKey.js";
 import {
   AutoplayPlannerResponseSchema,
   InterpretedCommandSchema,
+  buildAutoplayPlannerPrompt,
+  buildInterpretSystemAndUserPrompt,
+  coerceAutoplayPlannerJson,
+  coerceInterpretedCommandJson,
+  finalizeAutoplayPlannerResponse,
+  finalizeInterpretedCommand,
+  openAiAutoplayPlannerJsonSchema,
+  openAiInterpretCommandJsonSchema,
+  parseJsonObjectFromLlmText,
+  resolveInterpretPromptBuildOptions,
+  vocabTokensForLlmEnums,
   type AutoplayPlannerResponse,
   type InterpretedCommand,
-} from "../schema.js";
+  type InterpretPlayerInputOptions,
+  type PlannerUserPromptInput,
+  type TextLlm,
+} from "@adventure-llm/nl-glue";
 import type { AdventureDatabase } from "../../dat/types.js";
 import {
   appendInteractionLog,
@@ -11,33 +26,7 @@ import {
   writeCachedInterpreted,
 } from "../llmDebug.js";
 import { httpStatusEligibleForRetry, LlmTransportError } from "../llmErrors.js";
-import { interpretCacheKeyFromBuildOptions } from "../interpretCacheKey.js";
 import { loadCachedInterpretIfHit } from "../interpretDiskCache.js";
-import {
-  finalizeAutoplayPlannerResponse,
-  finalizeInterpretedCommand,
-} from "../textLlmInterpretPipeline.js";
-import {
-  buildAutoplayPlannerPrompt,
-  buildInterpretSystemAndUserPrompt,
-  resolveInterpretPromptBuildOptions,
-} from "../adventureNlPrompts.js";
-import { parseJsonObjectFromLlmText } from "../jsonFromLlmText.js";
-import {
-  coerceAutoplayPlannerJson,
-  coerceInterpretedCommandJson,
-} from "../coerceLlmJson.js";
-import type {
-  InterpretPlayerInputOptions,
-  PlannerUserPromptInput,
-  TextLlm,
-} from "../textLlmContract.js";
-import {
-  openAiAutoplayPlannerJsonSchema,
-  openAiInterpretCommandJsonSchema,
-  vocabTokensForLlmEnums,
-} from "../gameVocabEnums.js";
-
 export type HttpOpenAiCompatibleTextLlmOptions = {
   /** e.g. `http://127.0.0.1:11434/v1` (Ollama) */
   baseUrl: string;

@@ -1,4 +1,4 @@
-import type { AutoplayPromptMode } from "../nl/adventureNlPrompts.js";
+import type { AutoplayPromptMode } from "@adventure-llm/nl-glue";
 
 export type AutoplayStrategyHooks = {
   readonly id: string;

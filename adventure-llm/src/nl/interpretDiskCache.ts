@@ -1,8 +1,13 @@
 import type { AdventureDatabase } from "../dat/types.js";
 import { appendInteractionLog, readCachedInterpreted } from "./llmDebug.js";
-import { InterpretedCommandSchema, type InterpretedCommand } from "./schema.js";
-import type { TextLlmProviderId } from "./textLlmContract.js";
-import { finalizeInterpretedCommand } from "./textLlmInterpretPipeline.js";
+import {
+  InterpretedCommandSchema,
+  type InterpretedCommand,
+} from "@adventure-llm/nl-glue";
+import {
+  finalizeInterpretedCommand,
+  type TextLlmProviderId,
+} from "@adventure-llm/nl-glue";
 
 /**
  * If a valid cached raw interpret JSON exists, finalize it (vocab + repair) and log a cache hit.

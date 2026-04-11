@@ -11,11 +11,8 @@ import https from "node:https";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { config as loadEnv } from "dotenv";
-import { loadDatFile } from "../dat/loadDat.js";
-import {
-  interpretWithTextLlm,
-  resolveTextLlmFromEnv,
-} from "../nl/adventureTextLlm.js";
+import { loadDatFile } from "../pipe/gameSimulationPipe.js";
+import { resolveTextLlmFromEnv } from "../nl/adventureTextLlm.js";
 import { shouldFallbackToClassicForLlmError } from "../nl/llmErrors.js";
 import {
   resolveDebugLogPath,
@@ -27,20 +24,21 @@ import {
 } from "../nl/mlxModelPresets.js";
 import { MlxLmStdioTextLlm } from "../nl/providers/mlxLmStdioTextLlm.js";
 import {
+  AutoplayPlannerResponseSchema,
+  buildVerbSynonymGroups,
   defaultPromptExperimentPatch,
   patchPromptExperimentPatch,
   type PromptExperimentPatch,
-} from "../nl/promptExperiment.js";
-import { interpretedToGetinLine, swapInterpretedTokens } from "../nl/schema.js";
-import { buildVerbSynonymGroups } from "../vocab/verbSynonymGroups.js";
-import type { TextLlm, TextLlmProviderId } from "../nl/textLlmContract.js";
+  type TextLlm,
+  type TextLlmProviderId,
+} from "@adventure-llm/nl-glue";
 import { buildLlmPackagingDiscoveryPayload } from "../nl/llmPackagingProfile.js";
 import {
   buildTextLlmBackendSnapshots,
   canSwapTextLlmFromBackends,
 } from "../nl/textLlmWebBackends.js";
 import type { ScriptedGetinLine } from "../engine/subprocessEngine.js";
-import { resolveAutoplayPromptMode } from "../nl/adventureNlPrompts.js";
+import { resolveAutoplayPromptMode } from "@adventure-llm/nl-glue";
 import {
   runAutoplaySessionWithTextLlm,
   AUTOPLAY_RESUME_PLANNER,
@@ -53,10 +51,12 @@ import {
 import { resolveBrowserOrchestratedAutoplayFromEnv } from "./browserOrchestrationEnv.js";
 import { runBrowserOrchestratedEngineSession } from "./browserEngineBridge.js";
 import { EngineGetinQueue } from "./engineGetinQueue.js";
-import { serializeAdventureDatabaseToJson } from "../dat/adventureDatabaseJson.js";
-import { planAutoplayWithTextLlm } from "../nl/adventureTextLlm.js";
-import { AutoplayPlannerResponseSchema } from "../nl/schema.js";
-import type { PlannerUserPromptInput } from "../nl/textLlmContract.js";
+import {
+  interpretNaturalLanguageToScriptedGetin,
+  runServerAutoplayPlanner,
+} from "../cognition/dashboardServerLlmReactions.js";
+import { serializeAdventureDatabaseToJson } from "../pipe/gameSimulationPipe.js";
+import type { PlannerUserPromptInput } from "@adventure-llm/nl-glue";
 import {
   listAutoplayStrategyIds,
   resolveAutoplayStrategyHooks,
@@ -919,7 +919,7 @@ export function createAutoplayDashboardServer(
           body.includeDatHelpInSystem === false ? false : true;
         const client = pool.getClientForSession(sess);
         const plan = await llmExecutor.run(sess.id, async () => {
-          return planAutoplayWithTextLlm(db, client, {
+          return runServerAutoplayPlanner(db, client, {
             plannerUserPrompt,
             recentGameTextForRepair: recent,
             includeDatHelpInSystem: includeDatHelp,
@@ -2004,8 +2004,8 @@ export function createAutoplayDashboardServer(
         if (typeof body.natural === "string" && body.natural.trim() !== "") {
           /* Pool attach uses runSerialized → llmExecutor.flush(); never await that inside llmExecutor.run (deadlock). */
           await pool!.ensureSessionAttached(sess);
-          const interpreted = await llmExecutor.run(sess.id, async () => {
-            return interpretWithTextLlm(
+          const scripted = await llmExecutor.run(sess.id, async () => {
+            return interpretNaturalLanguageToScriptedGetin(
               body.natural!.trim(),
               db,
               pool!.getClientForSession(sess),
@@ -2014,20 +2014,6 @@ export function createAutoplayDashboardServer(
               },
             );
           });
-          const firstLine = interpretedToGetinLine(interpreted);
-          const swapped = swapInterpretedTokens(interpreted);
-          const retryLine = swapped
-            ? interpretedToGetinLine(swapped)
-            : undefined;
-          let scripted: ScriptedGetinLine;
-          if (
-            retryLine !== undefined &&
-            retryLine.trimEnd() !== firstLine.trimEnd()
-          ) {
-            scripted = { line: firstLine, retryIfRejected: retryLine };
-          } else {
-            scripted = firstLine;
-          }
           pend.resolve(scripted);
           jsonResponseWithSessionCookie(
             res,

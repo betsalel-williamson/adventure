@@ -24,17 +24,16 @@ process.env.ADVENTURE_LLM_AUTOPLAY_TWO_STEP = "0";
 process.env.ADVENTURE_LLM_DEBUG = process.env.ADVENTURE_LLM_DEBUG ?? "0";
 
 const {
+  AutoplaySessionMemory,
   MLX_SYSTEM_PROMPT_VARIANTS,
   resolveCompactPrompts,
   resolveStructuredDashboardPrompts,
-} = await import("../dist/nl/adventureNlPrompts.js");
+} = await import("@adventure-llm/nl-glue");
 const { loadDatFile } = await import("../dist/dat/loadDat.js");
-const { AutoplaySessionMemory } =
-  await import("../dist/nl/autoplaySessionMemory.js");
 const { planAutoplayWithTextLlm, resolveTextLlmFromEnv } =
   await import("../dist/nl/adventureTextLlm.js");
 const { buildSituationalCandidateTokens, formatSituationalCandidatesSection } =
-  await import("../dist/nl/situationalCandidates.js");
+  await import("@adventure-llm/nl-glue");
 const contextChars = Number(
   process.env.ADVENTURE_LLM_AUTOPLAY_CONTEXT_CHARS ?? "6000",
 );

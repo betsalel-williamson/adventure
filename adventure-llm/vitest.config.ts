@@ -14,6 +14,14 @@ export default defineConfig({
       }),
       defineProject({
         test: {
+          name: "nl-glue",
+          globals: false,
+          environment: "node",
+          include: ["packages/nl-glue/src/**/*.test.ts"],
+        },
+      }),
+      defineProject({
+        test: {
           name: "dom",
           globals: false,
           environment: "happy-dom",

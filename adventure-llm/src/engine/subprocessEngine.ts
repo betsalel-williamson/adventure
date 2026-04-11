@@ -6,6 +6,7 @@ import {
 } from "node:child_process";
 import { once } from "node:events";
 import path from "node:path";
+import type { ScriptedGetinLine } from "@adventure-llm/nl-glue";
 import { appendInteractionLog } from "../nl/llmDebug.js";
 
 export type SubprocessEngineOptions = {
@@ -57,14 +58,7 @@ export function transcriptSuggestsCommandRejected(output: string): boolean {
   );
 }
 
-/** One or two GETIN lines: optional automatic retry when the parser rejects the first. */
-export type ScriptedGetinLine =
-  | string
-  | {
-      line: string;
-      /** Sent once if output after `line` matches {@link transcriptSuggestsCommandRejected}. */
-      retryIfRejected?: string;
-    };
+export type { ScriptedGetinLine };
 
 /** Transcript printed after the last scripted command, for NL context (resolve "them", objects). */
 export type ContinueLineContext = {

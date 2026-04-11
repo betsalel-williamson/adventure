@@ -1,10 +1,22 @@
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
+import { interpretCacheKeyFromBuildOptions } from "../interpretCacheKey.js";
 import {
   AutoplayPlannerResponseSchema,
   InterpretedCommandSchema,
+  buildAutoplayPlannerPrompt,
+  buildInterpretSystemAndUserPrompt,
+  coerceAutoplayPlannerJson,
+  coerceInterpretedCommandJson,
+  finalizeAutoplayPlannerResponse,
+  finalizeInterpretedCommand,
+  resolveInterpretPromptBuildOptions,
+  vocabTokensForLlmEnums,
   type AutoplayPlannerResponse,
   type InterpretedCommand,
-} from "../schema.js";
+  type InterpretPlayerInputOptions,
+  type PlannerUserPromptInput,
+  type TextLlm,
+} from "@adventure-llm/nl-glue";
 import type { AdventureDatabase } from "../../dat/types.js";
 import { resolvedGeminiTextModel } from "../geminiModels.js";
 import {
@@ -12,27 +24,7 @@ import {
   resolveCacheDir,
   writeCachedInterpreted,
 } from "../llmDebug.js";
-import { interpretCacheKeyFromBuildOptions } from "../interpretCacheKey.js";
 import { loadCachedInterpretIfHit } from "../interpretDiskCache.js";
-import {
-  finalizeAutoplayPlannerResponse,
-  finalizeInterpretedCommand,
-} from "../textLlmInterpretPipeline.js";
-import {
-  coerceAutoplayPlannerJson,
-  coerceInterpretedCommandJson,
-} from "../coerceLlmJson.js";
-import {
-  buildAutoplayPlannerPrompt,
-  buildInterpretSystemAndUserPrompt,
-  resolveInterpretPromptBuildOptions,
-} from "../adventureNlPrompts.js";
-import { vocabTokensForLlmEnums } from "../gameVocabEnums.js";
-import type {
-  InterpretPlayerInputOptions,
-  PlannerUserPromptInput,
-  TextLlm,
-} from "../textLlmContract.js";
 
 export type GoogleGenerativeAiTextLlmOptions = {
   apiKey: string;

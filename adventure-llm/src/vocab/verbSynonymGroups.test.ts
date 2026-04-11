@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadDatFile } from "../dat/loadDat.js";
-import { buildVerbSynonymGroups } from "./verbSynonymGroups.js";
+import { buildVerbSynonymGroups } from "@adventure-llm/nl-glue";
 
 const repoRoot = path.join(
   fileURLToPath(new URL(".", import.meta.url)),

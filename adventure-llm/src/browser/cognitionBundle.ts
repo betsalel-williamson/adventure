@@ -5,15 +5,15 @@ export {
   deserializeAdventureDatabaseFromJson,
   type AdventureDatabaseJsonV1,
 } from "../dat/adventureDatabaseJson.js";
-export type { AdventureDatabase } from "../dat/types.js";
+export type { AdventureDatabase } from "@adventure-llm/nl-glue";
 export {
   AutoplaySessionMemory,
   gameOutputLooksLikePlayAgainPrompt,
   type AutoplayUiSnapshot,
-} from "../nl/autoplaySessionMemory.js";
-export { buildAutoplayPlannerInvocation } from "../nl/buildAutoplayPlannerInvocation.js";
-export { planAfterAutoplayGuards } from "../nl/autoplayPlannerGuards.js";
-export { plannerToScriptedGetin } from "../nl/plannerToScriptedGetin.js";
+} from "@adventure-llm/nl-glue";
+export { buildAutoplayPlannerInvocation } from "@adventure-llm/nl-glue";
+export { planAfterAutoplayGuards } from "@adventure-llm/nl-glue";
+export { plannerToScriptedGetin } from "@adventure-llm/nl-glue";
 export {
   resolveAutoplayContextChars,
   paceMsFromOverrides,

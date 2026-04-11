@@ -1,17 +1,20 @@
 import type { AdventureDatabase } from "../dat/types.js";
-import type { AutoplayPlannerResponse, InterpretedCommand } from "./schema.js";
+import type {
+  AutoplayPlannerResponse,
+  InterpretedCommand,
+} from "@adventure-llm/nl-glue";
 import { GoogleGenerativeAiTextLlm } from "./providers/googleGenerativeAiTextLlm.js";
 import { HttpOpenAiCompatibleTextLlm } from "./providers/httpOpenAiCompatibleTextLlm.js";
 import {
   MlxLmStdioTextLlm,
   type MlxLmStdioTextLlmOptions,
 } from "./providers/mlxLmStdioTextLlm.js";
-import { resolveCompactPrompts } from "./adventureNlPrompts.js";
-import type {
-  InterpretPlayerInputOptions,
-  PlannerUserPromptInput,
-  TextLlm,
-} from "./textLlmContract.js";
+import {
+  resolveCompactPrompts,
+  type InterpretPlayerInputOptions,
+  type PlannerUserPromptInput,
+  type TextLlm,
+} from "@adventure-llm/nl-glue";
 
 /** Default Ollama OpenAI-compatible base (`/v1` included). */
 export const DEFAULT_HTTP_OPENAI_BASE_URL = "http://127.0.0.1:11434/v1";

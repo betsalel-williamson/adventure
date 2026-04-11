@@ -1,4 +1,4 @@
-import type { TextLlmProviderId } from "./textLlmContract.js";
+import type { TextLlmProviderId } from "@adventure-llm/nl-glue";
 
 /** HTTP / transport failure with optional status (OpenAI-compatible APIs). */
 export class LlmTransportError extends Error {

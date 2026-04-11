@@ -2,13 +2,16 @@ import { describe, expect, it } from "vitest";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { loadDatFile } from "../dat/loadDat.js";
-import { interpretedToGetinLine, swapInterpretedTokens } from "./schema.js";
+import {
+  interpretedToGetinLine,
+  swapInterpretedTokens,
+} from "@adventure-llm/nl-glue";
 import {
   shouldFallbackToClassicForGeminiError,
   validateAgainstVocab,
 } from "./gemini.js";
 import { shouldFallbackToClassicForLlmError } from "./llmErrors.js";
-import { AutoplayPlannerResponseSchema } from "./schema.js";
+import { AutoplayPlannerResponseSchema } from "@adventure-llm/nl-glue";
 
 const datPath = path.join(
   fileURLToPath(new URL(".", import.meta.url)),

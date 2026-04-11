@@ -1,4 +1,4 @@
-import type { TextLlmProviderId } from "./textLlmContract.js";
+import type { TextLlmProviderId } from "@adventure-llm/nl-glue";
 import {
   LLM_PACKAGING_AUTOPLAY_RECENT_RAW_TAIL_MAX_CHARS,
   LLM_PACKAGING_INTERPRET_RECENT_GAME_CHARS_COMPACT,
@@ -6,7 +6,7 @@ import {
   LLM_PACKAGING_PLANNER_PREVIEW_MAX_SYSTEM_CHARS,
   LLM_PACKAGING_PLANNER_PREVIEW_MAX_USER_CHARS,
   LLM_PACKAGING_SSE_PROMPT_CAP_CHARS,
-} from "./llmPackagingConstants.js";
+} from "@adventure-llm/nl-glue";
 
 /** How structured JSON is enforced on the wire for a logical mode. */
 export type LlmJsonSchemaWireKind =

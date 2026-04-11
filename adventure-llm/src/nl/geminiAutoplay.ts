@@ -1,7 +1,7 @@
 import type { AdventureDatabase } from "../dat/types.js";
-import type { AutoplayPlannerResponse } from "./schema.js";
+import type { AutoplayPlannerResponse } from "@adventure-llm/nl-glue";
 import { GoogleGenerativeAiTextLlm } from "./providers/googleGenerativeAiTextLlm.js";
-import type { PlannerUserPromptInput } from "./textLlmContract.js";
+import type { PlannerUserPromptInput } from "@adventure-llm/nl-glue";
 
 export type GeminiAutoplayPlannerOptions = {
   apiKey: string;

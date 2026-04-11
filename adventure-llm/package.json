@@ -6,15 +6,18 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "start": "node dist/cli/main.js",
     "web": "node dist/cli/webDashboard.js",
     "web:tls-init": "node scripts/gen-web-dashboard-dev-certs.mjs",
-    "build": "tsc && node scripts/bundle-browser-cognition.mjs",
+    "build": "npm run build --workspace=@adventure-llm/nl-glue && tsc && node scripts/bundle-browser-cognition.mjs",
     "build:tsc": "tsc",
-    "test": "vitest run",
+    "test": "npm run build --workspace=@adventure-llm/nl-glue && vitest run",
     "test:watch": "vitest",
-    "check": "tsc --noEmit && vitest run",
+    "check": "npm run build --workspace=@adventure-llm/nl-glue && npm run deps:phase-a && tsc --noEmit && vitest run",
     "experiment:mlx-system": "npm run build && node scripts/print-mlx-system-prompts.mjs",
     "experiment:mlx-system-smoke": "npm run build && node scripts/smoke-mlx-system-variants.mjs",
     "experiment:interpret-eval": "npm run build && node scripts/eval-interpret-examples.mjs",
@@ -25,19 +28,15 @@
     "format:check": "prettier --check .",
     "dependency-check": "mkdir -p ./reports/dependency-check && dependency-check --project adventure-llm --scan . --out ./reports/dependency-check --format HTML --format JSON",
     "dependency-check:quick": "mkdir -p ./reports/dependency-check && dependency-check --noupdate --project adventure-llm --scan . --out ./reports/dependency-check --format HTML --format JSON",
+    "deps:phase-a": "depcruise --validate .dependency-cruiser.cjs packages/nl-glue/src src/browser",
+    "deps:graph": "node scripts/deps-graph.mjs",
     "prepare": "cd .. && husky adventure-llm/.husky"
-  },
-  "lint-staged": {
-    "*.{ts,mts,cts,js,mjs,cjs}": [
-      "eslint --fix --max-warnings=0",
-      "prettier --write"
-    ],
-    "*.{json,md,yml,yaml}": "prettier --write"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/better-sqlite3": "^7.6.12",
     "@types/node": "^22.10.0",
+    "dependency-cruiser": "^17.3.10",
     "esbuild": "^0.28.0",
     "eslint": "^10.1.0",
     "eslint-config-prettier": "^10.1.8",
@@ -51,6 +50,7 @@
     "vitest": "^3.0.0"
   },
   "dependencies": {
+    "@adventure-llm/nl-glue": "*",
     "@google/generative-ai": "^0.21.0",
     "better-sqlite3": "^11.7.0",
     "dotenv": "^17.3.1",

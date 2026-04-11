@@ -1,0 +1,68 @@
+[
+  {
+    "id": "motion-east",
+    "userText": "go east",
+    "expect": { "primaryToken": "EAST" }
+  },
+  {
+    "id": "motion-west",
+    "userText": "walk west",
+    "expect": { "primaryToken": "WEST" }
+  },
+  {
+    "id": "motion-north",
+    "userText": "go north",
+    "expect": { "primaryToken": "NORTH" }
+  },
+  {
+    "id": "look-around",
+    "userText": "look around",
+    "expect": { "primaryToken": "LOOK" }
+  },
+  {
+    "id": "take-keys-ground",
+    "userText": "pick up the keys",
+    "recentGameText": "THERE ARE SOME KEYS ON THE GROUND HERE.\n",
+    "expect": {
+      "primaryToken": "TAKE",
+      "secondaryToken": "KEYS",
+      "primaryAlternates": ["GET"]
+    }
+  },
+  {
+    "id": "take-keys-get",
+    "userText": "get the keys",
+    "recentGameText": "THERE ARE SOME KEYS ON THE GROUND HERE.\n",
+    "expect": { "primaryToken": "GET", "secondaryToken": "KEYS" }
+  },
+  {
+    "id": "take-it-resolves",
+    "userText": "take it",
+    "recentGameText": "THERE ARE SOME KEYS ON THE GROUND HERE.\n",
+    "expect": { "primaryToken": "TAKE", "secondaryToken": "KEYS" }
+  },
+  {
+    "id": "help-request",
+    "userText": "I need instructions",
+    "expect": { "primaryToken": "HELP" }
+  },
+  {
+    "id": "open-door",
+    "userText": "open the door",
+    "recentGameText": "THERE IS A DOOR HERE.\n",
+    "expect": { "primaryToken": "OPEN", "secondaryToken": "DOOR" }
+  },
+  {
+    "id": "drop-keys",
+    "userText": "drop the keys",
+    "recentGameText": "YOU ARE IN A ROOM.\nKEYS\n",
+    "expect": { "primaryToken": "DROP", "secondaryToken": "KEYS" }
+  },
+  {
+    "id": "pick-it-up-resolves",
+    "userText": "pick them up",
+    "recentGameText": "THERE ARE SOME KEYS ON THE GROUND HERE.\n",
+    "expect": { "primaryToken": "TAKE", "secondaryToken": "KEYS" },
+    "includeInPrompt": false
+  }
+]

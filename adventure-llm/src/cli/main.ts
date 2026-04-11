@@ -20,21 +20,24 @@ import {
   runFortranOpenThenFirstCommand,
   type ScriptedGetinLine,
 } from "../engine/subprocessEngine.js";
-import { AutoplaySessionMemory } from "../nl/autoplaySessionMemory.js";
+import { AutoplaySessionMemory } from "@adventure-llm/nl-glue";
 import {
   interpretWithTextLlm,
   resolveTextLlmFromEnv,
 } from "../nl/adventureTextLlm.js";
-import { resolveInterpretPromptBuildOptions } from "../nl/adventureNlPrompts.js";
+import { resolveInterpretPromptBuildOptions } from "@adventure-llm/nl-glue";
 import { shouldFallbackToClassicForLlmError } from "../nl/llmErrors.js";
 import {
   appendInteractionLog,
   resolveCacheDir,
   resolveDebugLogPath,
 } from "../nl/llmDebug.js";
-import { instructionIntentToHelpCommand } from "../nl/intent.js";
-import { interpretedToGetinLine, swapInterpretedTokens } from "../nl/schema.js";
-import type { TextLlm } from "../nl/textLlmContract.js";
+import { instructionIntentToHelpCommand } from "@adventure-llm/nl-glue";
+import {
+  interpretedToGetinLine,
+  swapInterpretedTokens,
+} from "@adventure-llm/nl-glue";
+import type { TextLlm } from "@adventure-llm/nl-glue";
 import { MlxLmStdioTextLlm } from "../nl/providers/mlxLmStdioTextLlm.js";
 import { runAutoplaySessionWithTextLlm } from "./autoplayRunner.js";
 
