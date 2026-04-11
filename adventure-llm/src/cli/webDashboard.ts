@@ -34,6 +34,7 @@ import {
 import { interpretedToGetinLine, swapInterpretedTokens } from "../nl/schema.js";
 import { buildVerbSynonymGroups } from "../vocab/verbSynonymGroups.js";
 import type { TextLlm, TextLlmProviderId } from "../nl/textLlmContract.js";
+import { buildLlmPackagingDiscoveryPayload } from "../nl/llmPackagingProfile.js";
 import {
   buildTextLlmBackendSnapshots,
   canSwapTextLlmFromBackends,
@@ -1486,6 +1487,7 @@ export function createAutoplayDashboardServer(
     if (pathname === "/api/text-llm" && req.method === "GET") {
       if (sess === undefined) return;
       const backends = buildTextLlmBackendSnapshots();
+      const packaging = buildLlmPackagingDiscoveryPayload();
       if (!pool || !textLlmConfigured) {
         jsonResponseWithSessionCookie(
           res,
@@ -1494,6 +1496,7 @@ export function createAutoplayDashboardServer(
             current: null,
             backends,
             canSwap: false,
+            packaging,
           },
           cookieOpts(sess, newSession),
         );
@@ -1509,6 +1512,7 @@ export function createAutoplayDashboardServer(
           },
           backends,
           canSwap: canSwapTextLlmFromBackends(backends),
+          packaging,
         },
         cookieOpts(sess, newSession),
       );

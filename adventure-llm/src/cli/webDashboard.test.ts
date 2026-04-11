@@ -48,9 +48,26 @@ describe("createAutoplayDashboardServer", () => {
         presets: string[];
       }>;
       canSwap: boolean;
+      packaging: {
+        byProvider: Record<
+          string,
+          {
+            providerId: string;
+            limits: { ssePromptCapChars: number };
+            jsonSchemaByMode: {
+              interpret: { wire: string };
+              planner: { wire: string };
+            };
+          }
+        >;
+      };
     };
     expect(j.backends.length).toBe(3);
     expect(typeof j.canSwap).toBe("boolean");
+    expect(j.packaging.byProvider.mlx.providerId).toBe("mlx");
+    expect(j.packaging.byProvider.http.providerId).toBe("http");
+    expect(j.packaging.byProvider.google.providerId).toBe("google");
+    expect(j.packaging.byProvider.mlx.limits.ssePromptCapChars).toBe(200_000);
     expect(
       j.current === null ||
         (typeof j.current.providerId === "string" &&

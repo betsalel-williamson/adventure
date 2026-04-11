@@ -149,6 +149,21 @@ export {
   type MlxSystemPromptVariant,
 } from "./nl/adventureNlPrompts.js";
 export {
+  LLM_PACKAGING_AUTOPLAY_RECENT_RAW_TAIL_MAX_CHARS,
+  LLM_PACKAGING_INTERPRET_RECENT_GAME_CHARS_COMPACT,
+  LLM_PACKAGING_INTERPRET_RECENT_GAME_CHARS_FULL,
+  LLM_PACKAGING_PLANNER_PREVIEW_MAX_SYSTEM_CHARS,
+  LLM_PACKAGING_PLANNER_PREVIEW_MAX_USER_CHARS,
+  LLM_PACKAGING_SSE_PROMPT_CAP_CHARS,
+} from "./nl/llmPackagingConstants.js";
+export {
+  buildLlmPackagingDiscoveryPayload,
+  type LlmJsonSchemaWireKind,
+  type LlmPackagingDiscoveryPayload,
+  type LlmPackagingProfile,
+  type LlmSchemaModeId,
+} from "./nl/llmPackagingProfile.js";
+export {
   applyPlannerPromptExperiment,
   defaultPromptExperimentPatch,
   patchPromptExperimentPatch,

@@ -8,6 +8,13 @@ import type {
   PlannerUserPromptInput,
   TextLlmProviderId,
 } from "./textLlmContract.js";
+import {
+  LLM_PACKAGING_INTERPRET_RECENT_GAME_CHARS_COMPACT,
+  LLM_PACKAGING_INTERPRET_RECENT_GAME_CHARS_FULL,
+  LLM_PACKAGING_PLANNER_PREVIEW_MAX_SYSTEM_CHARS,
+  LLM_PACKAGING_PLANNER_PREVIEW_MAX_USER_CHARS,
+  LLM_PACKAGING_SSE_PROMPT_CAP_CHARS,
+} from "./llmPackagingConstants.js";
 import { buildVocabHint } from "./vocabHint.js";
 import {
   buildInterpretEvalExamplesSection,
@@ -305,12 +312,11 @@ export function appendFlatVocabularyToPlannerSystem(
   return `${systemBase.trim()}\n\n**Vocabulary (parser tokens):** ${v}`;
 }
 
-const RECENT_GAME_CHARS_FULL = 2500;
-const RECENT_GAME_CHARS_COMPACT = 1200;
-
 /** Same caps as embedded recent-game text in {@link buildInterpretSystemAndUserPrompt}. */
 export function recentGameCharsCapForInterpret(compact: boolean): number {
-  return compact ? RECENT_GAME_CHARS_COMPACT : RECENT_GAME_CHARS_FULL;
+  return compact
+    ? LLM_PACKAGING_INTERPRET_RECENT_GAME_CHARS_COMPACT
+    : LLM_PACKAGING_INTERPRET_RECENT_GAME_CHARS_FULL;
 }
 
 /**
@@ -577,11 +583,9 @@ ${adventureLlmAutoplayJsonFooter()}`;
   return `${merged.system}\n\n${merged.user}`;
 }
 
-const FULL_PROMPT_SSE_CAP = 200_000;
-
 function capForSse(s: string): string {
-  if (s.length <= FULL_PROMPT_SSE_CAP) return s;
-  return `${s.slice(0, FULL_PROMPT_SSE_CAP - 48)}\n…\n[truncated for SSE cap]`;
+  if (s.length <= LLM_PACKAGING_SSE_PROMPT_CAP_CHARS) return s;
+  return `${s.slice(0, LLM_PACKAGING_SSE_PROMPT_CAP_CHARS - 48)}\n…\n[truncated for SSE cap]`;
 }
 
 /**
@@ -627,8 +631,8 @@ export function effectivePlannerSendPayload(
     const merged = `${parts.system}\n\n${parts.user}`;
     const fullSystem = wrap(parts.system);
     const fullUser = wrap(parts.user);
-    const maxU = 12_000;
-    const maxS = 8_000;
+    const maxU = LLM_PACKAGING_PLANNER_PREVIEW_MAX_USER_CHARS;
+    const maxS = LLM_PACKAGING_PLANNER_PREVIEW_MAX_SYSTEM_CHARS;
     return {
       fullSystem,
       fullUser,
@@ -650,7 +654,7 @@ export function effectivePlannerSendPayload(
     buildOpts,
   );
   const merged = wrap(mergedRaw);
-  const maxU = 12_000;
+  const maxU = LLM_PACKAGING_PLANNER_PREVIEW_MAX_USER_CHARS;
   return {
     merged,
     userPreview:

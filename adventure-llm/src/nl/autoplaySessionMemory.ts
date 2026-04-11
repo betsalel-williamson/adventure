@@ -25,6 +25,7 @@ import {
   type AutoplayPlannerResponse,
   type InterpretedCommand,
 } from "./schema.js";
+import { LLM_PACKAGING_AUTOPLAY_RECENT_RAW_TAIL_MAX_CHARS } from "./llmPackagingConstants.js";
 import {
   detectLocationStagnation,
   graphNodeIdFromCellKey,
@@ -38,7 +39,7 @@ import {
   inferredMapToMermaid,
 } from "./explorationGraphViz.js";
 
-const MAX_INTERNAL_RAW = 48_000;
+const MAX_INTERNAL_RAW = LLM_PACKAGING_AUTOPLAY_RECENT_RAW_TAIL_MAX_CHARS;
 /** Cap "recent command" lines in structured dashboard (RTFM: keep history short). */
 const DASHBOARD_RECENT_COMMANDS = 8;
 const ONE_LINE_OUTCOME_MAX = 160;
