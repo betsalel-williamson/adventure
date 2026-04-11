@@ -64,6 +64,21 @@ Today `runAutoplaySessionWithTextLlm` in `autoplayRunner.ts` orchestrates Fortra
 - **Storage choice:** **Do not** use `sessionStorage` or `localStorage` as the **authoritative** store for cognitive glue (map, inventory, modes, transcript-sized history). Use **OPFS / IndexedDB–backed SQLite** (and cross-tab access patterns) as in [ADR0006](ADR0006-client-sqlite-wal-subsystem-store.md), [ADR0010](ADR0010-monaco-workspace-second-tab-cross-tab-sync.md). `sessionStorage` may still be used for **ephemeral UI** only (e.g. which panel is open).
 - **SharedWorker / DB locking:** A **single connection owner** (e.g. `SharedWorker`) for SQLite across Dashboard and Workspace tabs is specified in those ADRs; **ADR0005 does not redefine** that mechanism — implement cross-tab DB access per [ADR0006](ADR0006-client-sqlite-wal-subsystem-store.md) and [ADR0010](ADR0010-monaco-workspace-second-tab-cross-tab-sync.md) to avoid split-brain and lock contention.
 
+### Forward work: XState / actor-centric orchestration (ties to ADR0006+)
+
+**Intent:** Use **XState** (or the same event/actor discipline) as the **single hub** for dashboard **action → reaction** flows: engine SSE (e.g. `getin_prompt_ready`, `transcript_delta`), **logical LLM** phases (`POST /api/autoplay-plan`), GETIN submission, **UI progress** signals (ADR0005 risk C), and—once landed—**persistence** and **cross-cutting events** from later ADRs.
+
+| Concern | How an actor-style model helps | Linked ADRs |
+|--------|--------------------------------|---------------|
+| **Durable glue checkpoints** | Transitions can **invoke** “persist snapshot” after a committed turn; state survives refresh when SQLite hydrate completes ([ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md) risk A). | [ADR0006](ADR0006-client-sqlite-wal-subsystem-store.md) |
+| **Replay / time travel** | Record **events** (not only snapshots) for “cognition as-of revision R”. | [ADR0007](ADR0007-subsystem-revision-control-and-replay.md) |
+| **Sync lifecycle** | **Sync pending / complete / fork** become explicit states or deferred actors—not ad-hoc flags. | [ADR0008](ADR0008-server-subsystem-replica-and-sync.md) |
+| **Promote gate** | **Promoted** revision → `reload live hooks` event into the same machine (or child actor). | [ADR0009](ADR0009-tdd-promote-gate-subsystems.md) |
+| **Workspace ↔ dashboard** | **`BroadcastChannel`** messages translate to machine events (hot reload after promote). | [ADR0010](ADR0010-monaco-workspace-second-tab-cross-tab-sync.md) |
+| **Subsystem sandbox** | Privileged orchestrator **sends** typed messages; sandbox **returns** results—same mental model as `postMessage`, aligns with [ADR0011](ADR0011-subsystem-module-contract-dynamic-js.md). | [ADR0011](ADR0011-subsystem-module-contract-dynamic-js.md) |
+
+**As-built today:** a minimal **`browserAutoplayCognitionMachine`** (XState v5) exists under `adventure-llm/src/browser/autoplayCognitionMachine.ts` (unit-tested); the live **`browserAutoplayOrchestrator.js`** path is still **imperative** and should **converge** on driving (or embedding) that machine so LLM prompt assembly, guards, and engine I/O are not scattered. Optional **Stately Inspector** (or `actor.subscribe` logging) for dev builds only—see [`docs/architecture/adventure-llm-cognition-and-workspace.md`](../architecture/adventure-llm-cognition-and-workspace.md). **In-dashboard** orchestration visibility is specified in [ADR0013](ADR0013-dashboard-xstate-cognition-panel.md) (third card in the map column, distinct from Session FSM Mermaid).
+
 ## Rationale
 
 **Policy and glue** (how we interpret output and assemble the next step) belong with fast iteration and subsystem versioning in the browser. **Engine I/O and secrets** stay server-side. **Game data files** stay with the binary; **glue** is driven by **observed text**, not by re-hosting the full dat pipeline in the browser as the main deliverable of this ADR. Bounded context: Fortran + packaging on server; orchestration + inferred model in the client.
@@ -74,8 +89,10 @@ Proposed
 
 ## References
 
-- `adventure-llm/src/cli/autoplayRunner.ts` (today’s monolithic orchestration)
-- `adventure-llm/src/cli/webDashboard.ts`
+- `adventure-llm/src/cli/autoplayRunner.ts` (CLI / optional server-orchestrated web path)
+- `adventure-llm/src/cli/webDashboard.ts`, `browserEngineBridge.ts`, `engineGetinQueue.ts`
+- `adventure-llm/src/browser/autoplayCognitionMachine.ts`, `cognitionBundle.ts` (esbuild → `public/generated/`)
+- `adventure-llm/public/browserAutoplayOrchestrator.js` (client loop; to align with XState machine)
 - `adventure-llm/src/nl/autoplaySessionMemory.ts` (glue: turn log, heuristics, inferred map inputs)
 - `adventure-llm/src/nl/inferredExplorationMap.ts`, `explorationGraphViz.ts` (graph / map glue)
 - [ADR0004](ADR0004-backend-llm-packaging-and-discovery.md)

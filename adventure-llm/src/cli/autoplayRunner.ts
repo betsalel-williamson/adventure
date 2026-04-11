@@ -15,29 +15,27 @@ import {
 import { planAutoplayWithTextLlm } from "../nl/adventureTextLlm.js";
 import {
   effectivePlannerSendPayload,
-  resolveAutoplayPromptMode,
   resolveCompactPrompts,
   resolveStructuredDashboardPrompts,
-  resolveVocabHintMaxWords,
   type AutoplayPromptMode,
 } from "../nl/adventureNlPrompts.js";
-import {
-  applyPlannerPromptExperiment,
-  type PromptExperimentPatch,
-} from "../nl/promptExperiment.js";
-import {
-  buildSituationalCandidateTokens,
-  formatSituationalCandidatesSection,
-  recentTextSuggestsIndoorBuildingNavigation,
-  shouldPrioritizeLootFunnel,
-} from "../nl/situationalCandidates.js";
-import { buildVocabHint } from "../nl/vocabHint.js";
+import type { PromptExperimentPatch } from "../nl/promptExperiment.js";
+import { buildAutoplayPlannerInvocation } from "../nl/buildAutoplayPlannerInvocation.js";
+import { planAfterAutoplayGuards } from "../nl/autoplayPlannerGuards.js";
 import { appendInteractionLog, resolveDebugLogPath } from "../nl/llmDebug.js";
 import {
   interpretedToGetinLine,
-  swapInterpretedTokens,
   type AutoplayPlannerResponse,
 } from "../nl/schema.js";
+import { plannerToScriptedGetin } from "../nl/plannerToScriptedGetin.js";
+import {
+  DEFAULT_AUTOPLAY_MAX_MOVES,
+  maxMovesFromOverrides,
+  paceMsFromOverrides,
+  resolveAutoplayContextChars,
+  resolveAutoplayMaxMoves,
+  resolveAutoplayPaceMs,
+} from "../nl/autoplayThrottle.js";
 import {
   describeMotionGridDelta,
   primaryFromGetinCommand,
@@ -153,6 +151,16 @@ export type AutoplayUiSink = {
    * Engine stdout/stderr chunk. `step` = GETIN lines already sent (0 = opening only).
    */
   readonly onTranscriptChunk?: (text: string, step: number) => void;
+  /**
+   * Engine output is idle and a GETIN will be read next (browser-orchestrated autoplay; ADR0005).
+   * `step` matches the upcoming {@link onTranscriptChunk} tag until the next GETIN is applied.
+   */
+  readonly onAwaitingPlayerInput?: (e: {
+    phase: "first" | "continue";
+    transcriptSoFar: string;
+    gameOutputSinceLastCommand: string;
+    step: number;
+  }) => void;
   readonly onTurnEnd?: (e: {
     transcriptSoFar: string;
     gameOutputSinceLastCommand: string;
@@ -182,43 +190,14 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-const PACE_MS_MAX = 3_600_000;
-const MAX_MOVES_CAP = 1_000_000;
-
-function paceMsFromOverrides(
-  overrides: AutoplayRunOverrides | undefined,
-): number {
-  if (overrides?.getPaceMs) {
-    const n = overrides.getPaceMs();
-    if (Number.isFinite(n) && n >= 0 && n <= PACE_MS_MAX) return Math.floor(n);
-    return resolveAutoplayPaceMs();
-  }
-  if (overrides?.paceMs !== undefined) {
-    const n = Number(overrides.paceMs);
-    return Number.isFinite(n) && n >= 0
-      ? Math.floor(n)
-      : resolveAutoplayPaceMs();
-  }
-  return resolveAutoplayPaceMs();
-}
-
-function maxMovesFromOverrides(
-  overrides: AutoplayRunOverrides | undefined,
-): number {
-  if (overrides?.getMaxMoves) {
-    const n = overrides.getMaxMoves();
-    if (Number.isFinite(n) && n >= 1 && n <= MAX_MOVES_CAP)
-      return Math.floor(n);
-    return resolveAutoplayMaxMoves();
-  }
-  if (overrides?.maxMoves !== undefined) {
-    const n = Number(overrides.maxMoves);
-    return Number.isFinite(n)
-      ? Math.max(1, Math.floor(n))
-      : resolveAutoplayMaxMoves();
-  }
-  return resolveAutoplayMaxMoves();
-}
+export {
+  DEFAULT_AUTOPLAY_MAX_MOVES,
+  maxMovesFromOverrides,
+  paceMsFromOverrides,
+  resolveAutoplayContextChars,
+  resolveAutoplayMaxMoves,
+  resolveAutoplayPaceMs,
+};
 
 function scriptedGetinLineString(scripted: ScriptedGetinLine): string {
   if (typeof scripted === "string") return scripted;
@@ -227,31 +206,6 @@ function scriptedGetinLineString(scripted: ScriptedGetinLine): string {
 
 function motionGridHintFromGetinLine(getinLine: string): string | null {
   return describeMotionGridDelta(primaryFromGetinCommand(getinLine));
-}
-
-function toInterpreted(r: AutoplayPlannerResponse): {
-  primaryToken: string;
-  secondaryToken?: string;
-  confidence?: number;
-} {
-  return {
-    primaryToken: r.primaryToken,
-    secondaryToken: r.secondaryToken,
-    confidence: r.confidence,
-  };
-}
-
-export function plannerToScriptedGetin(
-  r: AutoplayPlannerResponse,
-): ScriptedGetinLine {
-  const cmd = toInterpreted(r);
-  const firstLine = interpretedToGetinLine(cmd);
-  const swapped = swapInterpretedTokens(cmd);
-  const retryLine = swapped ? interpretedToGetinLine(swapped) : undefined;
-  if (retryLine !== undefined && retryLine.trimEnd() !== firstLine.trimEnd()) {
-    return { line: firstLine, retryIfRejected: retryLine };
-  }
-  return firstLine;
 }
 
 function truncatePreview(s: string, max: number): string {
@@ -271,63 +225,6 @@ export function formatPlannerPromptPreviews(
     systemPreview: truncatePreview(input.system, maxSystem),
     userPreview: truncatePreview(input.user, maxUser),
   };
-}
-
-function planAfterAutoplayGuards(
-  memory: AutoplaySessionMemory,
-  plan: AutoplayPlannerResponse,
-  log: (line: string) => void,
-): AutoplayPlannerResponse {
-  let planSafe = memory.avoidRepeatingRejectedCommand(plan);
-  if (
-    interpretedToGetinLine(toInterpreted(plan)) !==
-    interpretedToGetinLine(toInterpreted(planSafe))
-  ) {
-    log(
-      "adventure-llm: autoplay — replaced plan that repeated a parser-rejected GETIN line\n",
-    );
-  }
-  const beforeTakeCarry = planSafe;
-  planSafe = memory.avoidRedundantTakeWhenCarrying(planSafe);
-  if (
-    interpretedToGetinLine(toInterpreted(beforeTakeCarry)) !==
-    interpretedToGetinLine(toInterpreted(planSafe))
-  ) {
-    log(
-      "adventure-llm: autoplay — replaced plan: TAKE/GET object already in inventory\n",
-    );
-  }
-  const beforeOsc = planSafe;
-  planSafe = memory.avoidOscillatingCommand(planSafe);
-  if (
-    interpretedToGetinLine(toInterpreted(beforeOsc)) !==
-    interpretedToGetinLine(toInterpreted(planSafe))
-  ) {
-    log(
-      "adventure-llm: autoplay — replaced plan that would continue a two-location loop\n",
-    );
-  }
-  const beforeStag = planSafe;
-  planSafe = memory.avoidStagnatingCommand(planSafe);
-  if (
-    interpretedToGetinLine(toInterpreted(beforeStag)) !==
-    interpretedToGetinLine(toInterpreted(planSafe))
-  ) {
-    log(
-      "adventure-llm: autoplay — replaced plan due to location stagnation (inferred map)\n",
-    );
-  }
-  const beforeLook = planSafe;
-  planSafe = memory.avoidRepeatedLookExamiInSameCell(planSafe);
-  if (
-    interpretedToGetinLine(toInterpreted(beforeLook)) !==
-    interpretedToGetinLine(toInterpreted(planSafe))
-  ) {
-    log(
-      "adventure-llm: autoplay — replaced plan: LOOK/EXAMI already used without leaving this room (inferred map)\n",
-    );
-  }
-  return planSafe;
 }
 
 function logAutoplaySendingToGame(
@@ -357,32 +254,6 @@ function logAutoplaySendingToGame(
   }
   const lineOut = `adventure-llm: autoplay — planned ${tok.join(", ")} → to adventure (GETIN): ${getinDesc}\n`;
   log(lineOut);
-}
-
-export function resolveAutoplayPaceMs(): number {
-  const v = process.env.ADVENTURE_LLM_AUTOPLAY_PACE_MS?.trim();
-  if (v === undefined || v === "") return 2000;
-  const n = Number(v);
-  return Number.isFinite(n) && n >= 0 ? n : 2000;
-}
-
-/** Default cap when `ADVENTURE_LLM_AUTOPLAY_MAX_MOVES` is unset (benchmark-friendly). */
-export const DEFAULT_AUTOPLAY_MAX_MOVES = 120;
-
-export function resolveAutoplayMaxMoves(): number {
-  const v = process.env.ADVENTURE_LLM_AUTOPLAY_MAX_MOVES?.trim();
-  if (v === undefined || v === "") return DEFAULT_AUTOPLAY_MAX_MOVES;
-  const n = Number(v);
-  return Number.isFinite(n) && n >= 1
-    ? Math.floor(n)
-    : DEFAULT_AUTOPLAY_MAX_MOVES;
-}
-
-export function resolveAutoplayContextChars(): number {
-  const v = process.env.ADVENTURE_LLM_AUTOPLAY_CONTEXT_CHARS?.trim();
-  if (v === undefined || v === "") return 6000;
-  const n = Number(v);
-  return Number.isFinite(n) && n >= 2000 ? Math.floor(n) : 6000;
 }
 
 /** Compact / structured layout and repair window for the active text model provider (supports web hot-swap). */
@@ -433,74 +304,23 @@ export async function runAutoplaySessionWithTextLlm(
   const callPlanner = async (recentForRepair: string) => {
     await sink?.beforePlannerCall?.();
     const plannerClient = getClient();
-    const { compact, structuredDashboard, repairTailChars } =
-      resolveAutoplayPromptLayout(plannerClient.providerId);
-    const stagnating = memory.isLocationStagnating();
-    const tryNextLine = memory.formatExplorationTryNextLine();
-    const vocabHint = buildVocabHint(db, resolveVocabHintMaxWords(compact), {
-      grouped: !compact,
-      structuredGroups: structuredDashboard && !compact,
-      compact,
+    const inv = buildAutoplayPlannerInvocation({
+      db,
+      memory,
+      contextChars,
+      providerId: plannerClient.providerId,
+      recentForRepairRaw: recentForRepair,
+      overrides,
     });
-    const objectScope = memory.getObjectHintScopeText();
-    const indoorLeave = recentTextSuggestsIndoorBuildingNavigation(objectScope);
-    const promptMode =
-      overrides?.getAutoplayPromptMode?.() ?? resolveAutoplayPromptMode();
-    const invLines = memory.getStructuredInventory();
-    const takeFailWords = memory.getRoomTakeFailureObjectAtabWords();
-    const lootFunnel = shouldPrioritizeLootFunnel(
-      db,
-      objectScope,
-      invLines,
-      takeFailWords,
-    );
-    const situationalSection = formatSituationalCandidatesSection(
-      db,
-      buildSituationalCandidateTokens(db, memory.getRecentRawTail(), {
-        deprioritize: stagnating ? ["ROAD"] : [],
-        indoorLeaveBuilding: indoorLeave,
-        exploreFirst: promptMode === "explore",
-        inventorySubtractText:
-          invLines.length > 0 ? invLines.join("\n") : undefined,
-        takeFailureSubtractWords: takeFailWords,
-        objectHintScopeText: objectScope,
-        lootFunnel,
-      }),
-      stagnating && tryNextLine.length > 0 ? tryNextLine : undefined,
-      {
-        flatList: !compact,
-        slmGrouped: compact,
-        lootFunnelDeferCandMove: lootFunnel,
-      },
-    );
-    const useMxStructuredSplit =
-      plannerClient.providerId === "mlx" && structuredDashboard;
-    const baselinePlannerPrompt: PlannerUserPromptInput = useMxStructuredSplit
-      ? memory.buildPlannerMxStructuredPrompt(contextChars, {
-          compact,
-          situationalSection,
-          lootFunnel,
-        })
-      : memory.buildPlannerUserPrompt(contextChars, vocabHint, {
-          compact,
-          situationalSection,
-          structuredDashboard,
-        });
-    const experimentPatch = overrides?.getPlannerPromptExperiment?.() ?? {};
-    const plannerUserPrompt = applyPlannerPromptExperiment(
-      baselinePlannerPrompt,
-      experimentPatch,
-    );
-    const includeDatHelp = experimentPatch.includeDatHelpInSystem !== false;
     const capSse = process.env.ADVENTURE_LLM_SSE_FULL_PROMPTS?.trim() === "1";
     const effective = effectivePlannerSendPayload(
       db,
       plannerClient.providerId,
-      plannerUserPrompt,
+      inv.plannerUserPrompt,
       {
-        compact,
-        structuredSplit: useMxStructuredSplit,
-        includeDatHelpInSystem: includeDatHelp,
+        compact: inv.compact,
+        structuredSplit: inv.useMxStructuredSplit,
+        includeDatHelpInSystem: inv.includeDatHelpInSystem,
         capForEventStream: capSse,
       },
     );
@@ -518,9 +338,9 @@ export async function runAutoplaySessionWithTextLlm(
     });
     try {
       return await planAutoplayWithTextLlm(db, plannerClient, {
-        plannerUserPrompt,
-        recentGameTextForRepair: recentForRepair.slice(-repairTailChars),
-        includeDatHelpInSystem: includeDatHelp,
+        plannerUserPrompt: inv.plannerUserPrompt,
+        recentGameTextForRepair: inv.recentGameTextForRepair,
+        includeDatHelpInSystem: inv.includeDatHelpInSystem,
       });
     } finally {
       const elapsedMs = Math.max(0, performance.now() - plannerT0);
@@ -754,3 +574,5 @@ export async function runAutoplaySessionWithTextLlm(
   await appendInteractionLog({ event: "autoplay_session_end" });
   sink?.onSessionEnd?.();
 }
+
+export { plannerToScriptedGetin };

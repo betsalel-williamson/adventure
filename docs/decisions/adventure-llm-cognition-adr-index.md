@@ -15,6 +15,7 @@ This index links the split decisions for the thin-backend + browser cognition + 
 7. [ADR0010](ADR0010-monaco-workspace-second-tab-cross-tab-sync.md) — Monaco workspace second tab and cross-tab sync  
 8. [ADR0011](ADR0011-subsystem-module-contract-dynamic-js.md) — Subsystem ES module contract and dynamic loading  
 9. [ADR0012](ADR0012-optional-ts-transpile-subsystem-authoring.md) — Optional in-browser TypeScript for subsystem authoring  
+10. [ADR0013](ADR0013-dashboard-xstate-cognition-panel.md) — Third map-column panel for **XState cognition** (orchestration) display, distinct from Session FSM Mermaid  
 
 Parent planning context: Cursor plan `thin_backend_vs_code_prompts_074321ee` (see `.cursor/plans/` or linked PRs).
 
@@ -29,5 +30,8 @@ Parent planning context: Cursor plan `thin_backend_vs_code_prompts_074321ee` (se
 | Monaco second tab + BroadcastChannel | ADR0010 |
 | Subsystem JS contract + sandbox | ADR0011 |
 | Optional TS in browser | ADR0012 |
+| Dashboard cognition XState panel (map column) | ADR0013 |
 
 Related prior ADRs: [ADR0001](ADR0001-adventure-llm-text-llm-providers.md), [ADR0002](ADR0002-constructive-llm-prompt-phrasing.md), [ADR0003](ADR0003-scoped-object-hints-latest-room-block.md).
+
+**Cross-cutting (ADR0006 onward):** [ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md) describes an **XState / actor-centric** orchestration hub that ties together SSE, logical LLM calls, GETIN submission, and—once implemented—SQLite checkpoints, sync, promote, workspace notifications, and subsystem sandboxes. Read that ADR’s **Forward work** table before implementing ADR0006–0012 so persistence and cross-tab events **compose** as **typed events** on the same machine rather than ad-hoc parallel state. **Dashboard UX** for that machine is [ADR0013](ADR0013-dashboard-xstate-cognition-panel.md) (third map-column panel; not the Session FSM Mermaid card).

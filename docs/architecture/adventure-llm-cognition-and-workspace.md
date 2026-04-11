@@ -6,7 +6,7 @@ This document describes the **target architecture** for evolving [`adventure-llm
 
 **Scope:** Strategic direction and boundaries. **As-built** behavior of the package today remains documented in [adventure-engine.md](./adventure-engine.md) until each migration lands.
 
-**Related decisions:** [ADR0004](../decisions/ADR0004-backend-llm-packaging-and-discovery.md) through [ADR0012](../decisions/ADR0012-optional-ts-transpile-subsystem-authoring.md), indexed under [adventure-llm-cognition-adr-index.md](../decisions/adventure-llm-cognition-adr-index.md).
+**Related decisions:** [ADR0004](../decisions/ADR0004-backend-llm-packaging-and-discovery.md) through [ADR0013](../decisions/ADR0013-dashboard-xstate-cognition-panel.md), indexed under [adventure-llm-cognition-adr-index.md](../decisions/adventure-llm-cognition-adr-index.md).
 
 ## Business and system context
 
@@ -36,6 +36,7 @@ Decisions are recorded in ADRs (not duplicated here). Dependency order for imple
 - **ADR0010** — **Monaco** second tab + **cross-tab** sync.
 - **ADR0011** — **Subsystem module contract** (dynamic JS, sandbox).
 - **ADR0012** — **Optional** in-browser TypeScript for authoring.
+- **ADR0013** — **Third** map-column panel for **XState cognition** display (orchestration), separate from Session FSM Mermaid and exploration grid.
 
 ## Logical view
 
@@ -65,9 +66,20 @@ flowchart TB
 - **Glue** assembly (inferred map, inventory/mode heuristics, planner-facing memory, subsystem hooks) over **streamed text** is a **browser** concern once migration is complete for the dashboard path — distinct from loading the full parsed game database in the client as the simulation authority.
 - **Packaging** (OpenAI chat + `json_schema`, Gemini `responseSchema`, MLX stdio merge rules) remains **Node** ([ADR0004](../decisions/ADR0004-backend-llm-packaging-and-discovery.md)).
 
+## Orchestration model (XState / actors)
+
+The **target** integration point for the dashboard path is a **single orchestration hub**—implemented with **XState v5** (`adventure-llm/src/browser/autoplayCognitionMachine.ts`, bundled for the browser) and **converging** with the imperative client loop in `public/browserAutoplayOrchestrator.js`—that sequences:
+
+- **Engine** inputs from **SSE** (for example `getin_prompt_ready`, `transcript_delta`, `plan_applied`).
+- **Logical LLM** steps via **`POST /api/autoplay-plan`** and the existing packaging layer ([ADR0004](../decisions/ADR0004-backend-llm-packaging-and-discovery.md)).
+- **GETIN / queue** submission when **browser-orchestrated** autoplay is enabled ([ADR0005](../decisions/ADR0005-browser-orchestrated-autoplay-cognition.md)).
+- **Future:** **SQLite**-backed glue checkpoints ([ADR0006](../decisions/ADR0006-client-sqlite-wal-subsystem-store.md)), **sync** lifecycle events ([ADR0008](../decisions/ADR0008-server-subsystem-replica-and-sync.md)), **promote** transitions ([ADR0009](../decisions/ADR0009-tdd-promote-gate-subsystems.md)), and **`BroadcastChannel`** from the workspace tab ([ADR0010](../decisions/ADR0010-monaco-workspace-second-tab-cross-tab-sync.md)) as **typed machine events**, keeping one locus of control instead of scattered booleans.
+
+**Sandboxed subsystems** remain **message-passing** peers ([ADR0011](../decisions/ADR0011-subsystem-module-contract-dynamic-js.md)). Development builds may attach **Stately Inspector** or structured `actor.subscribe` logging for legibility ([ADR0005](../decisions/ADR0005-browser-orchestrated-autoplay-cognition.md) risk C). The **production dashboard** should still expose a **dedicated cognition panel** in the map column ([ADR0013](../decisions/ADR0013-dashboard-xstate-cognition-panel.md)) so orchestration state is visible without DevTools.
+
 ## Process view (target dashboard path)
 
-1. Browser opens SSE for game text; maintains **client-authoritative glue state** (directed/inferred map, inventory model, move/search/act (or similar) modes, heuristics) in JavaScript — today partly embodied server-side by types such as `AutoplaySessionMemory` and related NL modules, to be ported or replaced behind a stable client module boundary.
+1. Browser opens SSE for game text; maintains **client-authoritative glue state** (directed/inferred map, inventory model, move/search/act (or similar) modes, heuristics) in JavaScript — today partly embodied server-side by types such as `AutoplaySessionMemory` and related NL modules, to be ported or replaced behind a stable client module boundary. The **orchestration sequence** (when to plan, when GETIN is allowed, when to checkpoint) should stay in one **actor-shaped** flow ([ADR0005](../decisions/ADR0005-browser-orchestrated-autoplay-cognition.md)) so SLM/LLM phases and engine I/O stay ordered and **observable**.
 2. Browser builds **logical** interpret/planner payloads; POSTs to Node; Node **packages** and calls pooled `TextLlm`.
 3. Browser sends GETIN via existing session APIs; Fortran stream returns new text.
 4. Subsystem edits **commit** to client SQLite; **tests** run; **promote** updates live hooks; **BroadcastChannel** notifies the dashboard tab ([ADR0009](../decisions/ADR0009-tdd-promote-gate-subsystems.md), [ADR0010](../decisions/ADR0010-monaco-workspace-second-tab-cross-tab-sync.md)).

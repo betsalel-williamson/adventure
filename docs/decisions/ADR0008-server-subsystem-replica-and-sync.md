@@ -14,6 +14,8 @@ The client SQLite database is **authoritative** ([ADR0006](ADR0006-client-sqlite
 
 If **inferred glue checkpoints** are stored in that client DB ([ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md), [ADR0006](ADR0006-client-sqlite-wal-subsystem-store.md)), sync batches should treat them like other client-originated rows: **idempotent** apply, clear conflict rules, and optional **privacy/size** limits if glue snapshots grow large.
 
+**Orchestration UX:** **Sync pending / complete / fork** should be **explicit states or events** in the dashboard cognition loop ([ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md)), not a single hidden flag—so they compose with LLM progress and engine I/O the same way subsystem promote events do.
+
 ## Decision
 
 - After session establishment (`/api/session` or equivalent), run a **subsystem sync** phase: client sends **workspace id**, **last acked revision**, and **deltas** (WAL frames, batched events, or full export if divergence).

@@ -185,6 +185,15 @@ export function normalizeInstructionsAnswer(line: string): string {
  * (plain text to GETIN) until the process exits or it returns `null` (then we SIGTERM). If omitted, we SIGTERM
  * after the first command (used by tests; avoids EOF read errors on stdin close).
  */
+/** Fired after output has gone idle and the engine is about to read the next GETIN line (browser orchestration). */
+export type AwaitingPlayerInputContext = {
+  readonly phase: "first" | "continue";
+  /** Full transcript so far (normalized newlines). */
+  readonly transcriptSoFar: string;
+  /** Output since the previous GETIN (empty on the first prompt). */
+  readonly gameOutputSinceLastCommand: string;
+};
+
 export type FortranStreamOptions = {
   /**
    * When false, game stdout/stderr are not copied to `process.stdout` (e.g. web dashboard).
@@ -193,6 +202,12 @@ export type FortranStreamOptions = {
   readonly forwardGameOutputToTerminal?: boolean;
   /** Called for each chunk of combined stdout+stderr (UTF-8) after opening the child. */
   readonly onGameOutputChunk?: (chunk: Buffer) => void;
+  /**
+   * Invoked immediately before each `getFirstCommandLine` / `getContinueLine` callback, after the
+   * inter-output idle wait. Lets the dashboard emit a deterministic SSE signal instead of regex-parsing
+   * streamed text for “prompt ready” (ADR0005).
+   */
+  readonly onAwaitingPlayerInput?: (ctx: AwaitingPlayerInputContext) => void;
 };
 
 export async function runFortranOpenThenFirstCommand(
@@ -246,6 +261,11 @@ export async function runFortranOpenThenFirstCommand(
     const transcriptSoFar = Buffer.concat(allChunks)
       .toString("utf8")
       .replace(/\r\n/g, "\n");
+    options.onAwaitingPlayerInput?.({
+      phase: "first",
+      transcriptSoFar,
+      gameOutputSinceLastCommand: "",
+    });
     const firstScripted = await options.getFirstCommandLine({
       transcriptSoFar,
     });
@@ -259,6 +279,14 @@ export async function runFortranOpenThenFirstCommand(
           allChunks,
           markBeforeNextCommand,
         );
+        const transcriptNorm = Buffer.concat(allChunks)
+          .toString("utf8")
+          .replace(/\r\n/g, "\n");
+        options.onAwaitingPlayerInput?.({
+          phase: "continue",
+          transcriptSoFar: transcriptNorm,
+          gameOutputSinceLastCommand,
+        });
         const next = await options.getContinueLine({
           gameOutputSinceLastCommand,
         });

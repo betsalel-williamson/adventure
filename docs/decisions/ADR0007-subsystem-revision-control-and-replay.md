@@ -14,6 +14,8 @@ Revision data lives in the client SQLite store ([ADR0006](ADR0006-client-sqlite-
 
 **Cognition replay:** “Run cognition as-of revision R” ([ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md)) combines **subsystem file tree at R** with **game/trace inputs**; inferred glue state may be reconstructed from checkpoints + transcript tail per ADR0005 mitigations, not assumed identical to live Fortran truth without validation.
 
+**Event-oriented replay:** Where fidelity matters, prefer a **typed event log** (SSE markers, planner phases, GETIN lines) alongside snapshots; a single **actor** or state machine as the cognition hub ([ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md)) makes “replay the same event sequence” a first-class story.
+
 ## Decision
 
 - Use **monotonic revisions** per workspace (integer or ULID); each commit records changed files and a **parent** pointer. Start with a **linear** mainline; a DAG is optional later.

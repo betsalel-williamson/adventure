@@ -7,7 +7,9 @@ The local web server is started with `npm run web` from `adventure-llm/` (or
 
 **Session lifecycle:** Dashboard state (cookie **`adventure_session`** → in-memory session object, Fortran subprocess, transcript, planner memory, UI-backed settings) exists **only while the `npm run web` process runs**. A server **restart** wipes all sessions; unknown cookie ids are replaced with **new** sessions—there is **no resume** or disk snapshot of game state. Colossal Cave also uses **randomness**, so a “fresh start” is not replay-equivalent to an old run. Optional **`ADVENTURE_LLM_DEBUG=1`** writes **`.cache/llm-sessions/<uuid>.jsonl`** for LLM auditing only, not for restoring a session.
 
-**Autoplay planner (behavior):** the server uses the same **`adventure-llm`** autoplay loop as the CLI: session memory, situation candidates, and planner guards. Heuristic **object** / **loot-funnel** cues follow the latest room-description block in the transcript (not the whole tail). See [`docs/architecture/adventure-engine.md`](docs/architecture/adventure-engine.md) and [`docs/decisions/ADR0003-scoped-object-hints-latest-room-block.md`](docs/decisions/ADR0003-scoped-object-hints-latest-room-block.md).
+**Autoplay planner (behavior):** By default the server runs the same **`adventure-llm`** autoplay loop as the CLI: session memory, situation candidates, and planner guards. Heuristic **object** / **loot-funnel** cues follow the latest room-description block in the transcript (not the whole tail). See [`docs/architecture/adventure-engine.md`](docs/architecture/adventure-engine.md) and [`docs/decisions/ADR0003-scoped-object-hints-latest-room-block.md`](docs/decisions/ADR0003-scoped-object-hints-latest-room-block.md).
+
+When **`ADVENTURE_LLM_BROWSER_ORCHESTRATED_AUTOPLAY=1`** is set on the server, the dashboard may use **browser-orchestrated** cognition ([`docs/decisions/ADR0005-browser-orchestrated-autoplay-cognition.md`](docs/decisions/ADR0005-browser-orchestrated-autoplay-cognition.md)): the client builds planner context, calls **`POST /api/autoplay-plan`**, and submits GETIN lines via **`POST /api/autoplay-engine-input`** while the server streams game text over SSE. **`GET /api/session`** includes **`browserOrchestratedAutoplay: true`** when that mode is active.
 
 ## Static UI
 
@@ -25,16 +27,45 @@ The local web server is started with `npm run web` from `adventure-llm/` (or
 On connect, the server may emit initial events such as `autoplay_mode`,
 `autoplay_settings`, `manual_waiting`, `parser_verbs`, `text_llm`, `mlx_model`,
 and `mlx_loading`. Game progress arrives as `transcript_delta`, `turn_end`,
-`plan_applied`, `log_line`, etc. Errors use `session_error` with a `message`
+`plan_applied`, `log_line`, etc. When the engine is waiting for scripted input
+and the idle hook runs (browser-orchestrated path), the server may emit
+**`getin_prompt_ready`** so the client can advance planning without guessing from
+raw text alone. Errors use `session_error` with a `message`
 string.
 
 Parse SSE lines as usual: events named in `event:` lines, JSON payloads after
 `data:`.
 
+### Browser-orchestrated autoplay (optional)
+
+Requires server env **`ADVENTURE_LLM_BROWSER_ORCHESTRATED_AUTOPLAY=1`**. The dashboard loads extra client scripts and uses:
+
+| Method | Path | Purpose |
+| ------ | ---- | -------- |
+| `GET` | `/api/session` | Returns `{ "ok": true, "browserOrchestratedAutoplay": true \| false }` (and sets session cookie when new). |
+| `GET` | `/api/adventure-database` | **200** — `{ "database": … }` serialized from `adventure.dat` for client-side hints. **503** if the dat file is unavailable. |
+| `POST` | `/api/autoplay-plan` | Body: `{ "plannerUserPrompt": … }` required; optional `recentGameTextForRepair`, `includeDatHelpInSystem`. **200** — `{ "plan": … }`. Uses the session’s text-model pool. **503** if no text model or dat. |
+| `POST` | `/api/autoplay-engine-input` | Body: `{ "getinLine": "EAST …" }` or `{ "endSession": true }`; optional `plan`, `motionGridHint`, `moveNumber` to broadcast `plan_applied`. **404** if browser orchestration is off. |
+
+See [`docs/decisions/ADR0005-browser-orchestrated-autoplay-cognition.md`](docs/decisions/ADR0005-browser-orchestrated-autoplay-cognition.md) and [`docs/architecture/adventure-llm-cognition-and-workspace.md`](docs/architecture/adventure-llm-cognition-and-workspace.md).
+
 ## JSON REST routes
 
 All JSON routes accept `Content-Type: application/json` where a body is
 required. Responses are JSON unless noted.
+
+### `GET /api/session`
+
+**200** — Session probe and cookie establishment.
+
+```json
+{
+  "ok": true,
+  "browserOrchestratedAutoplay": false
+}
+```
+
+`browserOrchestratedAutoplay` is **`true`** when the server was started with **`ADVENTURE_LLM_BROWSER_ORCHESTRATED_AUTOPLAY=1`**.
 
 ### `GET /api/autoplay-mode`
 

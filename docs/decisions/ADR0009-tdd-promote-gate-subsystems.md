@@ -14,6 +14,8 @@ Subsystem code is user-authored JS ([ADR0011](ADR0011-subsystem-module-contract-
 
 The **live** dashboard path will run **browser-orchestrated glue and orchestration** ([ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md)): subsystems plug into that loop. Tests should include **pure glue** tests (transcript slices, state) and **integration** tests that **mock** logical LLM HTTP (e.g. MSW) so promotion is never gated on real provider calls.
 
+**State-machine tests:** Where autoplay uses an **XState** machine ([ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md)), add tests that assert **allowed transitions** (for example idle → planning → submitting) under mocked SSE and HTTP, alongside glue pure-function tests.
+
 ## Decision
 
 - Require **automated tests** to pass before a **candidate revision** can be **promoted** to the **live** runtime that drives **glue and cognition** in the browser ([ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md)).

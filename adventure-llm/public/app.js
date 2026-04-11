@@ -450,10 +450,14 @@ async function applyStoredAutoplaySettings() {
   }
 }
 
+let browserOrchestratedAutoplay = false;
 {
   const sr = await api.ensureSession();
   if (!sr.ok) {
     console.warn("adventure-llm: session bootstrap failed", sr.status);
+  } else {
+    const j = await sr.json().catch(() => ({}));
+    browserOrchestratedAutoplay = j.browserOrchestratedAutoplay === true;
   }
 }
 await applyStoredAutoplaySettings();
@@ -463,6 +467,12 @@ void promptLab.refreshProjectList();
 void promptLab.refreshLlmGenFields();
 
 const es = new ports.EventSource(new URL("/events", ports.location.href).href);
+
+if (browserOrchestratedAutoplay) {
+  const { wireBrowserAutoplayOrchestrator } =
+    await import("./browserAutoplayOrchestrator.js");
+  wireBrowserAutoplayOrchestrator(ports, api, es);
+}
 
 registerDashboardEventHandlers(es, {
   renderParserVerbHintGroups,

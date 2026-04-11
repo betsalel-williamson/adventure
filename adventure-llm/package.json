@@ -10,7 +10,8 @@
     "start": "node dist/cli/main.js",
     "web": "node dist/cli/webDashboard.js",
     "web:tls-init": "node scripts/gen-web-dashboard-dev-certs.mjs",
-    "build": "tsc",
+    "build": "tsc && node scripts/bundle-browser-cognition.mjs",
+    "build:tsc": "tsc",
     "test": "vitest run",
     "test:watch": "vitest",
     "check": "tsc --noEmit && vitest run",
@@ -37,6 +38,7 @@
     "@eslint/js": "^10.0.1",
     "@types/better-sqlite3": "^7.6.12",
     "@types/node": "^22.10.0",
+    "esbuild": "^0.28.0",
     "eslint": "^10.1.0",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.4.0",
@@ -52,6 +54,7 @@
     "@google/generative-ai": "^0.21.0",
     "better-sqlite3": "^11.7.0",
     "dotenv": "^17.3.1",
+    "xstate": "^5.30.0",
     "yaml": "^2.8.3",
     "zod": "^3.24.0"
   }

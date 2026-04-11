@@ -23,6 +23,7 @@ Autoplay and interpret prompts in `adventure-llm` steer small models (e.g. MLX) 
 - **Positive:** Prompts read as actionable checklists; less accidental priming of forbidden tokens; easier to extend with new “prefer X when Y” lines.
 - **Negative:** Occasional redundancy between sections (**Try next** vs **EXPLORATION MAP**); longer positive sentences; reviewers must still verify that prohibitive constraints remain where the parser requires them.
 - **Operational:** Planner user messages no longer include `### RECENT MOVES` / `## Turn log`; state comes from **AT THIS NODE**, map lines, **CANDIDATES**, and **LOCAL SESSION MAP**.
+- **Browser-orchestrated autoplay** ([ADR0005](./ADR0005-browser-orchestrated-autoplay-cognition.md)): the **same** constructive copy and planner assembly rules apply; the **caller** moves from in-process Node to the **client** (logical `plannerUserPrompt` → `POST /api/autoplay-plan`). Prompt authors should assume **one orchestration hub** sequences interpret/planner steps and surfaces progress—see that ADR and [`docs/architecture/adventure-llm-cognition-and-workspace.md`](../architecture/adventure-llm-cognition-and-workspace.md).
 
 ## Rationale
 
@@ -35,6 +36,7 @@ Accepted.
 ## References
 
 - [ADR0001-adventure-llm-text-llm-providers.md](./ADR0001-adventure-llm-text-llm-providers.md) — provider and pipeline context for the same package.
+- [ADR0005-browser-orchestrated-autoplay-cognition.md](./ADR0005-browser-orchestrated-autoplay-cognition.md) — client-owned loop; prompts unchanged in spirit, packaging still server-side ([ADR0004](./ADR0004-backend-llm-packaging-and-discovery.md)).
 - [adventure-llm/src/nl/adventureNlPrompts.ts](../../adventure-llm/src/nl/adventureNlPrompts.ts) — `ADVENTURE_LLM_PARSER_TOKEN_RULES`, MLX system/task blocks, `linesForAutoplayPlannerContextBody`.
 - [adventure-llm/src/nl/autoplaySessionMemory.ts](../../adventure-llm/src/nl/autoplaySessionMemory.ts) — planner user assembly, alerts, **CURRENT SESSION** framing (no numbered turn log in planner body).
 - [adventure-llm/src/nl/inferredExplorationMap.ts](../../adventure-llm/src/nl/inferredExplorationMap.ts) — `formatPromptLines`, `graphEdgeLabelFromCommand`.

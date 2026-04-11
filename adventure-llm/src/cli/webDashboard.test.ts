@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -11,12 +11,12 @@ import {
 import { collectHostRuntimeInfo } from "./hostRuntimeInfo.js";
 import { readGitWorktreeMeta } from "./gitWorktreeMeta.js";
 import { createAutoplayDashboardServer } from "./webDashboard.js";
-
 const packageRoot = path.join(
   fileURLToPath(new URL(".", import.meta.url)),
   "../..",
 );
 const repoRoot = path.join(packageRoot, "..");
+const datPath = path.join(repoRoot, "adventure.dat");
 
 const testHttpDashboard = () =>
   createAutoplayDashboardServer({ secureCookies: false });
@@ -27,6 +27,77 @@ describe("createAutoplayDashboardServer", () => {
     delete process.env.ADVENTURE_LLM_BENCHMARK_DB;
     delete process.env.ADVENTURE_LLM_BENCHMARK_RUNS;
     resetBenchmarkRunsDbSingleton();
+  });
+
+  it("GET /api/session includes browserOrchestratedAutoplay", async () => {
+    const prev = process.env.ADVENTURE_LLM_BROWSER_ORCHESTRATED_AUTOPLAY;
+    process.env.ADVENTURE_LLM_BROWSER_ORCHESTRATED_AUTOPLAY = "1";
+    const server = testHttpDashboard();
+    await new Promise<void>((resolve) => {
+      server.listen(0, "127.0.0.1", () => resolve());
+    });
+    const addr = server.address();
+    const port =
+      typeof addr === "object" && addr !== null ? addr.port : undefined;
+    expect(port).toBeDefined();
+    const r = await fetch(`http://127.0.0.1:${port}/api/session`);
+    expect(r.ok).toBe(true);
+    const j = (await r.json()) as { browserOrchestratedAutoplay?: boolean };
+    expect(j.browserOrchestratedAutoplay).toBe(true);
+    await new Promise<void>((resolve, reject) => {
+      server.close((err) => (err ? reject(err) : resolve()));
+    });
+    if (prev === undefined)
+      delete process.env.ADVENTURE_LLM_BROWSER_ORCHESTRATED_AUTOPLAY;
+    else process.env.ADVENTURE_LLM_BROWSER_ORCHESTRATED_AUTOPLAY = prev;
+  });
+
+  it.runIf(existsSync(datPath))(
+    "GET /api/adventure-database returns serialized dat",
+    async () => {
+      const server = testHttpDashboard();
+      await new Promise<void>((resolve) => {
+        server.listen(0, "127.0.0.1", () => resolve());
+      });
+      const addr = server.address();
+      const port =
+        typeof addr === "object" && addr !== null ? addr.port : undefined;
+      expect(port).toBeDefined();
+      const r = await fetch(`http://127.0.0.1:${port}/api/adventure-database`);
+      expect(r.ok).toBe(true);
+      const j = (await r.json()) as { database: { v: number } };
+      expect(j.database.v).toBe(1);
+      await new Promise<void>((resolve, reject) => {
+        server.close((err) => (err ? reject(err) : resolve()));
+      });
+    },
+  );
+
+  it("POST /api/autoplay-engine-input is disabled unless browser orchestration env is on", async () => {
+    const prev = process.env.ADVENTURE_LLM_BROWSER_ORCHESTRATED_AUTOPLAY;
+    delete process.env.ADVENTURE_LLM_BROWSER_ORCHESTRATED_AUTOPLAY;
+    const server = testHttpDashboard();
+    await new Promise<void>((resolve) => {
+      server.listen(0, "127.0.0.1", () => resolve());
+    });
+    const addr = server.address();
+    const port =
+      typeof addr === "object" && addr !== null ? addr.port : undefined;
+    expect(port).toBeDefined();
+    const r = await fetch(
+      `http://127.0.0.1:${port}/api/autoplay-engine-input`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ getinLine: "east    " }),
+      },
+    );
+    expect(r.status).toBe(404);
+    await new Promise<void>((resolve, reject) => {
+      server.close((err) => (err ? reject(err) : resolve()));
+    });
+    if (prev !== undefined)
+      process.env.ADVENTURE_LLM_BROWSER_ORCHESTRATED_AUTOPLAY = prev;
   });
 
   it("GET /api/text-llm returns backends and shape", async () => {

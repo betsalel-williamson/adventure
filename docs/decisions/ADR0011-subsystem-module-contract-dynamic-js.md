@@ -14,6 +14,8 @@ Subsystem sources live in SQLite ([ADR0006](ADR0006-client-sqlite-wal-subsystem-
 
 Hooks execute in the **sandboxed** contexts below; the **orchestration loop** that calls them lives in the privileged dashboard code path ([ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md)). Integration tests should **mock** logical LLM traffic (e.g. MSW) per ADR0005 / [ADR0009](ADR0009-tdd-promote-gate-subsystems.md).
 
+**Root actor boundary:** Implement the privileged loop as a **single coordinator** that sends **typed messages** into the sandbox and receives **typed results**—the same mental model as `postMessage`, aligned with [ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md) actor-centric orchestration and easier to test than unstructured callbacks.
+
 **Same-origin XSS:** **Pasteable** or **third-party shared** subsystem code must **not** run with access to **cookies**, **storage**, or the **dashboard DOM** on the app origin.
 
 ## Decision

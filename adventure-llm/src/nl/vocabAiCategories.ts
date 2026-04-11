@@ -35,6 +35,9 @@ const DEFAULT_AI_VOCAB_RELATIVE = ".cache/vocab-categories-ai.json";
  * - Otherwise, if that default path exists, it is used (opt-in by placing the generated file).
  */
 export function resolveAiVocabCategoriesPath(): string | null {
+  if (typeof process === "undefined" || process.env === undefined) {
+    return null;
+  }
   const explicit = process.env.ADVENTURE_LLM_VOCAB_CATEGORIES_FILE?.trim();
   if (explicit && explicit.length > 0) {
     return path.resolve(explicit);

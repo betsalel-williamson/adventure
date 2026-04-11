@@ -8,6 +8,21 @@ export function createDashboardApi(ports) {
   const { fetch: f } = ports;
   return {
     ensureSession: () => f("/api/session", cred),
+    getAdventureDatabase: () => f("/api/adventure-database", cred),
+    postAutoplayPlan: (body) =>
+      f("/api/autoplay-plan", {
+        ...cred,
+        method: "POST",
+        headers: jsonHeaders,
+        body: JSON.stringify(body),
+      }),
+    postAutoplayEngineInput: (body) =>
+      f("/api/autoplay-engine-input", {
+        ...cred,
+        method: "POST",
+        headers: jsonHeaders,
+        body: JSON.stringify(body),
+      }),
     getAutoplayMode: () => f("/api/autoplay-mode", cred),
     postAutoplayMode: (plannerEnabled) =>
       f("/api/autoplay-mode", {

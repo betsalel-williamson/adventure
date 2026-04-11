@@ -8,12 +8,19 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   eslintConfigPrettier,
   {
-    ignores: ["dist/**", "node_modules/**", "reports/**", ".cache/**"],
+    ignores: [
+      "dist/**",
+      "node_modules/**",
+      "reports/**",
+      ".cache/**",
+      "public/generated/**",
+    ],
   },
   {
     files: ["scripts/**/*.mjs"],
     languageOptions: {
       globals: {
+        ...globals.node,
         console: "readonly",
         process: "readonly",
       },

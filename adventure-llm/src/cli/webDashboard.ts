@@ -50,6 +50,13 @@ import {
   type AutoplayRunOverrides,
   type AutoplayUiSink,
 } from "./autoplayRunner.js";
+import { resolveBrowserOrchestratedAutoplayFromEnv } from "./browserOrchestrationEnv.js";
+import { runBrowserOrchestratedEngineSession } from "./browserEngineBridge.js";
+import { EngineGetinQueue } from "./engineGetinQueue.js";
+import { serializeAdventureDatabaseToJson } from "../dat/adventureDatabaseJson.js";
+import { planAutoplayWithTextLlm } from "../nl/adventureTextLlm.js";
+import { AutoplayPlannerResponseSchema } from "../nl/schema.js";
+import type { PlannerUserPromptInput } from "../nl/textLlmContract.js";
 import {
   listAutoplayStrategyIds,
   resolveAutoplayStrategyHooks,
@@ -207,6 +214,8 @@ type DashboardSession = {
   readonly id: string;
   readonly clients: Set<http.ServerResponse>;
   readonly broadcast: (event: string, payload: unknown) => void;
+  /** Browser-orchestrated GETIN submissions (ADR0005). */
+  readonly engineGetinQueue: EngineGetinQueue;
   autoplayRunning: Promise<void> | null;
   autoplayStartScheduled: boolean;
   plannerAutoplayEnabled: boolean;
@@ -400,6 +409,7 @@ export function createAutoplayDashboardServer(
         }
       }
     };
+    const engineGetinQueue = new EngineGetinQueue();
     const llmSel = {
       textLlmProviderId: (defaultTextLlmSelection?.providerId ??
         "mlx") as TextLlmProviderId,
@@ -621,6 +631,9 @@ export function createAutoplayDashboardServer(
           broadcastSession("log_line", { line, step, channel: "engine" });
         }
       },
+      onAwaitingPlayerInput: (e) => {
+        broadcastSession("getin_prompt_ready", e);
+      },
       onTurnEnd: (e) => {
         latestTranscript = e.transcriptSoFar;
         if (benchAcc !== null) {
@@ -638,6 +651,7 @@ export function createAutoplayDashboardServer(
       id: sessionId,
       clients,
       broadcast: broadcastSession,
+      engineGetinQueue,
       get autoplayRunning() {
         return autoplayRunning;
       },
@@ -775,9 +789,190 @@ export function createAutoplayDashboardServer(
       jsonResponseWithSessionCookie(
         res,
         200,
-        { ok: true },
+        {
+          ok: true,
+          browserOrchestratedAutoplay:
+            resolveBrowserOrchestratedAutoplayFromEnv(),
+        },
         cookieOpts(sess, newSession),
       );
+      return;
+    }
+
+    if (pathname === "/api/adventure-database" && req.method === "GET") {
+      if (sess === undefined) return;
+      if (!db) {
+        jsonResponseWithSessionCookie(
+          res,
+          503,
+          { error: "adventure.dat not available" },
+          cookieOpts(sess, newSession),
+        );
+        return;
+      }
+      jsonResponseWithSessionCookie(
+        res,
+        200,
+        { database: serializeAdventureDatabaseToJson(db) },
+        cookieOpts(sess, newSession),
+      );
+      return;
+    }
+
+    if (pathname === "/api/autoplay-plan" && req.method === "POST") {
+      if (sess === undefined) return;
+      if (!pool || !textLlmConfigured || !db) {
+        jsonResponseWithSessionCookie(
+          res,
+          503,
+          { error: "Text model or adventure.dat not available" },
+          cookieOpts(sess, newSession),
+        );
+        return;
+      }
+      try {
+        await awaitMlxModelReady();
+        await pool.ensureSessionAttached(sess);
+        const body = (await readJsonBody(req)) as {
+          plannerUserPrompt?: unknown;
+          recentGameTextForRepair?: unknown;
+          includeDatHelpInSystem?: unknown;
+        } | null;
+        if (
+          body === null ||
+          body.plannerUserPrompt === undefined ||
+          body.plannerUserPrompt === null
+        ) {
+          jsonResponseWithSessionCookie(
+            res,
+            400,
+            { error: "Expected plannerUserPrompt" },
+            cookieOpts(sess, newSession),
+          );
+          return;
+        }
+        const plannerUserPrompt =
+          body.plannerUserPrompt as PlannerUserPromptInput;
+        const recent =
+          typeof body.recentGameTextForRepair === "string"
+            ? body.recentGameTextForRepair
+            : "";
+        const includeDatHelp =
+          body.includeDatHelpInSystem === false ? false : true;
+        const client = pool.getClientForSession(sess);
+        const plan = await llmExecutor.run(sess.id, async () => {
+          return planAutoplayWithTextLlm(db, client, {
+            plannerUserPrompt,
+            recentGameTextForRepair: recent,
+            includeDatHelpInSystem: includeDatHelp,
+          });
+        });
+        jsonResponseWithSessionCookie(
+          res,
+          200,
+          { plan },
+          cookieOpts(sess, newSession),
+        );
+      } catch (e) {
+        jsonResponseWithSessionCookie(
+          res,
+          500,
+          {
+            error: e instanceof Error ? e.message : "Planner request failed",
+          },
+          cookieOpts(sess, newSession),
+        );
+      }
+      return;
+    }
+
+    if (pathname === "/api/autoplay-engine-input" && req.method === "POST") {
+      if (sess === undefined) return;
+      if (!resolveBrowserOrchestratedAutoplayFromEnv()) {
+        jsonResponseWithSessionCookie(
+          res,
+          404,
+          { error: "Browser-orchestrated autoplay is not enabled" },
+          cookieOpts(sess, newSession),
+        );
+        return;
+      }
+      try {
+        const body = (await readJsonBody(req)) as {
+          endSession?: unknown;
+          getinLine?: unknown;
+          plan?: unknown;
+          motionGridHint?: unknown;
+          moveNumber?: unknown;
+        } | null;
+        if (body === null) {
+          jsonResponseWithSessionCookie(
+            res,
+            400,
+            { error: "Expected JSON body" },
+            cookieOpts(sess, newSession),
+          );
+          return;
+        }
+        if (body.endSession === true) {
+          sess.engineGetinQueue.enqueue(null);
+          jsonResponseWithSessionCookie(
+            res,
+            200,
+            { ok: true, action: "endSession" },
+            cookieOpts(sess, newSession),
+          );
+          return;
+        }
+        if (
+          typeof body.getinLine !== "string" ||
+          body.getinLine.trim() === ""
+        ) {
+          jsonResponseWithSessionCookie(
+            res,
+            400,
+            { error: 'Expected getinLine: "EAST ..." or endSession: true' },
+            cookieOpts(sess, newSession),
+          );
+          return;
+        }
+        const line = body.getinLine.trimEnd();
+        if (body.plan !== undefined && body.plan !== null) {
+          const plan = AutoplayPlannerResponseSchema.parse(body.plan);
+          const motionGridHint =
+            body.motionGridHint === null || body.motionGridHint === undefined
+              ? null
+              : String(body.motionGridHint);
+          const moveNumber =
+            typeof body.moveNumber === "number" &&
+            Number.isFinite(body.moveNumber)
+              ? Math.max(1, Math.floor(body.moveNumber))
+              : 1;
+          sess.broadcast("plan_applied", {
+            plan,
+            scripted: line,
+            getinLine: line,
+            moveNumber,
+            motionGridHint,
+          });
+        }
+        sess.engineGetinQueue.enqueue(line);
+        jsonResponseWithSessionCookie(
+          res,
+          200,
+          { ok: true, action: "getinLine" },
+          cookieOpts(sess, newSession),
+        );
+      } catch (e) {
+        jsonResponseWithSessionCookie(
+          res,
+          400,
+          {
+            error: e instanceof Error ? e.message : "Invalid body",
+          },
+          cookieOpts(sess, newSession),
+        );
+      }
       return;
     }
 
@@ -1925,13 +2120,27 @@ export function createAutoplayDashboardServer(
               } else {
                 await ensureMlxWorkerReady(sessionClient);
               }
-              await runAutoplaySessionWithTextLlm(
-                sref.textLlmSource,
-                { repoRoot, datPath },
-                sref.sink,
-                sref.manualPlannerGate,
-                sref.webAutoplayLiveOverrides,
-              );
+              if (resolveBrowserOrchestratedAutoplayFromEnv()) {
+                await runBrowserOrchestratedEngineSession(
+                  { repoRoot, datPath },
+                  sref.sink,
+                  {
+                    sessionProviderId: sref.textLlmProviderId,
+                    waitForEngineGetin: async () =>
+                      sref.engineGetinQueue.dequeue(),
+                    manualPlannerGate: sref.manualPlannerGate,
+                    overrides: sref.webAutoplayLiveOverrides,
+                  },
+                );
+              } else {
+                await runAutoplaySessionWithTextLlm(
+                  sref.textLlmSource,
+                  { repoRoot, datPath },
+                  sref.sink,
+                  sref.manualPlannerGate,
+                  sref.webAutoplayLiveOverrides,
+                );
+              }
             });
           } catch (err) {
             const msg =

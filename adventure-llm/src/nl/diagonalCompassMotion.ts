@@ -18,6 +18,8 @@ export const DIAGONAL_COMPASS_MOTION_TOKEN_SET = new Set<string>(
  */
 export function isDiagonalCompassMotionEnabled(): boolean {
   const v =
-    process.env.ADVENTURE_LLM_DIAGONAL_COMPASS_MOTION?.trim().toLowerCase();
+    typeof process !== "undefined" && process.env !== undefined
+      ? process.env.ADVENTURE_LLM_DIAGONAL_COMPASS_MOTION?.trim().toLowerCase()
+      : undefined;
   return v === "1" || v === "true" || v === "yes";
 }

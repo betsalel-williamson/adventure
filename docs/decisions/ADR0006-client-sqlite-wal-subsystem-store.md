@@ -16,6 +16,8 @@ IndexedDB-only blob storage lacks relational queries for revisions, tags, and fi
 
 **Glue state (dashboard):** [ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md) requires **durable checkpointing** of **inferred** cognitive state (map, inventory model, modes, etc.) on refresh/reconnect—not `sessionStorage`. That state should use the **same persistence story** as subsystems (this ADR): SQLite + OPFS/IndexedDB, single owner pattern below, so Dashboard and Workspace stay consistent and multi-tab safe.
 
+**Orchestration alignment:** Checkpoint writes should stay **ordered** with cognition phases (after a committed GETIN + applied plan). An **XState-style** orchestration hub ([ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md) forward work) can invoke “persist glue snapshot” as an **effect** on the same transitions that advance LLM steps, avoiding races between async LLM calls and DB writes.
+
 ## Decision
 
 - Store subsystem **files**, **revisions**, **metadata**, and **test/promotion records** in a **client-side SQLite** database opened in the browser via a **WASM** stack (e.g. wa-sqlite + OPFS, or sql.js with persistence — **finalize in implementation** with integration tests).
