@@ -1,22 +1,19 @@
-# Adventure autoplay dashboard — HTTP API
+# Adventure NL web dashboard — HTTP API
 
 The local web server is started with `npm run web` from `adventure-nl/` (or
 `make run-autoplay-web` from the repo root). It binds to **127.0.0.1** only.
 
-**`adventure-nl` / `ADVENTURE_NL_*`:** **NL** is **natural language** (the
-TypeScript layer that maps player text to game commands and runs the autoplay
-dashboard). **`ADVENTURE_NL_*`** environment variables configure that stack; they
-are not tied to a single LLM vendor.
+**Thin backend:** In the default dashboard path, the Node process **streams game text** (SSE), **runs the Fortran `adventure` binary**, and **forwards logical text-model requests** to configured LLM backends. It does **not** own the main **natural-language interpretation, planner context assembly, or post-processing of model output**—that work runs **in the browser** via `@adventure-nl/nl-glue` (see ADR0005 / ADR0014). Route names that contain **`autoplay`** refer to the **self-acting game loop** and historical paths, not to “all NL runs on the server.”
+
+**`adventure-nl` / `ADVENTURE_NL_*`:** **NL** is **natural language** (the TypeScript layer that maps player text to game commands and related cognition). **`ADVENTURE_NL_*`** environment variables configure that stack; they are not tied to a single LLM vendor.
 
 **Authentication:** none. Do not expose this server to untrusted networks.
 
 **Session lifecycle:** Dashboard state (cookie **`adventure_session`** → in-memory session object, Fortran subprocess, transcript, planner memory, UI-backed settings) exists **only while the `npm run web` process runs**. A server **restart** wipes all sessions; unknown cookie ids are replaced with **new** sessions—there is **no resume** or disk snapshot of game state. Colossal Cave also uses **randomness**, so a “fresh start” is not replay-equivalent to an old run. Optional **`ADVENTURE_NL_DEBUG=1`** writes **`.cache/llm-sessions/<uuid>.jsonl`** for LLM auditing only, not for restoring a session.
 
-**Autoplay planner (behavior):** By default the server runs the same **`adventure-nl`** autoplay loop as the CLI: session memory, situation candidates, and planner guards. Heuristic **object** / **loot-funnel** cues follow the latest room-description block in the transcript (not the whole tail). See [`docs/architecture/adventure-engine.md`](docs/architecture/adventure-engine.md) and [`docs/decisions/ADR0003-scoped-object-hints-latest-room-block.md`](docs/decisions/ADR0003-scoped-object-hints-latest-room-block.md).
+**NL cognition (default):** Unless opted out, **interpretation, session memory updates, planner prompt assembly, guards, and scripted GETIN derivation** run **in the browser** ([`docs/decisions/ADR0005-browser-orchestrated-autoplay-cognition.md`](docs/decisions/ADR0005-browser-orchestrated-autoplay-cognition.md), [`docs/decisions/ADR0014-two-step-nl-glue-package-then-browser.md`](docs/decisions/ADR0014-two-step-nl-glue-package-then-browser.md)). The client loads **`@adventure-nl/nl-glue`** from the generated bundle, calls **`POST /api/autoplay-plan`** (thin **LLM** forward), and submits lines via **`POST /api/autoplay-engine-input`** while the server streams engine output over SSE. Set **`ADVENTURE_NL_BROWSER_ORCHESTRATED_AUTOPLAY=0`** (or **`false`** / **`no`** / **`off`**) to move the **full** NL loop back into the **Node** process (same shape as the CLI **self-acting** runner). Heuristic **object** / **loot-funnel** cues follow the latest room-description block in the transcript. See [`docs/architecture/adventure-engine.md`](docs/architecture/adventure-engine.md) and [`docs/decisions/ADR0003-scoped-object-hints-latest-room-block.md`](docs/decisions/ADR0003-scoped-object-hints-latest-room-block.md).
 
-When **`ADVENTURE_NL_BROWSER_ORCHESTRATED_AUTOPLAY=1`** is set on the server, the dashboard may use **browser-orchestrated** cognition ([`docs/decisions/ADR0005-browser-orchestrated-autoplay-cognition.md`](docs/decisions/ADR0005-browser-orchestrated-autoplay-cognition.md)): the client builds planner context, calls **`POST /api/autoplay-plan`**, and submits GETIN lines via **`POST /api/autoplay-engine-input`** while the server streams game text over SSE. **`GET /api/session`** includes **`browserOrchestratedAutoplay: true`** when that mode is active.
-
-**Subsystem replica sync** ([`docs/decisions/ADR0008-server-subsystem-replica-and-sync.md`](docs/decisions/ADR0008-server-subsystem-replica-and-sync.md)): after establishing a session cookie, the client may **`POST /api/subsystem-sync`** with workspace-scoped revision batches; the server stores a **better-sqlite3** replica (default under `adventure-nl/.cache/subsystem-replica/`, optional env **`ADVENTURE_NL_SUBSYSTEM_REPLICA_DIR`**). Does not require browser-orchestrated autoplay env.
+**Subsystem replica sync** ([`docs/decisions/ADR0008-server-subsystem-replica-and-sync.md`](docs/decisions/ADR0008-server-subsystem-replica-and-sync.md)): after establishing a session cookie, the client may **`POST /api/subsystem-sync`** with workspace-scoped revision batches; the server stores a **better-sqlite3** replica (default under `adventure-nl/.cache/subsystem-replica/`, optional env **`ADVENTURE_NL_SUBSYSTEM_REPLICA_DIR`**). Independent of the client-vs-server NL flag above.
 
 ## Static UI
 
@@ -29,13 +26,13 @@ When **`ADVENTURE_NL_BROWSER_ORCHESTRATED_AUTOPLAY=1`** is set on the server, th
 
 | Method | Path      | Purpose                                                                       |
 | ------ | --------- | ----------------------------------------------------------------------------- |
-| `GET`  | `/events` | `text/event-stream`; subscribing starts (or attaches to) one autoplay session |
+| `GET`  | `/events` | `text/event-stream`; subscribing starts (or attaches to) one dashboard session (Fortran + transcript stream for that browser client) |
 
 On connect, the server may emit initial events such as `autoplay_mode`,
 `autoplay_settings`, `manual_waiting`, `parser_verbs`, `text_llm`, `mlx_model`,
 and `mlx_loading`. Game progress arrives as `transcript_delta`, `turn_end`,
 `plan_applied`, `log_line`, etc. When the engine is waiting for scripted input
-and the idle hook runs (browser-orchestrated path), the server may emit
+and the idle hook runs (client NL path), the server may emit
 **`getin_prompt_ready`** so the client can advance planning without guessing from
 raw text alone. Errors use `session_error` with a `message`
 string.
@@ -43,15 +40,15 @@ string.
 Parse SSE lines as usual: events named in `event:` lines, JSON payloads after
 `data:`.
 
-### Browser-orchestrated autoplay (optional)
+### Client-side NL pipeline (default)
 
-Requires server env **`ADVENTURE_NL_BROWSER_ORCHESTRATED_AUTOPLAY=1`**. The dashboard loads extra client scripts and uses:
+**On by default** (env unset): the browser runs **`@adventure-nl/nl-glue`**; the server exposes **`/api/autoplay-plan`** as a **logical LLM** hop only. Set **`ADVENTURE_NL_BROWSER_ORCHESTRATED_AUTOPLAY=0`** to disable that path and run NL in Node instead. Routes:
 
 | Method | Path | Purpose |
 | ------ | ---- | -------- |
-| `GET` | `/api/session` | Returns `{ "ok": true, "browserOrchestratedAutoplay": true \| false }` (and sets session cookie when new). |
+| `GET` | `/api/session` | Returns `{ "ok": true, "browserOrchestratedAutoplay": true \| false }` (and sets session cookie when new). When **`true`**, the client is expected to run **NL glue in the browser**—the name reflects historical “browser orchestrated self-acting loop,” not “NL on the server.” |
 | `GET` | `/api/adventure-database` | **200** — `{ "database": … }` serialized from `adventure.dat` for client-side hints. **503** if the dat file is unavailable. |
-| `POST` | `/api/autoplay-plan` | Body: `{ "plannerUserPrompt": … }` required; optional `recentGameTextForRepair`, `includeDatHelpInSystem`. **200** — `{ "plan": … }`. Uses the session’s text-model pool. **503** if no text model or dat. |
+| `POST` | `/api/autoplay-plan` | Body: `{ "plannerUserPrompt": … }` required; optional `recentGameTextForRepair`, `includeDatHelpInSystem`. **200** — `{ "plan": … }`. **Server:** session text-model pool only (no NL glue). **503** if no text model or dat. |
 | `POST` | `/api/autoplay-engine-input` | Body: `{ "getinLine": "EAST …" }` or `{ "endSession": true }`; optional `plan`, `motionGridHint`, `moveNumber` to broadcast `plan_applied`. **404** if browser orchestration is off. |
 
 See [`docs/decisions/ADR0005-browser-orchestrated-autoplay-cognition.md`](docs/decisions/ADR0005-browser-orchestrated-autoplay-cognition.md) and [`docs/architecture/adventure-nl-cognition-and-workspace.md`](docs/architecture/adventure-nl-cognition-and-workspace.md).
@@ -68,11 +65,11 @@ required. Responses are JSON unless noted.
 ```json
 {
   "ok": true,
-  "browserOrchestratedAutoplay": false
+  "browserOrchestratedAutoplay": true
 }
 ```
 
-`browserOrchestratedAutoplay` is **`true`** when the server was started with **`ADVENTURE_NL_BROWSER_ORCHESTRATED_AUTOPLAY=1`**.
+`browserOrchestratedAutoplay` is **`true`** unless the server was started with **`ADVENTURE_NL_BROWSER_ORCHESTRATED_AUTOPLAY`** set to **`0`**, **`false`**, **`no`**, or **`off`**. When **`true`**, natural-language **interpretation and planner-side glue** are **not** intended to run in the dashboard server process; they run in the **browser bundle**.
 
 ### `POST /api/subsystem-sync`
 

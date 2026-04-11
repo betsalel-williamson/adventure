@@ -1,6 +1,6 @@
 /adventure
 /adventure-nl/node_modules/
-/adventure-nl/dist/
+/adventure-nl/**/dist/
 # esbuild output (npm run build → scripts/bundle-browser-cognition.mjs)
 /adventure-nl/public/generated/
 /adventure-nl/reports/

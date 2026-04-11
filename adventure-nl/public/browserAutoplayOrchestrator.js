@@ -1,6 +1,7 @@
 /**
- * Browser-orchestrated autoplay (ADR0005): consumes SSE getin_prompt_ready, runs client-side glue
- * from the cognition bundle, calls POST /api/autoplay-plan, submits GETIN via POST /api/autoplay-engine-input.
+ * Client-side NL loop (ADR0005 / ADR0014): consumes SSE getin_prompt_ready, runs @adventure-nl/nl-glue
+ * from the cognition bundle, calls POST /api/autoplay-plan (thin LLM forward), submits GETIN via
+ * POST /api/autoplay-engine-input. “Autoplay” names the self-acting loop, not server-side NL.
  */
 import { applySnapshot } from "./mapView.js";
 import { parseSseJson } from "./sseJson.js";

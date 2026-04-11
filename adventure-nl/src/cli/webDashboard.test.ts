@@ -28,6 +28,7 @@ describe("createAutoplayDashboardServer", () => {
     delete process.env.ADVENTURE_NL_BENCHMARK_DB;
     delete process.env.ADVENTURE_NL_BENCHMARK_RUNS;
     delete process.env.ADVENTURE_NL_SUBSYSTEM_REPLICA_DIR;
+    delete process.env.ADVENTURE_NL_BROWSER_ORCHESTRATED_AUTOPLAY;
     resetBenchmarkRunsDbSingleton();
     resetServerSubsystemReplicaStoreSingletonForTests();
   });
@@ -73,9 +74,8 @@ describe("createAutoplayDashboardServer", () => {
     rmSync(replicaDir, { recursive: true, force: true });
   });
 
-  it("GET /api/session includes browserOrchestratedAutoplay", async () => {
-    const prev = process.env.ADVENTURE_NL_BROWSER_ORCHESTRATED_AUTOPLAY;
-    process.env.ADVENTURE_NL_BROWSER_ORCHESTRATED_AUTOPLAY = "1";
+  it("GET /api/session reports browserOrchestratedAutoplay true by default (client nl-glue path)", async () => {
+    delete process.env.ADVENTURE_NL_BROWSER_ORCHESTRATED_AUTOPLAY;
     const server = testHttpDashboard();
     await new Promise<void>((resolve) => {
       server.listen(0, "127.0.0.1", () => resolve());
@@ -91,9 +91,25 @@ describe("createAutoplayDashboardServer", () => {
     await new Promise<void>((resolve, reject) => {
       server.close((err) => (err ? reject(err) : resolve()));
     });
-    if (prev === undefined)
-      delete process.env.ADVENTURE_NL_BROWSER_ORCHESTRATED_AUTOPLAY;
-    else process.env.ADVENTURE_NL_BROWSER_ORCHESTRATED_AUTOPLAY = prev;
+  });
+
+  it("GET /api/session respects ADVENTURE_NL_BROWSER_ORCHESTRATED_AUTOPLAY=0", async () => {
+    process.env.ADVENTURE_NL_BROWSER_ORCHESTRATED_AUTOPLAY = "0";
+    const server = testHttpDashboard();
+    await new Promise<void>((resolve) => {
+      server.listen(0, "127.0.0.1", () => resolve());
+    });
+    const addr = server.address();
+    const port =
+      typeof addr === "object" && addr !== null ? addr.port : undefined;
+    expect(port).toBeDefined();
+    const r = await fetch(`http://127.0.0.1:${port}/api/session`);
+    expect(r.ok).toBe(true);
+    const j = (await r.json()) as { browserOrchestratedAutoplay?: boolean };
+    expect(j.browserOrchestratedAutoplay).toBe(false);
+    await new Promise<void>((resolve, reject) => {
+      server.close((err) => (err ? reject(err) : resolve()));
+    });
   });
 
   it.runIf(existsSync(datPath))(
@@ -117,9 +133,8 @@ describe("createAutoplayDashboardServer", () => {
     },
   );
 
-  it("POST /api/autoplay-engine-input is disabled unless browser orchestration env is on", async () => {
-    const prev = process.env.ADVENTURE_NL_BROWSER_ORCHESTRATED_AUTOPLAY;
-    delete process.env.ADVENTURE_NL_BROWSER_ORCHESTRATED_AUTOPLAY;
+  it("POST /api/autoplay-engine-input is disabled when browser orchestration is off", async () => {
+    process.env.ADVENTURE_NL_BROWSER_ORCHESTRATED_AUTOPLAY = "0";
     const server = testHttpDashboard();
     await new Promise<void>((resolve) => {
       server.listen(0, "127.0.0.1", () => resolve());
@@ -140,8 +155,6 @@ describe("createAutoplayDashboardServer", () => {
     await new Promise<void>((resolve, reject) => {
       server.close((err) => (err ? reject(err) : resolve()));
     });
-    if (prev !== undefined)
-      process.env.ADVENTURE_NL_BROWSER_ORCHESTRATED_AUTOPLAY = prev;
   });
 
   it("GET /api/text-llm returns backends and shape", async () => {
