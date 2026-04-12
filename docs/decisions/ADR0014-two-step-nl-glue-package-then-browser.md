@@ -93,12 +93,12 @@ Authors and maintainers asked for an explicit distinction between **DAT-backed s
 | **`@adventure-nl/nl-glue`** (tsc → `dist/`, public API) | [`adventure-nl/packages/nl-glue/`](../../adventure-nl/packages/nl-glue/) |
 | Browser bundle **entry** (re-exports glue + dat JSON + throttle + cognition machine) | [`adventure-nl/src/browser/cognitionBundle.ts`](../../adventure-nl/src/browser/cognitionBundle.ts) |
 | **esbuild** browser build (`public/generated/browserAutoplayCognition.js`) | [`adventure-nl/scripts/bundle-browser-cognition.mjs`](../../adventure-nl/scripts/bundle-browser-cognition.mjs) |
-| Orchestrator: `import()` of generated bundle, SSE + `/api/autoplay-*` | [`adventure-nl/public/browserAutoplayOrchestrator.js`](../../adventure-nl/public/browserAutoplayOrchestrator.js) |
+| Orchestrator: `import()` of generated bundle, SSE + client-direct planning + `POST /api/engine/input` | [`adventure-nl/public/browserAutoplayOrchestrator.js`](../../adventure-nl/public/browserAutoplayOrchestrator.js) |
 | Minimal XState cognition machine (extensible toward ADR0005 hub) | [`adventure-nl/src/browser/autoplayCognitionMachine.ts`](../../adventure-nl/src/browser/autoplayCognitionMachine.ts) |
 | **dependency-cruiser** (glue reachable from `src/browser/` only via bundle entry) | [`adventure-nl/.dependency-cruiser.cjs`](../../adventure-nl/.dependency-cruiser.cjs) |
 | **`npm run build`** chain (glue `tsc`, app `tsc`, then browser bundle) | [`adventure-nl/package.json`](../../adventure-nl/package.json) `"build"` script |
 
-**Session wiring:** `GET /api/session` exposes **`browserOrchestratedAutoplay`** (historical name: “browser drives the self-acting loop”). When **`true`**, `public/app.js` loads `browserAutoplayOrchestrator.js`, which dynamic-imports **`/generated/browserAutoplayCognition.js`** and runs **nl-glue** on **`getin_prompt_ready`**. The dashboard server does **not** reimplement that glue—it forwards **`/api/autoplay-plan`** to the text-model pool and runs the Fortran engine. **`ADVENTURE_NL_BROWSER_ORCHESTRATED_AUTOPLAY` defaults to client-side NL** (unset → browser bundle); set to **`0`** / **`false`** / **`no`** / **`off`** to run the same glue **in Node** (legacy parity with the CLI runner).
+**Session wiring:** `GET /api/session` exposes **`browserOrchestratedAutoplay`** (historical name: “browser drives the self-acting loop”). When **`true`**, `public/app.js` loads `browserAutoplayOrchestrator.js`, which dynamic-imports **`/generated/browserAutoplayCognition.js`** and runs **nl-glue** on **`getin_prompt_ready`**, then **`planAutoplayInBrowser`** (Gemini / HTTP) using **`browserPlanner`** from SSE / **`GET /api/text-llm`**—**not** `POST /api/nl/planner` ([ADR0015](ADR0015-deprecate-server-forward-nl-cognition.md)). The server runs the Fortran engine and streams SSE; legacy **`POST /api/nl/planner`** remains for compatibility only. **`ADVENTURE_NL_BROWSER_ORCHESTRATED_AUTOPLAY` defaults to client-side NL** (unset → browser bundle); set to **`0`** / **`false`** / **`no`** / **`off`** to run the same glue **in Node** (legacy parity with the CLI runner).
 
 **Forward work (not closed by this ADR):** richer orchestration events, glue checkpointing to SQLite per [ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md) / [ADR0006](ADR0006-client-sqlite-wal-subsystem-store.md), integration tests with mocked LLM HTTP at the orchestrator boundary, and driving **`browserAutoplayCognitionMachine`** from the orchestrator (currently exported from the bundle but the imperative `wireBrowserAutoplayOrchestrator` path owns the loop).
 
@@ -109,6 +109,7 @@ Accepted
 ## References
 
 - [`adventure-nl/packages/nl-glue`](../../adventure-nl/packages/nl-glue/) — **`@adventure-nl/nl-glue`** implementation and `package.json` workspaces entry.
+- [ADR0015](ADR0015-deprecate-server-forward-nl-cognition.md) — Server-forward NL deprecated for dashboard default path.
 - [ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md) — Browser-orchestrated cognition; glue vs engine/DAT boundary.
 - [ADR0004](ADR0004-backend-llm-packaging-and-discovery.md) — Backend packaging for logical LLM requests; glue package must not absorb vendor wire details.
 - [ADR0009](ADR0009-tdd-promote-gate-subsystems.md) — TDD / promote gate for **subsystems**; glue package tests follow the same **discipline**, separate artifact.

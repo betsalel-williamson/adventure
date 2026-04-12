@@ -20,3 +20,7 @@ export {
   maxMovesFromOverrides,
 } from "../nl/autoplayThrottle.js";
 export { browserAutoplayCognitionMachine } from "./autoplayCognitionMachine.js";
+export {
+  planAutoplayInBrowser,
+  type BrowserPlannerCredentialsPayload,
+} from "../nl/browserPlanAutoplay.js";

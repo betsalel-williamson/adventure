@@ -16,15 +16,19 @@ export function createDashboardApi(ports) {
         body: JSON.stringify(body),
       }),
     getAdventureDatabase: () => f("/api/adventure-database", cred),
-    postAutoplayPlan: (body) =>
-      f("/api/autoplay-plan", {
+    /**
+     * NL interpret: thin JSON request/response only. Client derives GETIN and POSTs /api/engine/input.
+     */
+    postNlInterpret: (body) =>
+      f("/api/nl/interpret", {
         ...cred,
         method: "POST",
         headers: jsonHeaders,
         body: JSON.stringify(body),
       }),
-    postAutoplayEngineInput: (body) =>
-      f("/api/autoplay-engine-input", {
+    /** Submit GETIN / scripted line to the engine (Fortran); game text arrives on /events. */
+    postEngineInput: (body) =>
+      f("/api/engine/input", {
         ...cred,
         method: "POST",
         headers: jsonHeaders,
@@ -41,13 +45,6 @@ export function createDashboardApi(ports) {
     getAutoplaySettings: () => f("/api/autoplay-settings", cred),
     postAutoplaySettings: (body) =>
       f("/api/autoplay-settings", {
-        ...cred,
-        method: "POST",
-        headers: jsonHeaders,
-        body: JSON.stringify(body),
-      }),
-    postManualCommand: (body) =>
-      f("/api/manual-command", {
         ...cred,
         method: "POST",
         headers: jsonHeaders,

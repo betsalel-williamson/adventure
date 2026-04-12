@@ -29,6 +29,36 @@ describe("createDashboardApi", () => {
     });
   });
 
+  it("postNlInterpret POSTs /api/nl/interpret (thin NL request/response)", async () => {
+    const fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: true, scripted: "EAST    " }),
+    });
+    const api = createDashboardApi({ fetch });
+    await api.postNlInterpret({ natural: "go east" });
+    expect(fetch).toHaveBeenCalledWith("/api/nl/interpret", {
+      credentials: "same-origin",
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ natural: "go east" }),
+    });
+  });
+
+  it("postEngineInput POSTs /api/engine/input", async () => {
+    const fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: true }),
+    });
+    const api = createDashboardApi({ fetch });
+    await api.postEngineInput({ getinLine: "EAST    " });
+    expect(fetch).toHaveBeenCalledWith("/api/engine/input", {
+      credentials: "same-origin",
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ getinLine: "EAST    " }),
+    });
+  });
+
   it("postMlxModelCancel POSTs cancel endpoint", async () => {
     const fetch = vi.fn().mockResolvedValue({
       ok: true,

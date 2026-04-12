@@ -2,16 +2,16 @@
 
 ## Introduction
 
-This document describes the **target architecture** for evolving [`adventure-nl`](../../adventure-nl/): moving **semantic** autoplay and interpret **policy** (prompt structures, session memory strategy, subsystem hooks) to the **browser**, while the **Node** layer focuses on **Fortran session I/O**, **pooled connections** to local and remote **text models**, and **LLM request packaging** (vendor-specific wire formats). Authors gain a **workspace** (Monaco, optional second tab) with **versioned subsystems**, **TDD with a promote-to-live gate**, and **client-authoritative SQLite** synced to a **server replica** on connect.
+This document describes the **target architecture** for evolving [`adventure-nl`](../../adventure-nl/): moving **semantic** autoplay and interpret **policy** (prompt structures, session memory strategy, subsystem hooks) to the **browser**, with **client-direct calls** to text models for the default dashboard path—not Node-forwarded **`POST /api/nl/*`** planner/interpret ([ADR0015](../decisions/ADR0015-deprecate-server-forward-nl-cognition.md)). The **Node** layer focuses on **Fortran session I/O**, **SSE**, **session and discovery** (including **[ADR0004](../decisions/ADR0004-backend-llm-packaging-and-discovery.md)** `packaging` on **`GET /api/text-llm`**), **pooled `TextLlm`** for CLI and server-orchestrated modes, and subsystem replica. Authors gain a **workspace** (Monaco, optional second tab) with **versioned subsystems**, **TDD with a promote-to-live gate**, and **client-authoritative SQLite** synced to a **server replica** on connect.
 
 **Scope:** Strategic direction and boundaries. **As-built** behavior of the package today remains documented in [adventure-engine.md](./adventure-engine.md) until each migration lands.
 
-**Related decisions:** [ADR0004](../decisions/ADR0004-backend-llm-packaging-and-discovery.md) through [ADR0014](../decisions/ADR0014-two-step-nl-glue-package-then-browser.md), indexed under [adventure-nl-cognition-adr-index.md](../decisions/adventure-nl-cognition-adr-index.md).
+**Related decisions:** [ADR0004](../decisions/ADR0004-backend-llm-packaging-and-discovery.md) through [ADR0015](../decisions/ADR0015-deprecate-server-forward-nl-cognition.md), indexed under [adventure-nl-cognition-adr-index.md](../decisions/adventure-nl-cognition-adr-index.md).
 
 ## Business and system context
 
 - **Classic core** (unchanged): Crowther `adventure.dat` and the built `./adventure` binary drive ground-truth simulation ([adventure-fortran-engine.md](./adventure-fortran-engine.md)).
-- **Enhancement (direction):** Experimenters iterate **how** NL and autoplay behave—prompt layout, memory heuristics, subsystem code—**without** redeploying Node or duplicating vendor API rules in the client. The backend stays responsible for **correct** mapping from **logical** LLM requests to each provider’s API ([ADR0004](../decisions/ADR0004-backend-llm-packaging-and-discovery.md)).
+- **Enhancement (direction):** Experimenters iterate **how** NL and autoplay behave—prompt layout, memory heuristics, subsystem code—**without** redeploying Node. **Packaging discovery** and Node **providers** stay authoritative for **authoring validation** and **CLI**; the **dashboard default** calls providers **from the browser** using shared **nl-glue** prompt assembly and **`browserPlanner`** credentials ([ADR0015](../decisions/ADR0015-deprecate-server-forward-nl-cognition.md), [ADR0004](../decisions/ADR0004-backend-llm-packaging-and-discovery.md)).
 - **Users** of the web dashboard edit subsystems in a **workspace** tab; **promotion** to the live runtime requires **tests** to pass ([ADR0009](../decisions/ADR0009-tdd-promote-gate-subsystems.md)).
 
 ## Architectural drivers
@@ -19,7 +19,7 @@ This document describes the **target architecture** for evolving [`adventure-nl`
 | Driver                     | Implication                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Iteration speed**        | **Glue** (map/inventory/modes/heuristics over streamed text) moves to the browser ([ADR0005](../decisions/ADR0005-browser-orchestrated-autoplay-cognition.md)); Fortran + pool stay on the server.                                                                                                                                                                                                                                                                                              |
-| **Correctness vs vendors** | Packaging stays centralized in Node; discovery API for authoring UI ([ADR0004](../decisions/ADR0004-backend-llm-packaging-and-discovery.md)).                                                                                                                                                                                                                                                                                                                                                   |
+| **Correctness vs vendors** | **Discovery** (`packaging` on **`GET /api/text-llm`**) stays centralized for authoring UI; **runtime** wire paths for dashboard default are **client-direct**, kept aligned with Node providers via tests ([ADR0004](../decisions/ADR0004-backend-llm-packaging-and-discovery.md), [ADR0015](../decisions/ADR0015-deprecate-server-forward-nl-cognition.md)).                                                                                                                                                                                                                                                                                                                                                   |
 | **Audit and replay**       | Subsystem history in **SQLite WAL** on the client; **revisions**, **tags**, **replay materialization**, and **revert** ([ADR0006](../decisions/ADR0006-client-sqlite-wal-subsystem-store.md), [ADR0007](../decisions/ADR0007-subsystem-revision-control-and-replay.md)). The **subsystem store** implements these under [`adventure-nl/src/browser/`](../../adventure-nl/src/browser/) (see ADR0006 and ADR0007 **Implementation**); **dashboard UX** (history, diffs, tag UI) and orchestration-only flows (tests-as-of-R, then promote) remain forward work. |
 | **Backup**                 | **Client-authoritative** data; **server replica** + **sync on connect** ([ADR0008](../decisions/ADR0008-server-subsystem-replica-and-sync.md)).                                                                                                                                                                                                                                                                                                                                                 |
 | **Safety**                 | **Promote** only after green tests; sandboxed **dynamic ES modules** ([ADR0009](../decisions/ADR0009-tdd-promote-gate-subsystems.md), [ADR0011](../decisions/ADR0011-subsystem-module-contract-dynamic-js.md)).                                                                                                                                                                                                                                                                                 |
@@ -32,6 +32,7 @@ Decisions are recorded in ADRs (not duplicated here). Dependency order for imple
 - **ADR0004** — Backend **packaging** + **discovery** API for logical requests.
 - **ADR0005** — **Browser-orchestrated** autoplay: client-owned glue state and loop; not “ship `adventure.dat` to the browser” as the primary goal.
 - **ADR0014** — **Two-step** migration of **NL/SLM glue** (interpret/situational/vocab/mode policy): **extract a dedicated package** under Node first, then **consume from the browser** (operationalizes ADR0005 for `vocab` / `text` / `nl/*`).
+- **ADR0015** — **Deprecate server-forward** NL planner/interpret for the **dashboard default** path; **client-direct** cognition model calls ([`planAutoplayInBrowser`](../../adventure-nl/src/nl/browserPlanAutoplay.ts)).
 - **ADR0006–ADR0008** — Client **SQLite WAL** (store module **implemented** — [ADR0006](../decisions/ADR0006-client-sqlite-wal-subsystem-store.md) **Implementation**), **revision control / tags / replay / revert** ([ADR0007](../decisions/ADR0007-subsystem-revision-control-and-replay.md) store **implemented**; UI forward work), **server replica + HTTP sync** ([ADR0008](../decisions/ADR0008-server-subsystem-replica-and-sync.md) **`POST /api/subsystem-sync`** + apply module **implemented**; browser **invoke** sync + restore UX forward work).
 - **ADR0009** — **TDD** and **promote-to-live** gate.
 - **ADR0010** — **Monaco** second tab + **cross-tab** sync.
@@ -48,31 +49,34 @@ flowchart TB
     Ws[Workspace_Monaco_tab]
     Sqlite[Client_SQLite_WAL]
     Cognition[Cognition_runtime]
+    Vendors[Vendor_APIs_Gemini_HTTP]
     Dash --> Cognition
     Ws --> Sqlite
     Cognition --> Sqlite
+    Cognition -->|"NL_cognition_default_path"| Vendors
   end
   subgraph node [Node_adventure_llm]
     Fortran[Fortran_subprocess]
-    Pool[Text_model_pool]
-    Pack[LLM_packaging_per_provider]
+    Pool[Text_model_pool_CLI_server_modes]
+    Discover[Packaging_discovery_GET_api_text_llm]
     Replica[Subsystem_replica_SQLite]
   end
-  Cognition -->|"logical_LLM_request"| Pack
-  Pack --> Pool
-  Cognition -->|"GETIN_SSE"| Fortran
+  Cognition -->|"GETIN_queued"| Fortran
+  Cognition -.->|"read_packaging_not_forward"| Discover
+  Pool --> Fortran
   Sqlite -->|"sync_on_session"| Replica
 ```
 
-- **Glue** assembly (inferred map, inventory/mode heuristics, planner-facing memory, subsystem hooks) over **streamed text** is a **browser** concern once migration is complete for the dashboard path — distinct from loading the full parsed game database in the client as the simulation authority.
-- **Packaging** (OpenAI chat + `json_schema`, Gemini `responseSchema`, MLX stdio merge rules) remains **Node** ([ADR0004](../decisions/ADR0004-backend-llm-packaging-and-discovery.md)).
+- **Glue** assembly (inferred map, inventory/mode heuristics, planner-facing memory, subsystem hooks) over **streamed text** is a **browser** concern — distinct from loading the full parsed game database in the client as the simulation authority.
+- **Dashboard default:** cognition **model I/O** goes **browser → vendor** (or localhost Ollama); **not** browser → Node → pool for planner/interpret ([ADR0015](../decisions/ADR0015-deprecate-server-forward-nl-cognition.md)).
+- **Node `TextLlm` pool** remains for **CLI**, **server-orchestrated** web, and **MLX**; **packaging discovery** remains on **`GET /api/text-llm`** ([ADR0004](../decisions/ADR0004-backend-llm-packaging-and-discovery.md)).
 
 ## Orchestration model (XState / actors)
 
 The **target** integration point for the dashboard path is a **single orchestration hub**—implemented with **XState v5** (`adventure-nl/src/browser/autoplayCognitionMachine.ts`, bundled for the browser) and **converging** with the imperative client loop in `public/browserAutoplayOrchestrator.js`—that sequences:
 
 - **Engine** inputs from **SSE** (for example `getin_prompt_ready`, `transcript_delta`, `plan_applied`).
-- **Logical LLM** steps via **`POST /api/autoplay-plan`** and the existing packaging layer ([ADR0004](../decisions/ADR0004-backend-llm-packaging-and-discovery.md)).
+- **Client-direct LLM** steps (`planAutoplayInBrowser`, future browser interpret)—not legacy **`POST /api/nl/planner`** ([ADR0015](../decisions/ADR0015-deprecate-server-forward-nl-cognition.md)); **packaging** discovery remains for validation ([ADR0004](../decisions/ADR0004-backend-llm-packaging-and-discovery.md)).
 - **GETIN / queue** submission when **browser-orchestrated** autoplay is enabled ([ADR0005](../decisions/ADR0005-browser-orchestrated-autoplay-cognition.md)).
 - **Future / integration:** **Glue** checkpoints persisted through the same store as subsystems ([ADR0006](../decisions/ADR0006-client-sqlite-wal-subsystem-store.md); optional tables not yet added), **sync** lifecycle **UI / actor events** (server **`POST /api/subsystem-sync`** exists per [ADR0008](../decisions/ADR0008-server-subsystem-replica-and-sync.md); client must call it and map responses to **pending / complete / fork**), **promote** transitions ([ADR0009](../decisions/ADR0009-tdd-promote-gate-subsystems.md)), and **`BroadcastChannel`** from the workspace tab ([ADR0010](../decisions/ADR0010-monaco-workspace-second-tab-cross-tab-sync.md)) as **typed machine events**, keeping one locus of control instead of scattered booleans.
 
@@ -80,9 +84,9 @@ The **target** integration point for the dashboard path is a **single orchestrat
 
 ## Process view (target dashboard path)
 
-1. Browser opens SSE for game text; maintains **client-authoritative glue state** (directed/inferred map, inventory model, move/search/act (or similar) modes, heuristics) in JavaScript — today partly embodied server-side by types such as `AutoplaySessionMemory` and related NL modules, to be ported or replaced behind a stable client module boundary. The **orchestration sequence** (when to plan, when GETIN is allowed, when to checkpoint) should stay in one **actor-shaped** flow ([ADR0005](../decisions/ADR0005-browser-orchestrated-autoplay-cognition.md)) so SLM/LLM phases and engine I/O stay ordered and **observable**.
-2. Browser builds **logical** interpret/planner payloads; POSTs to Node; Node **packages** and calls pooled `TextLlm`.
-3. Browser sends GETIN via existing session APIs; Fortran stream returns new text.
+1. Browser opens SSE for game text; maintains **client-authoritative glue state** (directed/inferred map, inventory model, move/search/act (or similar) modes, heuristics) in JavaScript. The **orchestration sequence** (when to plan, when GETIN is allowed, when to checkpoint) should stay in one **actor-shaped** flow ([ADR0005](../decisions/ADR0005-browser-orchestrated-autoplay-cognition.md)) so cognition phases and engine I/O stay ordered and **observable**.
+2. Browser builds interpret/planner payloads with **nl-glue**; for the **default dashboard** path, calls **Gemini / OpenAI-compatible HTTP** directly using **`browserPlanner`**—not **`POST /api/nl/planner`** ([ADR0015](../decisions/ADR0015-deprecate-server-forward-nl-cognition.md)). **Server-orchestrated** and **CLI** paths still use Node **`TextLlm`**.
+3. Browser sends GETIN via **`POST /api/engine/input`**; Fortran stream returns new text on SSE.
 4. Subsystem edits **commit** to client SQLite; **tests** run; **promote** updates live hooks; **BroadcastChannel** notifies the dashboard tab ([ADR0009](../decisions/ADR0009-tdd-promote-gate-subsystems.md), [ADR0010](../decisions/ADR0010-monaco-workspace-second-tab-cross-tab-sync.md)).
 5. On session connect, **subsystem sync** updates server **replica** ([ADR0008](../decisions/ADR0008-server-subsystem-replica-and-sync.md)).
 

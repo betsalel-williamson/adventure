@@ -36,12 +36,14 @@ Profiles should include machine-usable constraints so the **workspace** can vali
 
 **Positive**
 
-- Authors and UI can target a **stable logical contract**; vendor churn is isolated in Node.
+- Authors and UI can target a **stable logical contract**; vendor churn is isolated in Node for **Node** callers.
 - Packaging tests can run in Vitest against Node without a browser.
+- **Discovery** (`packaging` on **`GET /api/text-llm`**) remains the right place to describe limits and schema dialects for **authoring** and **validation**.
 
 **Negative**
 
 - Two layers to document (logical vs wire); requires clear error messages when a logical request cannot be packaged for the active provider.
+- **[ADR0015](ADR0015-deprecate-server-forward-nl-cognition.md):** The **dashboard default** path may call vendors **from the browser** (`planAutoplayInBrowser`), duplicating **wire** concerns that also exist in Node providers. Mitigation: shared **`@adventure-nl/nl-glue`** semantics, **parity tests**, and keeping discovery payloads accurate.
 
 ## Implementation status (as-built vs this ADR)
 
@@ -56,13 +58,13 @@ What the repository **implements today**, so this ADR is not mistaken for unfini
 | **Discovery:** JSON schema dialect / wire kind per mode | **Implemented** | `jsonSchemaByMode` and `LlmJsonSchemaWireKind`; HTTP OpenAI JSON Schema reflects `ADVENTURE_NL_HTTP_JSON_SCHEMA` at runtime. |
 | **Discovery:** enum of `schemaMode` ids | **Implemented** | `supportedSchemaModeIds`: `interpret`, `planner`. |
 | **Profiles per `providerId` / `modelId`** | **Partial** | Profiles are **per `providerId` only** (`byProvider.mlx` / `http` / `google`). **`modelId` does not** vary packaging limits in discovery; the JSON response includes `current.modelId` for UI context. Extend if per-model limits are required. |
-| **HTTP: client sends logical body only; server packages** | **Not implemented** (follows [ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md)) | Planner/interpret **prompt assembly** for autoplay still runs in Node (`autoplayRunner` / cognition). A **`POST`** that accepts logical fields and calls `planAutoplay` is the natural API when the browser owns glue. |
+| **HTTP: client sends logical body only; server packages** | **Superseded for dashboard default** by [ADR0015](ADR0015-deprecate-server-forward-nl-cognition.md) | Browser **`planAutoplayInBrowser`** performs vendor wire for **google**/**http**; server-forward **`POST /api/nl/planner`** is **legacy**. CLI / server-orchestrated modes still use Node **`TextLlm`**. |
 | **Clear errors when logical request cannot be packaged** | **Partial** | Transport and LLM errors ([`llmErrors.ts`](../../adventure-nl/src/nl/llmErrors.ts)); no dedicated **pre-flight** validation that rejects an oversized or invalid logical payload with a stable 4xx + structured reason before the provider. |
 | **Tests** | **Implemented** | [`llmPackagingProfile.test.ts`](../../adventure-nl/src/nl/llmPackagingProfile.test.ts); [`webDashboard.test.ts`](../../adventure-nl/src/cli/webDashboard.test.ts) asserts `GET /api/text-llm` includes `packaging`. |
 
 ## Rationale
 
-Packaging is **integration knowledge** tied to process boundaries and secrets; it belongs on the server. Semantic content and **glue policy** are **product behavior** and evolve in the browser per [ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md); packaging stays on the server.
+Packaging is **integration knowledge** tied to process boundaries; Node **`TextLlm`** remains the **single implementation** for CLI and server-orchestrated web. Semantic content and **glue policy** evolve in the browser per [ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md). For the **dashboard default** path, **wire** calls may execute in the browser ([ADR0015](ADR0015-deprecate-server-forward-nl-cognition.md)); **discovery** and tests must keep **logical** vs **vendor** rules aligned.
 
 ## Status
 
@@ -70,6 +72,7 @@ Proposed
 
 ## References
 
+- [ADR0015](ADR0015-deprecate-server-forward-nl-cognition.md) — Client-direct NL for dashboard default; legacy server-forward.
 - `adventure-nl/src/nl/providers/httpOpenAiCompatibleTextLlm.ts`
 - `adventure-nl/src/nl/providers/mlxLmStdioTextLlm.ts`
 - `adventure-nl/src/nl/providers/googleGenerativeAiTextLlm.ts`

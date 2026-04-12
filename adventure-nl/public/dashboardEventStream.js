@@ -377,9 +377,14 @@ export function registerDashboardEventHandlers(es, reg) {
     appendAutoplayLogLine(d.line, step, ch);
   });
 
+  /** First open: server already sent autoplay_mode, settings, parser_verbs, text_llm on the wire. */
+  let sseOpenCount = 0;
   es.onopen = () => {
+    sseOpenCount += 1;
     reg.setSessionStatus("Connected — autoplay starting…");
-    void reg.refreshModeFromServer();
-    void reg.initTextLlmPicker();
+    if (sseOpenCount > 1) {
+      void reg.refreshModeFromServer();
+      void reg.initTextLlmPicker();
+    }
   };
 }

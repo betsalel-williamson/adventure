@@ -18,11 +18,11 @@ Today `runAutoplaySessionWithTextLlm` in `autoplayRunner.ts` orchestrates Fortra
 
 **Game truth vs inferred truth:** The server/Fortran process is **authoritative** for simulation. The client maintains an **observer’s mental model** (inferred map, heuristics, modes). Tests should treat glue as **pure logic** over transcript slices where possible, decoupled from engine I/O.
 
-**Extra network hop:** The path adds **SSE (server → client)** for game text, then **HTTP (client → server)** for each logical LLM call. **LLM time-to-first-token** usually dominates; still, avoid **chatty** cognitive substeps on the hot path. Prefer a **single long-lived** HTTP connection (keep-alive / same session). **Batching** multiple logical requests into one HTTP call is only viable when the work is independent or explicitly designed as a single packaged request ([ADR0004](ADR0004-backend-llm-packaging-and-discovery.md)); many agentic steps are **sequential by nature** — see risks below.
+**Network shape (dashboard default):** **SSE (server → client)** for game text; **client → vendor** (Gemini / OpenAI-compatible HTTP) for cognition **without** an extra Node hop for planner/interpret ([ADR0015](ADR0015-deprecate-server-forward-nl-cognition.md)). **LLM time-to-first-token** usually dominates; avoid **chatty** cognitive substeps. **Batching** multiple logical requests into one call is only viable when the work is independent or explicitly designed as a single packaged request ([ADR0004](ADR0004-backend-llm-packaging-and-discovery.md)); many agentic steps are **sequential by nature** — see risks below.
 
 ## Decision
 
-- Move the **orchestration loop** for the web dashboard to the **browser**: a state machine that consumes **streamed game text** (SSE), updates **client-side glue state** (map, inventory model, modes, prompts), builds **logical** LLM requests, sends GETIN via session APIs, and calls packaging-backed LLM endpoints ([ADR0004](ADR0004-backend-llm-packaging-and-discovery.md)).
+- Move the **orchestration loop** for the web dashboard to the **browser**: a state machine that consumes **streamed game text** (SSE), updates **client-side glue state** (map, inventory model, modes, prompts), builds planner/interpret payloads using **`@adventure-nl/nl-glue`**, and **calls text models from the client** for the default dashboard path—**not** via Node forwarding of planner/interpret HTTP ([ADR0015](ADR0015-deprecate-server-forward-nl-cognition.md)). **Packaging discovery** and Node **`TextLlm`** remain for CLI, tests, server-orchestrated web, and **[ADR0004](ADR0004-backend-llm-packaging-and-discovery.md)** authoring surfaces.
 - Keep **Fortran subprocess**, **`adventure.dat` beside the binary**, and **SSE** delivery on the server; do not move the `adventure` binary to WASM in this program.
 
 ## Alternatives considered
@@ -66,7 +66,7 @@ Today `runAutoplaySessionWithTextLlm` in `autoplayRunner.ts` orchestrates Fortra
 
 ### Forward work: XState / actor-centric orchestration (ties to ADR0006+)
 
-**Intent:** Use **XState** (or the same event/actor discipline) as the **single hub** for dashboard **action → reaction** flows: engine SSE (e.g. `getin_prompt_ready`, `transcript_delta`), **logical LLM** phases (`POST /api/autoplay-plan`), GETIN submission, **UI progress** signals (ADR0005 risk C), and—once landed—**persistence** and **cross-cutting events** from later ADRs.
+**Intent:** Use **XState** (or the same event/actor discipline) as the **single hub** for dashboard **action → reaction** flows: engine SSE (e.g. `getin_prompt_ready`, `transcript_delta`), **client-direct LLM** phases (autoplay: `planAutoplayInBrowser`; interpret: same pattern when migrated—**not** `POST /api/nl/planner`), GETIN submission, **UI progress** signals (ADR0005 risk C), and—once landed—**persistence** and **cross-cutting events** from later ADRs.
 
 | Concern                      | How an actor-style model helps                                                                                                                                                                     | Linked ADRs                                                      |
 | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
@@ -81,7 +81,7 @@ Today `runAutoplaySessionWithTextLlm` in `autoplayRunner.ts` orchestrates Fortra
 
 ## Rationale
 
-**Policy and glue** (how we interpret output and assemble the next step) belong with fast iteration and subsystem versioning in the browser. **Engine I/O and secrets** stay server-side. **Game data files** stay with the binary; **glue** is driven by **observed text**, not by re-hosting the full dat pipeline in the browser as the main deliverable of this ADR. Bounded context: Fortran + packaging on server; orchestration + inferred model in the client.
+**Policy and glue** (how we interpret output and assemble the next step) belong with fast iteration and subsystem versioning in the browser. **Engine I/O** (Fortran, SSE, GETIN queue) stays on the server; **cognition model calls** for the default dashboard path are **client-direct** ([ADR0015](ADR0015-deprecate-server-forward-nl-cognition.md)). **Game data files** stay with the binary; **glue** is driven by **observed text**, not by re-hosting the full dat pipeline in the browser as the main deliverable of this ADR. Bounded context: Fortran + session + discovery on server; orchestration + inferred model + **direct** NL model I/O in the client for the dashboard default.
 
 ## Status
 
@@ -96,6 +96,7 @@ Proposed
 - `adventure-nl/src/nl/autoplaySessionMemory.ts` (glue: turn log, heuristics, inferred map inputs)
 - `adventure-nl/src/nl/inferredExplorationMap.ts`, `explorationGraphViz.ts` (graph / map glue)
 - [ADR0014](ADR0014-two-step-nl-glue-package-then-browser.md) — **staged migration** of NL/SLM glue (`vocab`, `text`, `nl/*` interpret/situational/mode policy): **package extract (Node)** then **browser**; complements this ADR’s scope statement
+- [ADR0015](ADR0015-deprecate-server-forward-nl-cognition.md) — **Deprecate server-forward** NL planner/interpret for the dashboard default path; browser-direct cognition
 - [ADR0004](ADR0004-backend-llm-packaging-and-discovery.md)
 - [ADR0006](ADR0006-client-sqlite-wal-subsystem-store.md) — client SQLite subsystem store (schema + API **implemented**; browser WASM/OPFS + optional glue tables **forward work** — see ADR **Implementation**)
 - [ADR0007](ADR0007-subsystem-revision-control-and-replay.md) — replay semantics with cognition (subsystem tree at R + tags/revert in store — see ADR **Implementation**; typed event replay and UI forward work)

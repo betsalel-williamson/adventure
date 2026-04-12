@@ -3,7 +3,7 @@
 The local web server is started with `npm run web` from `adventure-nl/` (or
 `make run-autoplay-web` from the repo root). It binds to **127.0.0.1** only.
 
-**Thin backend:** In the default dashboard path, the Node process **streams game text** (SSE), **runs the Fortran `adventure` binary**, and **forwards logical text-model requests** to configured LLM backends. It does **not** own the main **natural-language interpretation, planner context assembly, or post-processing of model output**—that work runs **in the browser** via `@adventure-nl/nl-glue` (see ADR0005 / ADR0014). Route names that contain **`autoplay`** refer to the **self-acting game loop** and historical paths, not to “all NL runs on the server.”
+**Thin backend:** The Node process **streams game text** (SSE), **runs the Fortran `adventure` binary**, and (for non-browser flows) **hosts** the text-model pool. **Autoplay planning** is intended to run **entirely in the browser** (Gemini or OpenAI-compatible HTTP); the server exposes **`browserPlanner`** credentials on SSE **`text_llm`** and **`GET /api/text-llm`** so the client can call those APIs **without** `POST /api/nl/planner`. **`POST /api/nl/interpret`** remains **request in → JSON out** for manual NL (free text → scripted GETIN). **`POST /api/nl/planner`** is **legacy/compat** (forward to the pool), not used by default dashboard autoplay. The **client** sends Fortran input via **`POST /api/engine/input`**; **game output** arrives on **`/events`**. Legacy aliases: **`/api/llm/plan`**, **`/api/llm/interpret`**, **`/api/autoplay-plan`**, **`/api/autoplay-engine-input`**, **`/api/manual-command`**.
 
 **`adventure-nl` / `ADVENTURE_NL_*`:** **NL** is **natural language** (the TypeScript layer that maps player text to game commands and related cognition). **`ADVENTURE_NL_*`** environment variables configure that stack; they are not tied to a single LLM vendor.
 
@@ -11,7 +11,7 @@ The local web server is started with `npm run web` from `adventure-nl/` (or
 
 **Session lifecycle:** Dashboard state (cookie **`adventure_session`** → in-memory session object, Fortran subprocess, transcript, planner memory, UI-backed settings) exists **only while the `npm run web` process runs**. A server **restart** wipes all sessions; unknown cookie ids are replaced with **new** sessions—there is **no resume** or disk snapshot of game state. Colossal Cave also uses **randomness**, so a “fresh start” is not replay-equivalent to an old run. Optional **`ADVENTURE_NL_DEBUG=1`** writes **`.cache/llm-sessions/<uuid>.jsonl`** for LLM auditing only, not for restoring a session.
 
-**NL cognition (default):** Unless opted out, **interpretation, session memory updates, planner prompt assembly, guards, and scripted GETIN derivation** run **in the browser** ([`docs/decisions/ADR0005-browser-orchestrated-autoplay-cognition.md`](docs/decisions/ADR0005-browser-orchestrated-autoplay-cognition.md), [`docs/decisions/ADR0014-two-step-nl-glue-package-then-browser.md`](docs/decisions/ADR0014-two-step-nl-glue-package-then-browser.md)). The client loads **`@adventure-nl/nl-glue`** from the generated bundle, calls **`POST /api/autoplay-plan`** (thin **LLM** forward), and submits lines via **`POST /api/autoplay-engine-input`** while the server streams engine output over SSE. Set **`ADVENTURE_NL_BROWSER_ORCHESTRATED_AUTOPLAY=0`** (or **`false`** / **`no`** / **`off`**) to move the **full** NL loop back into the **Node** process (same shape as the CLI **self-acting** runner). Heuristic **object** / **loot-funnel** cues follow the latest room-description block in the transcript. See [`docs/architecture/adventure-engine.md`](docs/architecture/adventure-engine.md) and [`docs/decisions/ADR0003-scoped-object-hints-latest-room-block.md`](docs/decisions/ADR0003-scoped-object-hints-latest-room-block.md).
+**NL cognition (default):** Unless opted out, **interpretation, session memory updates, planner prompt assembly, guards, scripted GETIN derivation, and autoplay planning (Gemini / HTTP to the configured provider)** run **in the browser** ([`docs/decisions/ADR0005-browser-orchestrated-autoplay-cognition.md`](docs/decisions/ADR0005-browser-orchestrated-autoplay-cognition.md), [`docs/decisions/ADR0014-two-step-nl-glue-package-then-browser.md`](docs/decisions/ADR0014-two-step-nl-glue-package-then-browser.md)). The client loads **`@adventure-nl/nl-glue`**, uses **`browserPlanner`** from **`text_llm` / `GET /api/text-llm`** to plan **without** `POST /api/nl/planner`, then **`POST /api/engine/input`** for GETIN; engine text streams on **`/events`**. **MLX** (server-side stdio worker) cannot drive browser-only planning—use **google** or **http**, or set **`ADVENTURE_NL_BROWSER_ORCHESTRATED_AUTOPLAY=0`** to run the **full** NL loop in **Node**. See [`docs/architecture/adventure-engine.md`](docs/architecture/adventure-engine.md) and [`docs/decisions/ADR0003-scoped-object-hints-latest-room-block.md`](docs/decisions/ADR0003-scoped-object-hints-latest-room-block.md).
 
 **Subsystem replica sync** ([`docs/decisions/ADR0008-server-subsystem-replica-and-sync.md`](docs/decisions/ADR0008-server-subsystem-replica-and-sync.md)): after establishing a session cookie, the client may **`POST /api/subsystem-sync`** with workspace-scoped revision batches; the server stores a **better-sqlite3** replica (default under `adventure-nl/.cache/subsystem-replica/`, optional env **`ADVENTURE_NL_SUBSYSTEM_REPLICA_DIR`**). Independent of the client-vs-server NL flag above.
 
@@ -42,14 +42,16 @@ Parse SSE lines as usual: events named in `event:` lines, JSON payloads after
 
 ### Client-side NL pipeline (default)
 
-**On by default** (env unset): the browser runs **`@adventure-nl/nl-glue`**; the server exposes **`/api/autoplay-plan`** as a **logical LLM** hop only. Set **`ADVENTURE_NL_BROWSER_ORCHESTRATED_AUTOPLAY=0`** to disable that path and run NL in Node instead. Routes:
+**On by default** (env unset): the browser runs **`@adventure-nl/nl-glue`** and **plans** against Gemini or OpenAI-compatible HTTP using **`browserPlanner`** (see **`text_llm`** and **`GET /api/text-llm`**); it does **not** use **`POST /api/nl/planner`** for that path. **`POST /api/nl/planner`** remains a **legacy** forward to the text pool. Set **`ADVENTURE_NL_BROWSER_ORCHESTRATED_AUTOPLAY=0`** to run NL in Node instead. Routes:
 
 | Method | Path | Purpose |
 | ------ | ---- | -------- |
 | `GET` | `/api/session` | Returns `{ "ok": true, "browserOrchestratedAutoplay": true \| false }` (and sets session cookie when new). When **`true`**, the client is expected to run **NL glue in the browser**—the name reflects historical “browser orchestrated self-acting loop,” not “NL on the server.” |
 | `GET` | `/api/adventure-database` | **200** — `{ "database": … }` serialized from `adventure.dat` for client-side hints. **503** if the dat file is unavailable. |
-| `POST` | `/api/autoplay-plan` | Body: `{ "plannerUserPrompt": … }` required; optional `recentGameTextForRepair`, `includeDatHelpInSystem`. **200** — `{ "plan": … }`. **Server:** session text-model pool only (no NL glue). **503** if no text model or dat. |
-| `POST` | `/api/autoplay-engine-input` | Body: `{ "getinLine": "EAST …" }` or `{ "endSession": true }`; optional `plan`, `motionGridHint`, `moveNumber` to broadcast `plan_applied`. **404** if browser orchestration is off. |
+| `GET` | `/api/text-llm` | Current provider/model, backends, packaging; when a **google** or **http** session is active, may include **`browserPlanner`** (e.g. `googleApiKey`, `httpBaseUrl`) for **client-side** autoplay planning (localhost-only server). |
+| `POST` | `/api/nl/planner` | **Legacy:** body `{ "plannerUserPrompt": … }` … **200** — `{ "plan": … }`. **503** if no text model or dat. Aliases: **`/api/llm/plan`**, **`/api/autoplay-plan`**. |
+| `POST` | `/api/nl/interpret` | Body: `{ "natural": "go east" }`. **200** — `{ "ok": true, "scripted": … }` only. **503** if no text model or dat. Aliases: **`/api/llm/interpret`**. |
+| `POST` | `/api/engine/input` | Client sends GETIN here after NL steps; body: `{ "getinLine": … }` or `{ "scripted": … }`, or `{ "endSession": true }`; optional `plan`, `motionGridHint`, `moveNumber` for `plan_applied`. Fortran output on **`/events`**. **404** in some modes. Aliases: **`/api/autoplay-engine-input`**, **`/api/manual-command`** (no **`natural`**—use **`/api/nl/interpret`** first). |
 
 See [`docs/decisions/ADR0005-browser-orchestrated-autoplay-cognition.md`](docs/decisions/ADR0005-browser-orchestrated-autoplay-cognition.md) and [`docs/architecture/adventure-nl-cognition-and-workspace.md`](docs/architecture/adventure-nl-cognition-and-workspace.md).
 
@@ -181,11 +183,13 @@ Body (both fields optional; omitted fields keep previous override or env default
 {
   "current": { "providerId": "google", "modelId": "gemini-2.5-flash" },
   "backends": [],
-  "canSwap": true
+  "canSwap": true,
+  "packaging": {},
+  "browserPlanner": { "googleApiKey": "…" }
 }
 ```
 
-`current` may be `null` when no text model is configured.
+`current` may be `null` when no text model is configured. **`browserPlanner`** appears for **google** / **http** sessions so the dashboard can run **autoplay planning in the browser** (localhost-only binding; do not expose the server broadly).
 
 ### `POST /api/text-llm`
 
@@ -229,9 +233,11 @@ Body:
 Cancels an in-flight MLX model load. **200** — `{ "ok": true, "cancelled": true }`.
 **400** if nothing cancellable.
 
-### `POST /api/manual-command`
+### `POST /api/engine/input` (aliases: `POST /api/autoplay-engine-input`, `POST /api/manual-command`)
 
-Used when the session is waiting for manual input. Body is one of:
+Submit scripted GETIN to the Fortran engine (or end the session). **NL** steps (**`/api/nl/planner`**, **`/api/nl/interpret`**) are **only** JSON in/out; this route is **only** engine I/O; system output is on **`/events`**.
+
+Body examples:
 
 ```json
 { "endSession": true }
@@ -242,11 +248,13 @@ Used when the session is waiting for manual input. Body is one of:
 ```
 
 ```json
-{ "natural": "go east" }
+{ "scripted": "EAST     " }
 ```
 
-**200** — `{ "ok": true, "action": "endSession" | "getinLine" | "natural" }`.
-**400** / **409** / **503** with `{ "error": "…" }` when not applicable or input invalid.
+**200** — `{ "ok": true, "action": "endSession" | "scripted" | "engineInput" }`.
+**400** / **404** / **503** with `{ "error": "…" }` when not applicable or input invalid.
+
+For natural language, call **`POST /api/nl/interpret`** with `{ "natural": "…" }`, then **`POST /api/engine/input`** with `{ "scripted": … }` from the interpret response.
 
 ---
 

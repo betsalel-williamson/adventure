@@ -133,7 +133,7 @@ describe("createAutoplayDashboardServer", () => {
     },
   );
 
-  it("POST /api/autoplay-engine-input is disabled when browser orchestration is off", async () => {
+  it("POST /api/engine/input and legacy autoplay-engine-input are disabled when browser orchestration is off", async () => {
     process.env.ADVENTURE_NL_BROWSER_ORCHESTRATED_AUTOPLAY = "0";
     const server = testHttpDashboard();
     await new Promise<void>((resolve) => {
@@ -143,15 +143,15 @@ describe("createAutoplayDashboardServer", () => {
     const port =
       typeof addr === "object" && addr !== null ? addr.port : undefined;
     expect(port).toBeDefined();
-    const r = await fetch(
-      `http://127.0.0.1:${port}/api/autoplay-engine-input`,
-      {
+    const base = `http://127.0.0.1:${port}`;
+    for (const path of ["/api/engine/input", "/api/autoplay-engine-input"]) {
+      const r = await fetch(`${base}${path}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ getinLine: "east    " }),
-      },
-    );
-    expect(r.status).toBe(404);
+      });
+      expect(r.status).toBe(404);
+    }
     await new Promise<void>((resolve, reject) => {
       server.close((err) => (err ? reject(err) : resolve()));
     });

@@ -1,7 +1,13 @@
 #!/usr/bin/env node
 /**
- * Local HTTP dashboard for autoplay: static HTML/JS + SSE stream of game text,
- * planner phases, heuristic map/inventory, prompt previews, and optional manual GETIN.
+ * Local HTTP dashboard: static HTML/JS + SSE (`/events`) for Fortran output.
+ * **Autoplay planning** runs in the **browser** (Gemini / OpenAI-compatible HTTP); credentials
+ * for that are pushed on SSE `text_llm` and `GET /api/text-llm` (`browserPlanner`). **`POST /api/nl/planner`**
+ * remains a legacy/compat forward only—not used by the default dashboard autoplay path.
+ * **`POST /api/nl/interpret`** is still a thin JSON request/response for manual NL. The client sends
+ * GETIN via `POST /api/engine/input`; game text arrives on `/events`.
+ * Legacy: `/api/llm/plan`, `/api/llm/interpret`, `/api/autoplay-plan`, `/api/autoplay-engine-input`,
+ * `/api/manual-command`.
  */
 import { randomUUID } from "node:crypto";
 import { createReadStream, existsSync } from "node:fs";
@@ -12,7 +18,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { config as loadEnv } from "dotenv";
 import { loadDatFile } from "../pipe/gameSimulationPipe.js";
-import { resolveTextLlmFromEnv } from "../nl/adventureTextLlm.js";
+import {
+  DEFAULT_HTTP_OPENAI_BASE_URL,
+  resolveTextLlmFromEnv,
+} from "../nl/adventureTextLlm.js";
 import { shouldFallbackToClassicForLlmError } from "../nl/llmErrors.js";
 import {
   resolveDebugLogPath,
@@ -38,6 +47,11 @@ import {
   canSwapTextLlmFromBackends,
 } from "../nl/textLlmWebBackends.js";
 import type { ScriptedGetinLine } from "../engine/subprocessEngine.js";
+import {
+  parseScriptedLineFromEngineJsonBody,
+  scriptedPrimaryLine,
+} from "./webDashboardEngineInputBody.js";
+import { resolveDashboardBindHost } from "./dashboardBindHost.js";
 import { resolveAutoplayPromptMode } from "@adventure-nl/nl-glue";
 import {
   runAutoplaySessionWithTextLlm,
@@ -369,10 +383,38 @@ export function createAutoplayDashboardServer(
     );
   }
 
+  /** Credentials + URLs so the browser can call Gemini / OpenAI-compatible HTTP for planning (no `POST /api/nl/planner`). */
+  function browserPlannerPayloadForProvider(
+    providerId: TextLlmProviderId,
+  ): Record<string, unknown> | null {
+    if (providerId === "google") {
+      const k = process.env.GEMINI_API_KEY?.trim();
+      if (!k) return null;
+      return { googleApiKey: k };
+    }
+    if (providerId === "http") {
+      const base =
+        process.env.ADVENTURE_NL_HTTP_BASE_URL?.trim() ||
+        DEFAULT_HTTP_OPENAI_BASE_URL;
+      const v = process.env.ADVENTURE_NL_HTTP_JSON_SCHEMA?.trim().toLowerCase();
+      const httpUseJsonSchema = v === "1" || v === "true" || v === "yes";
+      const out: Record<string, unknown> = {
+        httpBaseUrl: base,
+        httpUseJsonSchema,
+      };
+      const key = process.env.ADVENTURE_NL_HTTP_API_KEY?.trim();
+      if (key) out.httpApiKey = key;
+      return out;
+    }
+    return null;
+  }
+
   const broadcastSessionTextLlm = (s: DashboardSession): void => {
+    const bp = browserPlannerPayloadForProvider(s.textLlmProviderId);
     s.broadcast("text_llm", {
       providerId: s.textLlmProviderId,
       modelId: s.textLlmModelId,
+      ...(bp !== null ? { browserPlanner: bp } : {}),
     });
     s.broadcast("mlx_model", {
       modelId: s.textLlmModelId,
@@ -877,7 +919,12 @@ export function createAutoplayDashboardServer(
       return;
     }
 
-    if (pathname === "/api/autoplay-plan" && req.method === "POST") {
+    if (
+      (pathname === "/api/nl/planner" ||
+        pathname === "/api/llm/plan" ||
+        pathname === "/api/autoplay-plan") &&
+      req.method === "POST"
+    ) {
       if (sess === undefined) return;
       if (!pool || !textLlmConfigured || !db) {
         jsonResponseWithSessionCookie(
@@ -889,8 +936,6 @@ export function createAutoplayDashboardServer(
         return;
       }
       try {
-        await awaitMlxModelReady();
-        await pool.ensureSessionAttached(sess);
         const body = (await readJsonBody(req)) as {
           plannerUserPrompt?: unknown;
           recentGameTextForRepair?: unknown;
@@ -909,6 +954,8 @@ export function createAutoplayDashboardServer(
           );
           return;
         }
+        await awaitMlxModelReady();
+        await pool.ensureSessionAttached(sess);
         const plannerUserPrompt =
           body.plannerUserPrompt as PlannerUserPromptInput;
         const recent =
@@ -944,21 +991,82 @@ export function createAutoplayDashboardServer(
       return;
     }
 
-    if (pathname === "/api/autoplay-engine-input" && req.method === "POST") {
+    if (
+      (pathname === "/api/nl/interpret" || pathname === "/api/llm/interpret") &&
+      req.method === "POST"
+    ) {
       if (sess === undefined) return;
-      if (!resolveBrowserOrchestratedAutoplayFromEnv()) {
+      if (!pool || !textLlmConfigured || !db) {
         jsonResponseWithSessionCookie(
           res,
-          404,
-          { error: "Browser-orchestrated autoplay is not enabled" },
+          503,
+          { error: "Text model or adventure.dat not available" },
           cookieOpts(sess, newSession),
         );
         return;
       }
       try {
         const body = (await readJsonBody(req)) as {
+          natural?: unknown;
+        } | null;
+        if (
+          body === null ||
+          typeof body.natural !== "string" ||
+          body.natural.trim() === ""
+        ) {
+          jsonResponseWithSessionCookie(
+            res,
+            400,
+            { error: "Expected { natural: string }" },
+            cookieOpts(sess, newSession),
+          );
+          return;
+        }
+        const naturalLine = body.natural.trim();
+        await awaitMlxModelReady();
+        await pool.ensureSessionAttached(sess);
+        const scripted = await llmExecutor.run(sess.id, async () => {
+          return interpretNaturalLanguageToScriptedGetin(
+            naturalLine,
+            db,
+            pool!.getClientForSession(sess),
+            {
+              recentGameText: sess.latestTranscript.slice(-8000),
+            },
+          );
+        });
+        jsonResponseWithSessionCookie(
+          res,
+          200,
+          { ok: true, scripted },
+          cookieOpts(sess, newSession),
+        );
+      } catch (e) {
+        jsonResponseWithSessionCookie(
+          res,
+          400,
+          {
+            error: e instanceof Error ? e.message : "Interpret request failed",
+          },
+          cookieOpts(sess, newSession),
+        );
+      }
+      return;
+    }
+
+    const isEngineInputPost =
+      (pathname === "/api/engine/input" ||
+        pathname === "/api/autoplay-engine-input" ||
+        pathname === "/api/manual-command") &&
+      req.method === "POST";
+    if (isEngineInputPost) {
+      if (sess === undefined) return;
+      try {
+        const body = (await readJsonBody(req)) as {
           endSession?: unknown;
+          natural?: unknown;
           getinLine?: unknown;
+          scripted?: unknown;
           plan?: unknown;
           motionGridHint?: unknown;
           moveNumber?: unknown;
@@ -972,7 +1080,44 @@ export function createAutoplayDashboardServer(
           );
           return;
         }
+        if (typeof body.natural === "string" && body.natural.trim() !== "") {
+          jsonResponseWithSessionCookie(
+            res,
+            400,
+            {
+              error:
+                "Use POST /api/nl/interpret with { natural }, then POST /api/engine/input with { scripted } or { getinLine }.",
+            },
+            cookieOpts(sess, newSession),
+          );
+          return;
+        }
+
+        const pend = sess.manualPending;
+        const browserOrch = resolveBrowserOrchestratedAutoplayFromEnv();
+
         if (body.endSession === true) {
+          if (pend !== null) {
+            pend.resolve(null);
+            jsonResponseWithSessionCookie(
+              res,
+              200,
+              { ok: true, action: "endSession" },
+              cookieOpts(sess, newSession),
+            );
+            return;
+          }
+          if (!browserOrch) {
+            jsonResponseWithSessionCookie(
+              res,
+              404,
+              {
+                error: "Browser-orchestrated autoplay is not enabled",
+              },
+              cookieOpts(sess, newSession),
+            );
+            return;
+          }
           sess.engineGetinQueue.enqueue(null);
           jsonResponseWithSessionCookie(
             res,
@@ -982,19 +1127,57 @@ export function createAutoplayDashboardServer(
           );
           return;
         }
-        if (
-          typeof body.getinLine !== "string" ||
-          body.getinLine.trim() === ""
-        ) {
+
+        const scriptedLine = parseScriptedLineFromEngineJsonBody(body);
+        if (scriptedLine === undefined) {
           jsonResponseWithSessionCookie(
             res,
             400,
-            { error: 'Expected getinLine: "EAST ..." or endSession: true' },
+            {
+              error:
+                'Expected endSession: true, or scripted, or getinLine: "EAST ..."',
+            },
             cookieOpts(sess, newSession),
           );
           return;
         }
-        const line = body.getinLine.trimEnd();
+
+        if (pend !== null) {
+          await awaitMlxModelReady();
+          if (!pool || !textLlmConfigured || !db) {
+            jsonResponseWithSessionCookie(
+              res,
+              503,
+              {
+                error: "Text model or adventure.dat not available",
+              },
+              cookieOpts(sess, newSession),
+            );
+            return;
+          }
+          pend.resolve(scriptedLine);
+          jsonResponseWithSessionCookie(
+            res,
+            200,
+            { ok: true, action: "scripted" },
+            cookieOpts(sess, newSession),
+          );
+          return;
+        }
+
+        if (!browserOrch) {
+          jsonResponseWithSessionCookie(
+            res,
+            404,
+            {
+              error: "Browser-orchestrated autoplay is not enabled",
+            },
+            cookieOpts(sess, newSession),
+          );
+          return;
+        }
+
+        const lineStr = scriptedPrimaryLine(scriptedLine);
         if (body.plan !== undefined && body.plan !== null) {
           const plan = AutoplayPlannerResponseSchema.parse(body.plan);
           const motionGridHint =
@@ -1008,17 +1191,17 @@ export function createAutoplayDashboardServer(
               : 1;
           sess.broadcast("plan_applied", {
             plan,
-            scripted: line,
-            getinLine: line,
+            scripted: lineStr,
+            getinLine: lineStr,
             moveNumber,
             motionGridHint,
           });
         }
-        sess.engineGetinQueue.enqueue(line);
+        sess.engineGetinQueue.enqueue(scriptedLine);
         jsonResponseWithSessionCookie(
           res,
           200,
-          { ok: true, action: "getinLine" },
+          { ok: true, action: "engineInput" },
           cookieOpts(sess, newSession),
         );
       } catch (e) {
@@ -1755,6 +1938,7 @@ export function createAutoplayDashboardServer(
         );
         return;
       }
+      const bp = browserPlannerPayloadForProvider(sess.textLlmProviderId);
       jsonResponseWithSessionCookie(
         res,
         200,
@@ -1766,6 +1950,7 @@ export function createAutoplayDashboardServer(
           backends,
           canSwap: canSwapTextLlmFromBackends(backends),
           packaging,
+          ...(bp !== null ? { browserPlanner: bp } : {}),
         },
         cookieOpts(sess, newSession),
       );
@@ -1949,115 +2134,6 @@ export function createAutoplayDashboardServer(
       return;
     }
 
-    if (pathname === "/api/manual-command" && req.method === "POST") {
-      if (sess === undefined) return;
-      if (!pool || !textLlmConfigured || !db) {
-        jsonResponseWithSessionCookie(
-          res,
-          503,
-          {
-            error: "Text model or adventure.dat not available",
-          },
-          cookieOpts(sess, newSession),
-        );
-        return;
-      }
-      const pend = sess.manualPending;
-      if (pend === null) {
-        jsonResponseWithSessionCookie(
-          res,
-          409,
-          {
-            error:
-              "Not waiting for a manual command (enable manual mode and wait for the prompt)",
-          },
-          cookieOpts(sess, newSession),
-        );
-        return;
-      }
-      try {
-        await awaitMlxModelReady();
-        const body = (await readJsonBody(req)) as {
-          endSession?: boolean;
-          getinLine?: string;
-          natural?: string;
-        } | null;
-        if (body === null) {
-          jsonResponseWithSessionCookie(
-            res,
-            400,
-            { error: "Expected JSON body" },
-            cookieOpts(sess, newSession),
-          );
-          return;
-        }
-        if (body.endSession === true) {
-          pend.resolve(null);
-          jsonResponseWithSessionCookie(
-            res,
-            200,
-            { ok: true, action: "endSession" },
-            cookieOpts(sess, newSession),
-          );
-          return;
-        }
-        if (typeof body.natural === "string" && body.natural.trim() !== "") {
-          /* Pool attach uses runSerialized → llmExecutor.flush(); never await that inside llmExecutor.run (deadlock). */
-          await pool!.ensureSessionAttached(sess);
-          const scripted = await llmExecutor.run(sess.id, async () => {
-            return interpretNaturalLanguageToScriptedGetin(
-              body.natural!.trim(),
-              db,
-              pool!.getClientForSession(sess),
-              {
-                recentGameText: sess.latestTranscript.slice(-8000),
-              },
-            );
-          });
-          pend.resolve(scripted);
-          jsonResponseWithSessionCookie(
-            res,
-            200,
-            { ok: true, action: "natural" },
-            cookieOpts(sess, newSession),
-          );
-          return;
-        }
-        if (
-          typeof body.getinLine === "string" &&
-          body.getinLine.trim() !== ""
-        ) {
-          pend.resolve(body.getinLine.trimEnd());
-          jsonResponseWithSessionCookie(
-            res,
-            200,
-            { ok: true, action: "getinLine" },
-            cookieOpts(sess, newSession),
-          );
-          return;
-        }
-        jsonResponseWithSessionCookie(
-          res,
-          400,
-          {
-            error:
-              'Provide endSession: true, getinLine: "EAST ...", or natural: "go east"',
-          },
-          cookieOpts(sess, newSession),
-        );
-      } catch (e) {
-        jsonResponseWithSessionCookie(
-          res,
-          400,
-          {
-            error: e instanceof Error ? e.message : "Request failed",
-          },
-          cookieOpts(sess, newSession),
-        );
-      }
-      return;
-    }
-
     if (pathname === "/events" && req.method === "GET") {
       if (sess === undefined) return;
       const evHeaders: Record<string, string | number | string[]> = {
@@ -2111,6 +2187,10 @@ export function createAutoplayDashboardServer(
         sseWrite(res, "text_llm", {
           providerId: sess.textLlmProviderId,
           modelId: sess.textLlmModelId,
+          ...(() => {
+            const bp = browserPlannerPayloadForProvider(sess.textLlmProviderId);
+            return bp !== null ? { browserPlanner: bp } : {};
+          })(),
         });
         sseWrite(res, "mlx_model", {
           modelId: sess.textLlmModelId,
@@ -2305,9 +2385,10 @@ async function main(): Promise<void> {
     httpsOptions: tls ? httpsServerOptionsFromTls(tls) : undefined,
   });
   const proto = tls ? "https" : "http";
-  server.listen(port, "127.0.0.1", () => {
+  const bindHost = resolveDashboardBindHost();
+  server.listen(port, bindHost, () => {
     process.stderr.write(
-      `adventure-nl: autoplay web dashboard → ${proto}://127.0.0.1:${port}/\n`,
+      `adventure-nl: autoplay web dashboard → ${proto}://${bindHost}:${port}/\n`,
     );
     process.stderr.write(
       "Open the URL in a browser; autoplay starts when the page subscribes to /events.\n",

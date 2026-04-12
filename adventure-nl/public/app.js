@@ -226,16 +226,33 @@ async function saveAutoplaySettingsNow() {
 }
 
 /**
+ * LLM interpret (optional) then POST /api/engine/input — same two-phase model as autoplay.
  * @param {Record<string, unknown>} body
  */
 async function postManualCommand(body) {
   clearManualError();
   try {
-    const r = await api.postManualCommand(body);
+    let r;
+    if (typeof body.natural === "string" && body.natural.trim() !== "") {
+      const ir = await api.postNlInterpret({ natural: body.natural.trim() });
+      const ij = await ir.json().catch(() => ({}));
+      if (!ir.ok) {
+        const raw = typeof ij.error === "string" ? ij.error : "";
+        showManualError(raw || `Interpret failed (${ir.status})`);
+        return;
+      }
+      if (ij.scripted === undefined || ij.scripted === null) {
+        showManualError("Interpret response missing scripted line.");
+        return;
+      }
+      r = await api.postEngineInput({ scripted: ij.scripted });
+    } else {
+      r = await api.postEngineInput(body);
+    }
     const j = await r.json().catch(() => ({}));
     if (!r.ok) {
       const raw = typeof j.error === "string" ? j.error : "";
-      if (r.status === 409 && /not waiting for a manual command/i.test(raw)) {
+      if (r.status === 409 && /not waiting/i.test(raw)) {
         showManualError(
           "Session is not ready for input yet (finishing the previous step or pace delay). Try again in a moment.",
         );
@@ -372,44 +389,6 @@ function renderParserVerbHintGroups(groups, meta) {
   }
 }
 
-async function loadParserVerbHints() {
-  const url = new URL("/api/parser-verbs", ports.location.href).href;
-  const el = document.getElementById("parser-verb-hints");
-  try {
-    const r = await api.fetchUrl(url);
-    let j = null;
-    if (r.ok) {
-      try {
-        j = await r.json();
-      } catch {
-        j = null;
-      }
-    }
-    if (!r.ok) {
-      if (el) {
-        el.replaceChildren();
-        const p = document.createElement("p");
-        p.className = "small muted";
-        p.textContent = `Could not load verb list (HTTP ${r.status}). It will fill when the event stream connects if the server is up to date.`;
-        el.appendChild(p);
-      }
-      return;
-    }
-    const groups =
-      j && Array.isArray(j.groups) ? /** @type {string[][]} */ (j.groups) : [];
-    renderParserVerbHintGroups(groups, { datAvailable: true });
-  } catch {
-    if (el) {
-      el.replaceChildren();
-      const p = document.createElement("p");
-      p.className = "small muted";
-      p.textContent =
-        "Network error loading verbs. They will fill when the event stream connects.";
-      el.appendChild(p);
-    }
-  }
-}
-
 async function applyStoredAutoplaySettings() {
   try {
     const r = await api.getAutoplaySettings();
@@ -461,18 +440,20 @@ let browserOrchestratedAutoplay = false;
   }
 }
 await applyStoredAutoplaySettings();
-await loadParserVerbHints();
 void promptLab.fetchPromptExperiment();
-void promptLab.refreshProjectList();
-void promptLab.refreshLlmGenFields();
+function scheduleIdle(fn) {
+  if (typeof globalThis.requestIdleCallback === "function") {
+    globalThis.requestIdleCallback(() => void fn(), { timeout: 2500 });
+  } else {
+    globalThis.setTimeout(() => void fn(), 1);
+  }
+}
+scheduleIdle(() => {
+  void promptLab.refreshProjectList();
+  void promptLab.refreshLlmGenFields();
+});
 
 const es = new ports.EventSource(new URL("/events", ports.location.href).href);
-
-if (browserOrchestratedAutoplay) {
-  const { wireBrowserAutoplayOrchestrator } =
-    await import("./browserAutoplayOrchestrator.js");
-  wireBrowserAutoplayOrchestrator(ports, api, es);
-}
 
 registerDashboardEventHandlers(es, {
   renderParserVerbHintGroups,
@@ -493,6 +474,12 @@ registerDashboardEventHandlers(es, {
   },
   typingTimingFromPaceSelect,
 });
+
+if (browserOrchestratedAutoplay) {
+  const { wireBrowserAutoplayOrchestrator } =
+    await import("./browserAutoplayOrchestrator.js");
+  wireBrowserAutoplayOrchestrator(ports, api, es);
+}
 
 /* ——— DOM listeners (orchestration) ——— */
 
@@ -562,8 +549,6 @@ if (elements?.transcriptLayoutToggle) {
     );
   });
 }
-
-void refreshModeFromServer();
 
 if (elements?.textLlmSelect) {
   elements.textLlmSelect.addEventListener("change", async () => {
