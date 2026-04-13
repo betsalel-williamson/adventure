@@ -22,7 +22,8 @@ module.exports = {
       severity: "error",
       from: {
         path: "^src/browser",
-        pathNot: "^src/browser/cognitionBundle\\.ts$",
+        pathNot:
+          "^src/browser/(cognitionBundle\\.ts|glueMcp/glueMcpWorkerEntry\\.ts)$",
       },
       to: {
         path: "^packages/nl-glue",

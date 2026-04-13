@@ -9,6 +9,18 @@ const outDir = path.join(root, "public", "generated");
 const shimDir = path.join(root, "src", "browser", "shims");
 await mkdir(outDir, { recursive: true });
 
+const browserNlShimsPlugin = {
+  name: "browser-nl-shims",
+  setup(build) {
+    build.onResolve({ filter: /interpretEvalFixtures\.js$/ }, () => ({
+      path: path.join(shimDir, "interpretEvalFixtures.browser.ts"),
+    }));
+    build.onResolve({ filter: /vocabAiCategories\.js$/ }, () => ({
+      path: path.join(shimDir, "vocabAiCategories.browser.ts"),
+    }));
+  },
+};
+
 await esbuild.build({
   absWorkingDir: root,
   entryPoints: ["src/browser/cognitionBundle.ts"],
@@ -21,17 +33,20 @@ await esbuild.build({
   banner: {
     js: `if (typeof process === "undefined") { var process = { env: {} }; }\n`,
   },
-  plugins: [
-    {
-      name: "browser-nl-shims",
-      setup(build) {
-        build.onResolve({ filter: /interpretEvalFixtures\.js$/ }, () => ({
-          path: path.join(shimDir, "interpretEvalFixtures.browser.ts"),
-        }));
-        build.onResolve({ filter: /vocabAiCategories\.js$/ }, () => ({
-          path: path.join(shimDir, "vocabAiCategories.browser.ts"),
-        }));
-      },
-    },
-  ],
+  plugins: [browserNlShimsPlugin],
+});
+
+await esbuild.build({
+  absWorkingDir: root,
+  entryPoints: ["src/browser/glueMcp/glueMcpWorkerEntry.ts"],
+  bundle: true,
+  outfile: "public/generated/glueMcpWorker.js",
+  format: "esm",
+  platform: "browser",
+  sourcemap: true,
+  logLevel: "warning",
+  banner: {
+    js: `if (typeof process === "undefined") { var process = { env: {} }; }\n`,
+  },
+  plugins: [browserNlShimsPlugin],
 });

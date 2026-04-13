@@ -62,7 +62,10 @@ import {
   type AutoplayRunOverrides,
   type AutoplayUiSink,
 } from "./autoplayRunner.js";
-import { resolveBrowserOrchestratedAutoplayFromEnv } from "./browserOrchestrationEnv.js";
+import {
+  resolveBrowserOrchestratedAutoplayFromEnv,
+  resolveEffectiveBrowserOrchestratedAutoplay,
+} from "./browserOrchestrationEnv.js";
 import { runBrowserOrchestratedEngineSession } from "./browserEngineBridge.js";
 import { EngineGetinQueue } from "./engineGetinQueue.js";
 import {
@@ -332,6 +335,11 @@ export function createAutoplayDashboardServer(
 
   const envTextLlm = resolveTextLlmFromEnv();
   const textLlmConfigured = envTextLlm !== null;
+  const effectiveBrowserOrchestratedAutoplay = (s: DashboardSession) =>
+    resolveEffectiveBrowserOrchestratedAutoplay(
+      resolveBrowserOrchestratedAutoplayFromEnv(),
+      { textLlmConfigured, textLlmProviderId: s.textLlmProviderId },
+    );
   const defaultTextLlmSelection = envTextLlm
     ? { providerId: envTextLlm.providerId, modelId: envTextLlm.modelId }
     : null;
@@ -840,7 +848,7 @@ export function createAutoplayDashboardServer(
         {
           ok: true,
           browserOrchestratedAutoplay:
-            resolveBrowserOrchestratedAutoplayFromEnv(),
+            effectiveBrowserOrchestratedAutoplay(sess),
         },
         cookieOpts(sess, newSession),
       );
@@ -1094,7 +1102,7 @@ export function createAutoplayDashboardServer(
         }
 
         const pend = sess.manualPending;
-        const browserOrch = resolveBrowserOrchestratedAutoplayFromEnv();
+        const browserOrch = effectiveBrowserOrchestratedAutoplay(sess);
 
         if (body.endSession === true) {
           if (pend !== null) {
@@ -2244,7 +2252,7 @@ export function createAutoplayDashboardServer(
               } else {
                 await ensureMlxWorkerReady(sessionClient);
               }
-              if (resolveBrowserOrchestratedAutoplayFromEnv()) {
+              if (effectiveBrowserOrchestratedAutoplay(sref)) {
                 await runBrowserOrchestratedEngineSession(
                   { repoRoot, datPath },
                   sref.sink,

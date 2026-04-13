@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { resolveBrowserOrchestratedAutoplayFromEnv } from "./browserOrchestrationEnv.js";
+import {
+  resolveBrowserOrchestratedAutoplayFromEnv,
+  resolveEffectiveBrowserOrchestratedAutoplay,
+} from "./browserOrchestrationEnv.js";
 
 describe("resolveBrowserOrchestratedAutoplayFromEnv (client NL vs Node glue)", () => {
   afterEach(() => {
@@ -36,4 +39,48 @@ describe("resolveBrowserOrchestratedAutoplayFromEnv (client NL vs Node glue)", (
       expect(resolveBrowserOrchestratedAutoplayFromEnv()).toBe(true);
     },
   );
+});
+
+describe("resolveEffectiveBrowserOrchestratedAutoplay (MLX vs browser planner)", () => {
+  it("returns false when env would allow browser path but provider is mlx", () => {
+    expect(
+      resolveEffectiveBrowserOrchestratedAutoplay(true, {
+        textLlmConfigured: true,
+        textLlmProviderId: "mlx",
+      }),
+    ).toBe(false);
+  });
+
+  it("returns true for google or http when env is on and a pool exists", () => {
+    expect(
+      resolveEffectiveBrowserOrchestratedAutoplay(true, {
+        textLlmConfigured: true,
+        textLlmProviderId: "google",
+      }),
+    ).toBe(true);
+    expect(
+      resolveEffectiveBrowserOrchestratedAutoplay(true, {
+        textLlmConfigured: true,
+        textLlmProviderId: "http",
+      }),
+    ).toBe(true);
+  });
+
+  it("returns false when env disables browser orchestration regardless of provider", () => {
+    expect(
+      resolveEffectiveBrowserOrchestratedAutoplay(false, {
+        textLlmConfigured: true,
+        textLlmProviderId: "google",
+      }),
+    ).toBe(false);
+  });
+
+  it("returns true when no text LLM pool is configured (session bootstrap / tests)", () => {
+    expect(
+      resolveEffectiveBrowserOrchestratedAutoplay(true, {
+        textLlmConfigured: false,
+        textLlmProviderId: "mlx",
+      }),
+    ).toBe(true);
+  });
 });

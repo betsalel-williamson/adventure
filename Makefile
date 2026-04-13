@@ -1,6 +1,20 @@
-# Build Colossal Cave Adventure (Fortran 77).
-# Requires GNU Fortran (gfortran), which implements the extensions this code uses
-# (e.g. GETARG, IARGC, RAN).
+# Colossal Cave Adventure — Fortran 77 + adventure-nl (Node.js).
+#
+# Fortran requires GNU Fortran (gfortran); this code uses extensions such as GETARG,
+# IARGC, and RAN. Run modes that execute the game assume cwd is the repo root so
+# OPEN(1,FILE='ADVENTURE.DAT') finds adventure.dat.
+#
+# Quick reference:
+#   make run / run-nl / run-autoplay / run-autoplay-web — see “Execution modes” below.
+#   make smoke-build / smoke / qa — compile smoke, tests, full QA gate.
+#   make dependency-check / dependency-check-quick — OWASP Dependency-Check (brew).
+#
+# LLM env: adventure-nl/.env (see adventure-nl/.env.example). Extra CLI flags:
+#   npm --prefix adventure-nl start -- --classic
+
+# =============================================================================
+# Variables
+# =============================================================================
 
 # GNU make defaults FC to f77; force gfortran unless overridden (e.g. make FC=ifort).
 FC := gfortran
@@ -11,7 +25,27 @@ FFLAGS ?= -O2 -Wall $(EXTRA_FFLAGS)
 TARGET := adventure
 SRC := adventure.f
 
-.PHONY: all clean run run-classic run-nl run-autoplay run-autoplay-web run-autoplay-web-insecure install-nl dependency-check dependency-check-quick
+NL_DIR := adventure-nl
+NL_PKG := $(NL_DIR)/package.json
+NL_LOCK := $(NL_DIR)/package-lock.json
+NL_REPORTS := $(NL_DIR)/reports/dependency-check
+
+NPM := npm
+NPM_RUN := $(NPM) --prefix $(NL_DIR) run
+
+# =============================================================================
+# Phony targets
+# =============================================================================
+.PHONY: all clean \
+	run run-classic \
+	install-nl build-nl \
+	run-nl run-autoplay run-autoplay-web run-autoplay-web-insecure \
+	smoke smoke-build qa \
+	dependency-check dependency-check-quick
+
+# =============================================================================
+# Default & Fortran build
+# =============================================================================
 
 all: $(TARGET)
 
@@ -20,65 +54,85 @@ $(TARGET): $(SRC)
 
 clean:
 	rm -f $(TARGET)
+	rm -rf $(NL_DIR)/dist $(NL_DIR)/node_modules
 
-# -----------------------------------------------------------------------------
-# Run modes (from repo root so OPEN(1,FILE='ADVENTURE.DAT') finds adventure.dat)
-# -----------------------------------------------------------------------------
-#
-#   make run            — Classic Fortran TTY only (./adventure). No Node.
-#   make run-classic    — Same as `make run`.
-#
-#   make install-nl     — One-time: npm install in adventure-nl (needed before run-nl / run-autoplay).
-#   make run-nl         — Interactive NL: builds adventure-nl then runs the CLI (natural language at >).
-#   make run-autoplay      — Self-acting: builds adventure-nl then runs with --autoplay (LLM drives moves).
-#   make run-autoplay-web  — LLM autoplay + local HTTPS dashboard (runs web:tls-init once if needed).
-#   make run-autoplay-web-insecure — Same with plain HTTP (ADVENTURE_NL_WEB_INSECURE_HTTP=1).
-#
-# Configure LLM env in adventure-nl/.env (see adventure-nl/.env.example). Pass CLI flags after --:
-#   cd adventure-nl && npm start -- --classic
-# -----------------------------------------------------------------------------
+# =============================================================================
+# Node.js — install & build helpers
+# =============================================================================
 
-# Classic Fortran only.
-run: $(TARGET)
+$(NL_DIR)/node_modules: $(NL_PKG) $(NL_LOCK)
+	$(NPM) install --prefix $(NL_DIR) --no-audit --no-fund
+
+install-nl: $(NL_DIR)/node_modules
+
+build-nl: $(NL_DIR)/node_modules
+	$(NPM_RUN) build
+
+# =============================================================================
+# Execution modes
+# =============================================================================
+#
+#   make run / run-classic — Classic Fortran TTY only (./adventure). No Node.
+#   make run-nl            — Interactive NL CLI (builds NL first).
+#   make run-autoplay      — Self-acting CLI (--autoplay).
+#   make run-autoplay-web  — Local HTTPS dashboard (web:tls-init if no dev cert).
+#   make run-autoplay-web-insecure — Plain HTTP (ADVENTURE_NL_WEB_INSECURE_HTTP=1).
+#
+
+run run-classic: $(TARGET)
 	./$(TARGET)
 
-run-classic: run
+run-nl: $(TARGET) build-nl
+	$(NPM_RUN) start
 
-# One-time or refresh of Node dependencies for adventure-nl.
-install-nl:
-	cd adventure-nl && npm install --no-audit --no-fund
+run-autoplay: $(TARGET) build-nl
+	$(NPM_RUN) start -- --autoplay
 
-# Interactive natural language (requires install-nl once, and LLM credentials in adventure-nl/.env).
-run-nl: $(TARGET)
-	cd adventure-nl && npm run build && npm start
+run-autoplay-web: $(TARGET) build-nl
+	@test -f $(NL_DIR)/.cache/tls/dev-cert.pem || $(NPM_RUN) web:tls-init
+	$(NPM_RUN) web
 
-# Autoplay: LLM plans each move (--autoplay). Cannot combine with --classic.
-run-autoplay: $(TARGET)
-	cd adventure-nl && npm run build && npm start -- --autoplay
+run-autoplay-web-insecure: $(TARGET) build-nl
+	ADVENTURE_NL_WEB_INSECURE_HTTP=1 $(NPM_RUN) web
 
-run-autoplay-web: $(TARGET)
-	cd adventure-nl && npm run build && (test -f .cache/tls/dev-cert.pem || npm run web:tls-init) && npm run web
+# =============================================================================
+# Smoke test & QA
+# =============================================================================
+#
+#   make smoke-build — Fortran + adventure-nl production build (no Vitest).
+#   make smoke        — smoke-build + npm test (Vitest).
+#   make qa           — lint, Prettier --check, full build, npm run check (deps + tsc --noEmit + tests).
+#
+# OWASP CVE reports: dependency-check / dependency-check-quick (separate tool).
+#
 
-# Same as run-autoplay-web but plain HTTP if you cannot run web:tls-init (OpenSSL 1.1.1+).
-run-autoplay-web-insecure: $(TARGET)
-	cd adventure-nl && npm run build && ADVENTURE_NL_WEB_INSECURE_HTTP=1 npm run web
+smoke-build: $(TARGET) build-nl
 
-# OWASP Dependency-Check (install: brew install dependency-check).
-# Run from repo root; requires npm install in adventure-nl first.
-# Optional: export NVD_API_KEY from https://nvd.nist.gov/developers/request-an-api-key
-# If NVD update fails with HTTP 429, run `make dependency-check-quick` (uses local cache).
-dependency-check:
-	cd adventure-nl && npm install --no-audit --no-fund
-	cd adventure-nl && mkdir -p ./reports/dependency-check
-	cd adventure-nl && \
-	  if [ -n "$$NVD_API_KEY" ]; then \
-	    dependency-check --nvdApiKey "$$NVD_API_KEY" --project adventure-nl --scan . --out ./reports/dependency-check --format HTML --format JSON; \
-	  else \
-	    dependency-check --project adventure-nl --scan . --out ./reports/dependency-check --format HTML --format JSON; \
-	  fi
+smoke: smoke-build
+	$(NPM_RUN) test
 
-# Same scan but skips NVD/CVE DB update (faster; avoids 429 when API key not set).
-dependency-check-quick:
-	cd adventure-nl && npm install --no-audit --no-fund
-	cd adventure-nl && mkdir -p ./reports/dependency-check
-	cd adventure-nl && dependency-check --noupdate --project adventure-nl --scan . --out ./reports/dependency-check --format HTML --format JSON
+qa: $(TARGET) install-nl
+	$(NPM_RUN) lint
+	$(NPM_RUN) format:check
+	$(NPM_RUN) build
+	$(NPM_RUN) check
+
+# =============================================================================
+# Security — OWASP Dependency-Check
+# =============================================================================
+#
+# Install: brew install dependency-check
+# Optional: export NVD_API_KEY (https://nvd.nist.gov/developers/request-an-api-key).
+# If NVD update fails with HTTP 429, use dependency-check-quick (local cache).
+#
+
+dependency-check: install-nl
+	mkdir -p $(NL_REPORTS)
+	dependency-check --project adventure-nl --scan $(NL_DIR) \
+		--out $(NL_REPORTS) --format HTML --format JSON \
+		$(if $(NVD_API_KEY),--nvdApiKey "$(NVD_API_KEY)",)
+
+dependency-check-quick: install-nl
+	mkdir -p $(NL_REPORTS)
+	dependency-check --noupdate --project adventure-nl --scan $(NL_DIR) \
+		--out $(NL_REPORTS) --format HTML --format JSON

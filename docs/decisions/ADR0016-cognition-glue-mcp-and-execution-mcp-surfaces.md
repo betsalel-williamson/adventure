@@ -29,7 +29,7 @@ Cognition ADR headers and **as-built** gaps were reconciled against the reposito
 
 4. **Reconciliation:** After each successful engine step, **new authoritative text** must feed glue (e.g. `ingest_transcript_delta` / `update_state` tool or host effect + follow-up tool)—same invariant as ADR0005 **resync** guidance (guards, `LOOK` / `INVENTORY` probes).
 
-5. **Documentation-only scope for this ADR’s initial landing:** The **decision text** and cross-links land first; **application code** (registry module, Worker host, stdio binaries) is tracked as **future** steps **C1–C4** in **Implementation** (separate coding work-item). Move **Status** to **accepted** when the team agrees the surfaces are frozen **and** agreed code scope is shipped.
+5. **Code scope (C1–C3):** **Glue MCP** registry + JSON-RPC protocol live in `@adventure-nl/nl-glue`; **Worker** bundle + host helper + **stdio** server live in `adventure-nl` (see **Implementation** table). **Execution MCP (C4)** remains optional/deferred. Move **Status** to **accepted** when the team agrees the surfaces are frozen **and** C4 disposition (ship vs defer) is recorded.
 
 ## Alternatives considered
 
@@ -62,7 +62,7 @@ Naming **Glue MCP** and **Execution MCP** makes the **ADR0005 / ADR0014 / ADR001
 
 Proposed
 
-*(Documentation chain S0–S4 may land while status remains **proposed**; promote to **accepted** after team review and when agreed Glue MCP / optional Execution MCP **code** is implemented.)*
+*(Glue MCP code C1–C3 is implemented; C4 deferred. Promote **Status** to **accepted** after team review.)*
 
 ## Implementation
 
@@ -76,14 +76,14 @@ Proposed
 | **S3** | **S2** | Patch [adventure-nl-cognition-adr-index.md](adventure-nl-cognition-adr-index.md) + [adventure-nl-cognition-and-workspace.md](../architecture/adventure-nl-cognition-and-workspace.md). | **S4** | Index + architecture |
 | **S4** | **S3** | Add **Previous / Next** in References on ADR0005, ADR0014, ADR0015 (minimum). | **C1** | Same ADR files |
 
-### Future code chain (out of scope of this documentation deliverable)
+### Code chain (implementation status)
 
-| Step id | Prev | Step (title) | Next |
-| ------- | ---- | ------------- | ---- |
-| **C1** | **S4** | `packages/nl-glue/src/mcpTools/` registry + Zod + Vitest. | **C2** |
-| **C2** | **C1** | Browser Worker JSON-RPC host + contract tests. | **C3** |
-| **C3** | **C2** | Node Glue stdio server (`@modelcontextprotocol/sdk`) + CI snapshot `tools/list`. | **C4** |
-| **C4** | **C3** | Optional Execution MCP stdio façade OR explicit defer note. | — |
+| Step id | Prev | Step (title) | Next step id | Status |
+| ------- | ---- | ------------- | ------------ | ------ |
+| **C1** | **S4** | `packages/nl-glue/src/mcpTools/` registry + Zod + Vitest. | **C2** | **Done** — registry + `dispatchGlueMcpJsonRpc`; tests in `packages/nl-glue/src/mcpTools/*.test.ts`. |
+| **C2** | **C1** | Browser Worker JSON-RPC host + contract tests. | **C3** | **Done** — `adventure-nl/src/browser/glueMcp/glueMcpWorkerEntry.ts` → `public/generated/glueMcpWorker.js`; host `glueMcpWorkerHost.ts`; contract simulation `src/test/glueMcpPostMessageSimulation.test.ts`. |
+| **C3** | **C2** | Node Glue stdio server (`@modelcontextprotocol/sdk`) + CI snapshot `tools/list`. | **Decision C4** | **Done** — `src/cli/glueMcpStdioServer.ts`, `npm run glue-mcp-stdio`; snapshot `src/test/fixtures/glue-mcp-tools-list.snapshot.json` + `glueMcpToolsList.snapshot.test.ts`. |
+| **C4** | **C3** | Optional Execution MCP stdio façade OR explicit defer note. | — | **Deferred** — no stdio façade over `webDashboard` yet; ADR0005 default remains HTTP/SSE + GETIN. |
 
 ### Normative protocol pin
 

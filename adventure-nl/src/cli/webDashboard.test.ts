@@ -74,23 +74,43 @@ describe("createAutoplayDashboardServer", () => {
     rmSync(replicaDir, { recursive: true, force: true });
   });
 
-  it("GET /api/session reports browserOrchestratedAutoplay true by default (client nl-glue path)", async () => {
+  it("GET /api/session reports browserOrchestratedAutoplay true by default when no MLX-only pool forces server-side glue", async () => {
     delete process.env.ADVENTURE_NL_BROWSER_ORCHESTRATED_AUTOPLAY;
-    const server = testHttpDashboard();
-    await new Promise<void>((resolve) => {
-      server.listen(0, "127.0.0.1", () => resolve());
-    });
-    const addr = server.address();
-    const port =
-      typeof addr === "object" && addr !== null ? addr.port : undefined;
-    expect(port).toBeDefined();
-    const r = await fetch(`http://127.0.0.1:${port}/api/session`);
-    expect(r.ok).toBe(true);
-    const j = (await r.json()) as { browserOrchestratedAutoplay?: boolean };
-    expect(j.browserOrchestratedAutoplay).toBe(true);
-    await new Promise<void>((resolve, reject) => {
-      server.close((err) => (err ? reject(err) : resolve()));
-    });
+    const keys = [
+      "ADVENTURE_NL_TEXT_PROVIDER",
+      "GEMINI_API_KEY",
+      "GEMINI_TEXT_MODEL",
+      "ADVENTURE_NL_HTTP_MODEL",
+      "ADVENTURE_NL_MLX_MODEL",
+    ] as const;
+    const saved = new Map<string, string | undefined>();
+    for (const k of keys) {
+      saved.set(k, process.env[k]);
+      delete process.env[k];
+    }
+    try {
+      const server = testHttpDashboard();
+      await new Promise<void>((resolve) => {
+        server.listen(0, "127.0.0.1", () => resolve());
+      });
+      const addr = server.address();
+      const port =
+        typeof addr === "object" && addr !== null ? addr.port : undefined;
+      expect(port).toBeDefined();
+      const r = await fetch(`http://127.0.0.1:${port}/api/session`);
+      expect(r.ok).toBe(true);
+      const j = (await r.json()) as { browserOrchestratedAutoplay?: boolean };
+      expect(j.browserOrchestratedAutoplay).toBe(true);
+      await new Promise<void>((resolve, reject) => {
+        server.close((err) => (err ? reject(err) : resolve()));
+      });
+    } finally {
+      for (const k of keys) {
+        const v = saved.get(k);
+        if (v === undefined) delete process.env[k];
+        else process.env[k] = v;
+      }
+    }
   });
 
   it("GET /api/session respects ADVENTURE_NL_BROWSER_ORCHESTRATED_AUTOPLAY=0", async () => {

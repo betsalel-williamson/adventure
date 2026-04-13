@@ -24,3 +24,11 @@ export {
   planAutoplayInBrowser,
   type BrowserPlannerCredentialsPayload,
 } from "../nl/browserPlanAutoplay.js";
+export {
+  dispatchGlueMcpJsonRpc,
+  listGlueMcpToolDescriptors,
+  callGlueMcpTool,
+  GLUE_MCP_SERVER_NAME,
+  GLUE_MCP_SERVER_VERSION,
+} from "@adventure-nl/nl-glue";
+export { GlueMcpWorkerHost } from "./glueMcp/glueMcpWorkerHost.js";

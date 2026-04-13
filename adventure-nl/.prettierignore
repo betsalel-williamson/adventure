@@ -3,3 +3,9 @@ node_modules
 reports
 .cache
 package-lock.json
+
+# Local Python / ML tooling (not project source)
+.venv
+
+# esbuild output (generated)
+public/generated

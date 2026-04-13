@@ -89,3 +89,12 @@ export * from "./plannerToScriptedGetin.js";
 export * from "./autoplaySessionMemory.js";
 export * from "./textLlmInterpretPipeline.js";
 export * from "./vocabCategoriesGenerate.js";
+export {
+  GLUE_MCP_SERVER_NAME,
+  GLUE_MCP_SERVER_VERSION,
+  callGlueMcpTool,
+  listGlueMcpToolDescriptors,
+  type GlueMcpToolDescriptor,
+  type GlueMcpToolCallResult,
+} from "./mcpTools/registry.js";
+export { dispatchGlueMcpJsonRpc } from "./mcpTools/protocol.js";

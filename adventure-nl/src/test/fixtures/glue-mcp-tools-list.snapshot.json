@@ -1,0 +1,59 @@
+[
+  {
+    "name": "map_current_state",
+    "description": "Summarize a host-supplied inferred exploration map snapshot (cells, edges, current node).",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "snapshot": {
+          "type": "object",
+          "description": "InferredExplorationMapSnapshot JSON"
+        }
+      },
+      "required": ["snapshot"]
+    }
+  },
+  {
+    "name": "get_exploration_summary",
+    "description": "Render Mermaid or Graphviz DOT for an inferred map snapshot (capped in nl-glue viz).",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "snapshot": {
+          "type": "object"
+        },
+        "format": {
+          "type": "string",
+          "enum": ["mermaid", "dot"]
+        }
+      },
+      "required": ["snapshot"]
+    }
+  },
+  {
+    "name": "apply_heuristics",
+    "description": "Pure transcript heuristics (indoor building / vertical passage cues) over a tail string.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "transcriptTail": {
+          "type": "string"
+        }
+      },
+      "required": ["transcriptTail"]
+    }
+  },
+  {
+    "name": "ingest_transcript_delta",
+    "description": "Classify fresh engine text for glue reconciliation (parser rejection, blocked move, location fingerprint).",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "gameOutput": {
+          "type": "string"
+        }
+      },
+      "required": ["gameOutput"]
+    }
+  }
+]
