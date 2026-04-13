@@ -64,6 +64,46 @@ describe("GlueMcpWorkerHost", () => {
     });
   });
 
+  it("toolsCall resolves typed MCP call result payload", async () => {
+    const worker = new FakeWorker();
+    const host = new GlueMcpWorkerHost(worker as unknown as Worker);
+
+    const callPromise = host.toolsCall("map_current_state", {});
+    worker.emit({
+      jsonrpc: "2.0",
+      id: 1,
+      result: { content: [{ type: "text", text: '{"ok":true}' }] },
+    });
+
+    await expect(callPromise).resolves.toEqual({
+      content: [{ type: "text", text: '{"ok":true}' }],
+    });
+  });
+
+  it("rejects malformed success response missing result", async () => {
+    const worker = new FakeWorker();
+    const host = new GlueMcpWorkerHost(worker as unknown as Worker);
+
+    const listPromise = host.toolsList();
+    worker.emit({ jsonrpc: "2.0", id: 1 });
+
+    await expect(listPromise).rejects.toThrow(/tools\/list.*missing result/i);
+  });
+
+  it("rejects malformed tools/list result shape", async () => {
+    const worker = new FakeWorker();
+    const host = new GlueMcpWorkerHost(worker as unknown as Worker);
+
+    const listPromise = host.toolsList();
+    worker.emit({
+      jsonrpc: "2.0",
+      id: 1,
+      result: { tools: [{ label: "wrong-key" }] },
+    });
+
+    await expect(listPromise).rejects.toThrow(/tools\/list.*invalid result/i);
+  });
+
   it("rejects when worker returns JSON-RPC error", async () => {
     const worker = new FakeWorker();
     const host = new GlueMcpWorkerHost(worker as unknown as Worker);

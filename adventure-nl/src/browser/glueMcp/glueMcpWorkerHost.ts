@@ -8,10 +8,75 @@ function isRecord(v: unknown): v is Record<string, unknown> {
 }
 
 type PendingRequest = {
+  readonly method: string;
   readonly resolve: (v: unknown) => void;
   readonly reject: (e: Error) => void;
   readonly timeout: ReturnType<typeof setTimeout>;
 };
+
+export type GlueMcpToolsListResult = {
+  readonly tools: readonly {
+    readonly name: string;
+    readonly description?: string;
+    readonly inputSchema?: Record<string, unknown>;
+  }[];
+};
+
+export type GlueMcpToolsCallResult = {
+  readonly content: readonly { readonly type: "text"; readonly text: string }[];
+  readonly isError?: boolean;
+};
+
+function parseToolsListResult(
+  method: string,
+  raw: unknown,
+): GlueMcpToolsListResult {
+  if (!isRecord(raw)) {
+    throw new Error(`Glue MCP ${method} invalid result: expected object`);
+  }
+  if (!Array.isArray(raw.tools)) {
+    throw new Error(`Glue MCP ${method} invalid result: expected tools array`);
+  }
+  for (const tool of raw.tools) {
+    if (!isRecord(tool) || typeof tool.name !== "string") {
+      throw new Error(
+        `Glue MCP ${method} invalid result: expected tool entries with name`,
+      );
+    }
+  }
+  return raw as GlueMcpToolsListResult;
+}
+
+function parseToolsCallResult(
+  method: string,
+  raw: unknown,
+): GlueMcpToolsCallResult {
+  if (!isRecord(raw)) {
+    throw new Error(`Glue MCP ${method} invalid result: expected object`);
+  }
+  if (!Array.isArray(raw.content)) {
+    throw new Error(
+      `Glue MCP ${method} invalid result: expected content array`,
+    );
+  }
+  for (const entry of raw.content) {
+    if (
+      !isRecord(entry) ||
+      entry.type !== "text" ||
+      typeof entry.text !== "string"
+    ) {
+      throw new Error(
+        `Glue MCP ${method} invalid result: expected text content entries`,
+      );
+    }
+  }
+  if (Object.hasOwn(raw, "isError") && typeof raw.isError !== "boolean") {
+    throw new Error(
+      `Glue MCP ${method} invalid result: expected boolean isError`,
+    );
+  }
+  return raw as GlueMcpToolsCallResult;
+}
 
 export class GlueMcpWorkerHost {
   private static readonly DEFAULT_REQUEST_TIMEOUT_MS = 10_000;
@@ -40,6 +105,10 @@ export class GlueMcpWorkerHost {
             : JSON.stringify(errObj);
         slot.reject(new Error(message));
       } else {
+        if (!Object.hasOwn(data, "result")) {
+          slot.reject(new Error(`Glue MCP ${slot.method} missing result`));
+          return;
+        }
         slot.resolve(data.result);
       }
     });
@@ -70,7 +139,7 @@ export class GlueMcpWorkerHost {
           ),
         );
       }, this.requestTimeoutMs);
-      this.pending.set(id, { resolve, reject, timeout });
+      this.pending.set(id, { method, resolve, reject, timeout });
       try {
         this.worker.postMessage(msg);
       } catch (e) {
@@ -96,12 +165,26 @@ export class GlueMcpWorkerHost {
     });
   }
 
-  toolsList(): Promise<unknown> {
-    return this.rpc("tools/list", {});
+  async toolsList(): Promise<GlueMcpToolsListResult> {
+    const result = await this.rpc("tools/list", {});
+    if (result === undefined) {
+      throw new Error("Glue MCP tools/list missing result");
+    }
+    return parseToolsListResult("tools/list", result);
   }
 
-  toolsCall(name: string, args: unknown): Promise<unknown> {
-    return this.rpc("tools/call", { name, arguments: args });
+  async toolsCall(
+    name: string,
+    args: unknown,
+  ): Promise<GlueMcpToolsCallResult> {
+    const result = await this.rpc("tools/call", {
+      name,
+      arguments: args,
+    });
+    if (result === undefined) {
+      throw new Error("Glue MCP tools/call missing result");
+    }
+    return parseToolsCallResult("tools/call", result);
   }
 
   terminate(): void {
