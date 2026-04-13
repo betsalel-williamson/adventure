@@ -64,3 +64,4 @@ Proposed
 - `adventure-nl/public/index.html` — `.map-hero-column-body`, `.map-fsm-card`, `.map-hero`
 - `adventure-nl/public/dashboard.css` — map column layout
 - `adventure-nl/src/browser/autoplayCognitionMachine.ts` — machine to display
+- **Next:** [ADR0016](ADR0016-cognition-glue-mcp-and-execution-mcp-surfaces.md) — MCP **Glue** tool trace / orchestration visibility complements this panel.

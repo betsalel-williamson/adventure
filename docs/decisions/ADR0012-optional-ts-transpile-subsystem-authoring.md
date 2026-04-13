@@ -11,7 +11,7 @@
 
 Transpilation in the browser can use **`typescript.transpileModule`** in a **Worker**, or **esbuild-wasm** for larger trees. Both add payload and CPU cost.
 
-Compiled subsystems remain **inputs to the browser glue/orchestration** story ([ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md)); TS does not change the server/client boundary for LLM packaging ([ADR0004](ADR0004-backend-llm-packaging-and-discovery.md)). Transpiled hooks use the **same** subsystem contract and orchestration **events** as JavaScript ([ADR0011](ADR0011-subsystem-module-contract-dynamic-js.md))—no second on-the-wire protocol for the cognition actor.
+Compiled subsystems remain **inputs to the browser glue/orchestration** story ([ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md)); TS does not change the server/client boundary for **natural language model** packaging ([ADR0004](ADR0004-backend-llm-packaging-and-discovery.md)). Transpiled hooks use the **same** subsystem contract and orchestration **events** as JavaScript ([ADR0011](ADR0011-subsystem-module-contract-dynamic-js.md))—no second on-the-wire protocol for the cognition actor.
 
 ## Decision
 
@@ -50,3 +50,4 @@ Proposed
 - [ADR0006](ADR0006-client-sqlite-wal-subsystem-store.md) (subsystem persistence)
 - [ADR0010](ADR0010-monaco-workspace-second-tab-cross-tab-sync.md)
 - [ADR0011](ADR0011-subsystem-module-contract-dynamic-js.md)
+- **See also:** [ADR0016](ADR0016-cognition-glue-mcp-and-execution-mcp-surfaces.md) — Glue MCP registry vs subsystem hooks.

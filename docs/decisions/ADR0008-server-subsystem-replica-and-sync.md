@@ -66,6 +66,8 @@ Replica databases use the **same migrations** as the client store ([`subsystemWa
 
 **Not in this slice:** browser-side **calling** sync after session (orchestration / XState events for **sync pending / complete / fork** per ADR0005), **restore-from-server** download of a full replica into the client, and **glue snapshot** rows in sync batches (schema for glue in client DB still optional per ADR0006).
 
+**Forward (browser):** `postSubsystemSync` exists on [`dashboardApi.js`](../../adventure-nl/public/dashboardApi.js); the **live dashboard loop** must still **invoke** it and surface sync lifecycle on the cognition actor ([ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md), [ADR0016](ADR0016-cognition-glue-mcp-and-execution-mcp-surfaces.md)).
+
 ## Status
 
 Accepted
@@ -78,3 +80,4 @@ Accepted
 - [ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md)
 - [ADR0006](ADR0006-client-sqlite-wal-subsystem-store.md)
 - [ADR0007](ADR0007-subsystem-revision-control-and-replay.md)
+- **See also:** [ADR0016](ADR0016-cognition-glue-mcp-and-execution-mcp-surfaces.md) — browser must wire **`postSubsystemSync`** into the cognition loop.

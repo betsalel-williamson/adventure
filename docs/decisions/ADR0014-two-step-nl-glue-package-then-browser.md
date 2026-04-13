@@ -33,9 +33,9 @@ Without an explicit plan, work risks **copy-pasting** modules into the browser, 
 
 | Area | Files / dirs |
 | ---- | ------------ |
-| LLM **providers** | `src/nl/providers/*` |
+| Natural language **provider** modules | `src/nl/providers/*` |
 | **HTTP / dashboard presets** | `httpWebPresets.ts`, `mlxModelPresets.ts`, `googleWebModelPresets.ts`, `textLlmWebPresetsConfig.ts`, `textLlmWebBackends.ts` |
-| **Orchestration → LLM** | `adventureTextLlm.ts` (facade over providers + packaging) |
+| **Orchestration → text models** | `adventureTextLlm.ts` (facade over providers + packaging) |
 | **Packaging profile** | `llmPackagingProfile.ts` (shared constants live in `@adventure-nl/nl-glue`, e.g. `llmPackagingConstants.ts`) |
 | **Vendor / cloud** | `gemini.ts`, `geminiAutoplay.ts`, `geminiModels.ts` |
 | **Node I/O** | `interpretDiskCache.ts` (filesystem cache), `interpretCacheKey.ts` / `interpretCacheKeyMaterial.ts` (disk cache keys; pipe-level, not glue package), `llmDebug.ts` |
@@ -55,7 +55,7 @@ Adopt a **two-step** migration for **NL/SLM glue** (interpretation helpers, situ
    **Phase A architectural goal:** the **backend** toward the Fortran game should be a **simple pipe** (send input to the simulation, stream or return game output). **Reactions to LM responses**—turning model JSON into GETIN lines, repair/swap, planner context, vocab/situational hints—live in **`@adventure-nl/nl-glue`** and **`adventure-nl/src/cognition/`** (server-side thin callers), not inlined in HTTP routing. The dashboard HTTP layer coordinates sessions and I/O; it should call into cognition/glue rather than embedding interpretation logic.
 
 2. **Phase B — Run that package from the browser**  
-   Consume the **same** glue package as a **browser build** (bundled ESM) from the **browser orchestration** path ([ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md): XState machine / orchestrator), wired to SSE + logical LLM HTTP as already decided. **Tests:** keep **pure-function** tests on glue in the shared package; browser-side unit tests cover the cognition machine (`src/browser/*.test.ts`); broader **integration** tests with mocked LLM HTTP remain per ADR0005/ADR0009 guidance.
+   Consume the **same** glue package as a **browser build** (bundled ESM) from the **browser orchestration** path ([ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md): XState machine / orchestrator), wired to SSE + logical **natural-language model** HTTP as already decided. **Tests:** keep **pure-function** tests on glue in the shared package; browser-side unit tests cover the cognition machine (`src/browser/*.test.ts`); broader **integration** tests with mocked **natural-language model** HTTP remain per ADR0005/ADR0009 guidance.
 
 **Ordering (as shipped):** Phase A landed first (package boundary + green tests + consumers updated); Phase B adds the **esbuild** browser bundle and orchestrator dynamic import **without** maintaining a second source copy of glue logic.
 
@@ -100,7 +100,7 @@ Authors and maintainers asked for an explicit distinction between **DAT-backed s
 
 **Session wiring:** `GET /api/session` exposes **`browserOrchestratedAutoplay`** (historical name: “browser drives the self-acting loop”). When **`true`**, `public/app.js` loads `browserAutoplayOrchestrator.js`, which dynamic-imports **`/generated/browserAutoplayCognition.js`** and runs **nl-glue** on **`getin_prompt_ready`**, then **`planAutoplayInBrowser`** (Gemini / HTTP) using **`browserPlanner`** from SSE / **`GET /api/text-llm`**—**not** `POST /api/nl/planner` ([ADR0015](ADR0015-deprecate-server-forward-nl-cognition.md)). The server runs the Fortran engine and streams SSE; legacy **`POST /api/nl/planner`** remains for compatibility only. **`ADVENTURE_NL_BROWSER_ORCHESTRATED_AUTOPLAY` defaults to client-side NL** (unset → browser bundle); set to **`0`** / **`false`** / **`no`** / **`off`** to run the same glue **in Node** (legacy parity with the CLI runner).
 
-**Forward work (not closed by this ADR):** richer orchestration events, glue checkpointing to SQLite per [ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md) / [ADR0006](ADR0006-client-sqlite-wal-subsystem-store.md), integration tests with mocked LLM HTTP at the orchestrator boundary, and driving **`browserAutoplayCognitionMachine`** from the orchestrator (currently exported from the bundle but the imperative `wireBrowserAutoplayOrchestrator` path owns the loop).
+**Forward work (not closed by this ADR):** richer orchestration events, glue checkpointing to SQLite per [ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md) / [ADR0006](ADR0006-client-sqlite-wal-subsystem-store.md), integration tests with mocked **natural-language model** HTTP at the orchestrator boundary, and driving **`browserAutoplayCognitionMachine`** from the orchestrator (currently exported from the bundle but the imperative `wireBrowserAutoplayOrchestrator` path owns the loop).
 
 ## Status
 
@@ -111,8 +111,9 @@ Accepted
 - [`adventure-nl/packages/nl-glue`](../../adventure-nl/packages/nl-glue/) — **`@adventure-nl/nl-glue`** implementation and `package.json` workspaces entry.
 - [ADR0015](ADR0015-deprecate-server-forward-nl-cognition.md) — Server-forward NL deprecated for dashboard default path.
 - [ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md) — Browser-orchestrated cognition; glue vs engine/DAT boundary.
-- [ADR0004](ADR0004-backend-llm-packaging-and-discovery.md) — Backend packaging for logical LLM requests; glue package must not absorb vendor wire details.
+- [ADR0004](ADR0004-backend-llm-packaging-and-discovery.md) — Backend packaging for logical **natural-language model** requests; glue package must not absorb vendor wire details.
 - [ADR0009](ADR0009-tdd-promote-gate-subsystems.md) — TDD / promote gate for **subsystems**; glue package tests follow the same **discipline**, separate artifact.
 - [ADR0011](ADR0011-subsystem-module-contract-dynamic-js.md) — User subsystem sandbox; **core glue package** is **not** user subsystems but may define **hooks** consumed by orchestration.
 - [`docs/architecture/adventure-nl-cognition-and-workspace.md`](../architecture/adventure-nl-cognition-and-workspace.md) — Direction-of-travel overview.
 - [`docs/decisions/adventure-nl-cognition-adr-index.md`](adventure-nl-cognition-adr-index.md) — Ordered ADR index for this program.
+- **Next:** [ADR0016](ADR0016-cognition-glue-mcp-and-execution-mcp-surfaces.md) — MCP-shaped **Glue** surface on the same `@adventure-nl/nl-glue` registry (Worker + stdio).

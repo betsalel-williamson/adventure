@@ -59,3 +59,4 @@ Accepted
 - [ADR0006](ADR0006-client-sqlite-wal-subsystem-store.md) (`promotion_records` and store API — see ADR **Implementation**)
 - [ADR0007](ADR0007-subsystem-revision-control-and-replay.md) (`materializeReplayFiles`, `appendRevisionReverting`, tags — see ADR **Implementation**; **Run tests** then **Promote** UX still forward work)
 - [ADR0010](ADR0010-monaco-workspace-second-tab-cross-tab-sync.md)
+- **See also:** [ADR0016](ADR0016-cognition-glue-mcp-and-execution-mcp-surfaces.md) — future **`subsystem.*`** Glue MCP tools and orchestration tests.

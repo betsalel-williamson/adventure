@@ -70,3 +70,4 @@ Accepted
 - [ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md)
 - [ADR0006](ADR0006-client-sqlite-wal-subsystem-store.md)
 - [ADR0009](ADR0009-tdd-promote-gate-subsystems.md)
+- **See also:** [ADR0016](ADR0016-cognition-glue-mcp-and-execution-mcp-surfaces.md) — cognition orchestration and MCP surfaces adjacent to replay UX.

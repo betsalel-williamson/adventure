@@ -67,3 +67,4 @@ Accepted
 - [`.work-items/nl-backend-nl-deprecation/design.md`](../../.work-items/nl-backend-nl-deprecation/design.md) — Feature design and phases.
 - [`adventure-nl/src/nl/browserPlanAutoplay.ts`](../../adventure-nl/src/nl/browserPlanAutoplay.ts), [`adventure-nl/public/browserAutoplayOrchestrator.js`](../../adventure-nl/public/browserAutoplayOrchestrator.js)
 - [`API_DOCUMENTATION.md`](../../API_DOCUMENTATION.md)
+- **Next:** [ADR0016](ADR0016-cognition-glue-mcp-and-execution-mcp-surfaces.md) — Glue MCP surface and dual-surface orchestration (Mind vs Body).

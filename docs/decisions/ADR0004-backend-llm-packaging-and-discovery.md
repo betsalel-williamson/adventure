@@ -68,7 +68,9 @@ Packaging is **integration knowledge** tied to process boundaries; Node **`TextL
 
 ## Status
 
-Proposed
+Accepted
+
+Remaining gaps (per-`modelId` packaging profiles, pre-flight validation of logical payloads) stay tracked only in the **Implementation status** table above—not as “ADR not accepted.”
 
 ## References
 

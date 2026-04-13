@@ -12,7 +12,7 @@
 
 Subsystem sources live in SQLite ([ADR0006](ADR0006-client-sqlite-wal-subsystem-store.md)) and are **materialized** for execution. Optional TypeScript authoring is a separate ADR ([ADR0012](ADR0012-optional-ts-transpile-subsystem-authoring.md)).
 
-Hooks execute in the **sandboxed** contexts below; the **orchestration loop** that calls them lives in the privileged dashboard code path ([ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md)). Integration tests should **mock** logical LLM traffic (e.g. MSW) per ADR0005 / [ADR0009](ADR0009-tdd-promote-gate-subsystems.md).
+Hooks execute in the **sandboxed** contexts below; the **orchestration loop** that calls them lives in the privileged dashboard code path ([ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md)). Integration tests should **mock** logical **natural-language model** traffic (e.g. MSW) per ADR0005 / [ADR0009](ADR0009-tdd-promote-gate-subsystems.md).
 
 **Root actor boundary:** Implement the privileged loop as a **single coordinator** that sends **typed messages** into the sandbox and receives **typed results**—the same mental model as `postMessage`, aligned with [ADR0005](ADR0005-browser-orchestrated-autoplay-cognition.md) actor-centric orchestration and easier to test than unstructured callbacks.
 
@@ -58,3 +58,4 @@ Proposed
 - [ADR0006](ADR0006-client-sqlite-wal-subsystem-store.md) (file revisions persisted via store module — see ADR **Implementation**)
 - [ADR0007](ADR0007-subsystem-revision-control-and-replay.md) (materialize-at-revision, tags — see ADR **Implementation**)
 - [ADR0009](ADR0009-tdd-promote-gate-subsystems.md)
+- **Next:** [ADR0016](ADR0016-cognition-glue-mcp-and-execution-mcp-surfaces.md) — MCP tool surface for core glue vs reserved **`subsystem.*`** hooks.

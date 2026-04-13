@@ -6,7 +6,7 @@ This document describes the **target architecture** for evolving [`adventure-nl`
 
 **Scope:** Strategic direction and boundaries. **As-built** behavior of the package today remains documented in [adventure-engine.md](./adventure-engine.md) until each migration lands.
 
-**Related decisions:** [ADR0004](../decisions/ADR0004-backend-llm-packaging-and-discovery.md) through [ADR0015](../decisions/ADR0015-deprecate-server-forward-nl-cognition.md), indexed under [adventure-nl-cognition-adr-index.md](../decisions/adventure-nl-cognition-adr-index.md).
+**Related decisions:** [ADR0004](../decisions/ADR0004-backend-llm-packaging-and-discovery.md) through [ADR0016](../decisions/ADR0016-cognition-glue-mcp-and-execution-mcp-surfaces.md), indexed under [adventure-nl-cognition-adr-index.md](../decisions/adventure-nl-cognition-adr-index.md).
 
 ## Business and system context
 
@@ -33,6 +33,7 @@ Decisions are recorded in ADRs (not duplicated here). Dependency order for imple
 - **ADR0005** — **Browser-orchestrated** autoplay: client-owned glue state and loop; not “ship `adventure.dat` to the browser” as the primary goal.
 - **ADR0014** — **Two-step** migration of **NL/SLM glue** (interpret/situational/vocab/mode policy): **extract a dedicated package** under Node first, then **consume from the browser** (operationalizes ADR0005 for `vocab` / `text` / `nl/*`).
 - **ADR0015** — **Deprecate server-forward** NL planner/interpret for the **dashboard default** path; **client-direct** cognition model calls ([`planAutoplayInBrowser`](../../adventure-nl/src/nl/browserPlanAutoplay.ts)).
+- **ADR0016** — **Glue MCP** (cognition / heuristics registry in a Worker + Node stdio twin) vs optional **Execution MCP** (stdio façade over existing engine HTTP); **Model Context Protocol** [2025-11-25](https://modelcontextprotocol.io/specification/2025-11-25); documentation chain and future code steps in the ADR **Implementation** table.
 - **ADR0006–ADR0008** — Client **SQLite WAL** (store module **implemented** — [ADR0006](../decisions/ADR0006-client-sqlite-wal-subsystem-store.md) **Implementation**), **revision control / tags / replay / revert** ([ADR0007](../decisions/ADR0007-subsystem-revision-control-and-replay.md) store **implemented**; UI forward work), **server replica + HTTP sync** ([ADR0008](../decisions/ADR0008-server-subsystem-replica-and-sync.md) **`POST /api/subsystem-sync`** + apply module **implemented**; browser **invoke** sync + restore UX forward work).
 - **ADR0009** — **TDD** and **promote-to-live** gate.
 - **ADR0010** — **Monaco** second tab + **cross-tab** sync.
@@ -75,8 +76,10 @@ flowchart TB
 
 The **target** integration point for the dashboard path is a **single orchestration hub**—implemented with **XState v5** (`adventure-nl/src/browser/autoplayCognitionMachine.ts`, bundled for the browser) and **converging** with the imperative client loop in `public/browserAutoplayOrchestrator.js`—that sequences:
 
+**MCP-shaped surfaces ([ADR0016](../decisions/ADR0016-cognition-glue-mcp-and-execution-mcp-surfaces.md)):** treat **glue** policy as a **Glue MCP** server (mind)—`tools/list` / `tools/call` over **`postMessage`** to a Worker (and **Node stdio** for IDE parity)—distinct from **Execution** (body): authoritative game I/O remains **SSE + `POST /api/engine/input`** in v1, with an **optional Execution MCP** stdio façade for agents. The orchestrator is the **integration client** for Glue + **natural language models** (SLM or LLM) + engine, applying a **reconciliation pulse** after each move so inferred state tracks streamed ground truth.
+
 - **Engine** inputs from **SSE** (for example `getin_prompt_ready`, `transcript_delta`, `plan_applied`).
-- **Client-direct LLM** steps (`planAutoplayInBrowser`, future browser interpret)—not legacy **`POST /api/nl/planner`** ([ADR0015](../decisions/ADR0015-deprecate-server-forward-nl-cognition.md)); **packaging** discovery remains for validation ([ADR0004](../decisions/ADR0004-backend-llm-packaging-and-discovery.md)).
+- **Client-direct natural language model** steps (`planAutoplayInBrowser`, future browser interpret)—not legacy **`POST /api/nl/planner`** ([ADR0015](../decisions/ADR0015-deprecate-server-forward-nl-cognition.md)); **packaging** discovery remains for validation ([ADR0004](../decisions/ADR0004-backend-llm-packaging-and-discovery.md)).
 - **GETIN / queue** submission when **browser-orchestrated** autoplay is enabled ([ADR0005](../decisions/ADR0005-browser-orchestrated-autoplay-cognition.md)).
 - **Future / integration:** **Glue** checkpoints persisted through the same store as subsystems ([ADR0006](../decisions/ADR0006-client-sqlite-wal-subsystem-store.md); optional tables not yet added), **sync** lifecycle **UI / actor events** (server **`POST /api/subsystem-sync`** exists per [ADR0008](../decisions/ADR0008-server-subsystem-replica-and-sync.md); client must call it and map responses to **pending / complete / fork**), **promote** transitions ([ADR0009](../decisions/ADR0009-tdd-promote-gate-subsystems.md)), and **`BroadcastChannel`** from the workspace tab ([ADR0010](../decisions/ADR0010-monaco-workspace-second-tab-cross-tab-sync.md)) as **typed machine events**, keeping one locus of control instead of scattered booleans.
 
@@ -96,7 +99,7 @@ The **target** integration point for the dashboard path is a **single orchestrat
 
 ## Deployment view
 
-- **Single-machine / local dev:** Node serves static `adventure-nl/public/`, Fortran binary beside `adventure.dat`, env-based LLM keys; browser holds SQLite WASM + OPFS (or chosen persistence).
+- **Single-machine / local dev:** Node serves static `adventure-nl/public/`, Fortran binary beside `adventure.dat`, env-based keys for **natural language** providers; browser holds SQLite WASM + OPFS (or chosen persistence).
 - **Secrets:** Unchanged principle—keys on server/env for cloud models; browser does not embed production secrets ([adventure-engine.md](./adventure-engine.md) operational section remains relevant).
 
 ## Data view
@@ -104,7 +107,7 @@ The **target** integration point for the dashboard path is a **single orchestrat
 - **World truth:** `adventure.dat` + binary (unchanged).
 - **Subsystem authority:** Client SQLite (files, revisions, test/promotion rows, **`revision_tags`** — schema v2; see [ADR0007](../decisions/ADR0007-subsystem-revision-control-and-replay.md)) ([ADR0006](../decisions/ADR0006-client-sqlite-wal-subsystem-store.md)). **Inferred glue state** (map, modes, heuristics) for the dashboard path should live in the same durable persistence story — not `sessionStorage` — so multi-tab workspace and reconnect stay consistent ([ADR0005](../decisions/ADR0005-browser-orchestrated-autoplay-cognition.md)).
 - **Replica:** Server SQLite for backup and inspection ([ADR0008](../decisions/ADR0008-server-subsystem-replica-and-sync.md)); default path pattern **`adventure-nl/.cache/subsystem-replica/<workspaceId>.db`** (optional env **`ADVENTURE_NL_SUBSYSTEM_REPLICA_DIR`**).
-- **Logical LLM payloads:** Not persisted as full vendor HTTP bodies in the client; optional debug logs remain governed by existing env ([adventure-engine.md](./adventure-engine.md)).
+- **Logical natural-language model payloads:** Not persisted as full vendor HTTP bodies in the client; optional debug logs remain governed by existing env ([adventure-engine.md](./adventure-engine.md)).
 
 ## Security considerations
 
@@ -115,7 +118,7 @@ The **target** integration point for the dashboard path is a **single orchestrat
 ## Operational considerations
 
 - **Observability:** Existing JSONL debug paths apply to Node packaging and Fortran I/O; client may add structured logs for promote/test events (future).
-- **Orchestration UX:** Sequential LLM steps should surface **explicit progress** in the dashboard (e.g. planning vs map update) so latency is legible ([ADR0005](../decisions/ADR0005-browser-orchestrated-autoplay-cognition.md)).
+- **Orchestration UX:** Sequential **natural language model** steps should surface **explicit progress** in the dashboard (e.g. planning vs map update) so latency is legible ([ADR0005](../decisions/ADR0005-browser-orchestrated-autoplay-cognition.md)).
 - **Offline:** Queue subsystem sync when disconnected ([ADR0008](../decisions/ADR0008-server-subsystem-replica-and-sync.md)).
 
 ## References
@@ -124,3 +127,4 @@ The **target** integration point for the dashboard path is a **single orchestrat
 - [adventure-fortran-engine.md](./adventure-fortran-engine.md) — Fortran and `adventure.dat`.
 - [adventure-nl-cognition-adr-index.md](../decisions/adventure-nl-cognition-adr-index.md) — ADR list and implementation order.
 - Cursor plan: `thin_backend_vs_code_prompts_074321ee` (`.cursor/plans/`) — detailed narrative; this arch doc is the stable entry point in-repo.
+- [ADR0016](../decisions/ADR0016-cognition-glue-mcp-and-execution-mcp-surfaces.md) — Glue vs Execution MCP surfaces and documentation→code chain.

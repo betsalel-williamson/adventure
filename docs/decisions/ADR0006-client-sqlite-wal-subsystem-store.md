@@ -56,6 +56,8 @@ User explicitly requested **WAL SQLite** with **client authoritative** semantics
 
 ## Implementation
 
+**Scope note:** The **store module**, migrations, and Vitest coverage are **landed**; **browser** WASM / OPFS / `SharedWorker` wiring and optional glue-snapshot tables remain **forward work** (see **Not in this slice** below).
+
 **Location (package [`adventure-nl`](../../adventure-nl/)):**
 
 | Area                                                                                 | Path                                                                                                                         |
