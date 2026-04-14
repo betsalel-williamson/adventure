@@ -1,13 +1,17 @@
 /**
- * Client-side NL loop (ADR0005 / ADR0014): consumes SSE getin_prompt_ready, runs @adventure-nl/nl-glue
- * from the cognition bundle, runs autoplay planning in the browser (Gemini or OpenAI-compatible HTTP),
- * then POST /api/engine/input for Fortran GETIN. “Autoplay” names the self-acting loop, not server-side NL.
+ * Client-side NL loop (ADR0005 / ADR0014 / ADR0016): SSE `getin_prompt_ready` drives an XState
+ * cognition actor (`createBrowserAutoplayCognitionActor`); optional Glue MCP when
+ * `localStorage.adventureNlGlueMcp === '1'`.
  */
+import {
+  resolveCognitionOrchestrationElements,
+  subscribeCognitionOrchestrationPanel,
+} from "./cognitionOrchestrationPanel.js";
 import { applySnapshot } from "./mapView.js";
 import { parseSseJson } from "./sseJson.js";
 
 /**
- * @param {{ fetch: typeof fetch; location: Location }} ports
+ * @param {{ fetch: typeof fetch; location: Location; localStorage: Storage }} ports
  * @param {ReturnType<import("./dashboardApi.js").createDashboardApi>} api
  * @param {EventSource} es
  */
@@ -18,15 +22,14 @@ export function wireBrowserAutoplayOrchestrator(ports, api, es) {
     origin + "/",
   ).href;
 
-  let ready = false;
   let modPromise = null;
 
-  let db = null;
-  let memory = null;
-
-  let lastGetinLine = "";
-  let moveNumber = 0;
-  let contextChars = 6000;
+  let useGlueMcp = false;
+  try {
+    useGlueMcp = ports.localStorage.getItem("adventureNlGlueMcp") === "1";
+  } catch {
+    useGlueMcp = false;
+  }
 
   /** Avoid GET /api/prompt-experiment and GET /api/text-llm on every planner step; SSE keeps these fresh. */
   let cachedPromptPatch = null;
@@ -77,18 +80,6 @@ export function wireBrowserAutoplayOrchestrator(ports, api, es) {
     return modPromise;
   }
 
-  async function ensureCognition() {
-    if (ready) return;
-    const r = await api.getAdventureDatabase();
-    if (!r.ok) throw new Error("Could not load adventure database snapshot");
-    const j = await r.json();
-    const mod = await loadBundle();
-    db = mod.deserializeAdventureDatabaseFromJson(j.database);
-    memory = new mod.AutoplaySessionMemory();
-    contextChars = mod.resolveAutoplayContextChars();
-    ready = true;
-  }
-
   async function getPlannerOverrides() {
     if (cachedPromptPatch !== null) {
       const patch = cachedPromptPatch;
@@ -123,7 +114,7 @@ export function wireBrowserAutoplayOrchestrator(ports, api, es) {
     return false;
   }
 
-  async function ensurePlannerSnapshot() {
+  async function getPlannerSnapshot() {
     if (
       cachedProviderId !== null &&
       cachedModelId !== null &&
@@ -179,111 +170,77 @@ export function wireBrowserAutoplayOrchestrator(ports, api, es) {
     };
   }
 
+  /** @type {null | { send: (ev: unknown) => void }} */
+  let cognitionActor = null;
+  /** @type {(() => void) | null} */
+  let unsubscribePanel = null;
+
+  async function ensureCognitionActor() {
+    if (cognitionActor) return cognitionActor;
+    const mod = await loadBundle();
+    let glueMcpHost = null;
+    const effectiveUseGlue = useGlueMcp;
+    if (effectiveUseGlue) {
+      try {
+        const workerUrl = new URL("/generated/glueMcpWorker.js", origin + "/")
+          .href;
+        const w = new Worker(workerUrl, { type: "module" });
+        glueMcpHost = new mod.GlueMcpWorkerHost(w);
+        await glueMcpHost.initialize();
+      } catch (e) {
+        console.error("adventure-nl: Glue MCP worker init failed", e);
+        glueMcpHost = null;
+      }
+    }
+
+    const input = {
+      loadCognitionModule: () => loadBundle(),
+      getAdventureDatabase: () => api.getAdventureDatabase(),
+      postEngineInput: (body) => api.postEngineInput(body),
+      getPlannerSnapshot,
+      getPlannerOverrides,
+      applySnapshot,
+      glueMcpHost,
+      useGlueMcp: Boolean(glueMcpHost),
+    };
+
+    cognitionActor = mod.createBrowserAutoplayCognitionActor(input);
+
+    const panelEls = resolveCognitionOrchestrationElements(document);
+    if (unsubscribePanel) unsubscribePanel();
+    unsubscribePanel = subscribeCognitionOrchestrationPanel(
+      cognitionActor,
+      panelEls,
+    );
+
+    const mlx = cachedProviderId === "mlx";
+    const noCreds =
+      (cachedProviderId === "google" || cachedProviderId === "http") &&
+      !plannerCredentialsReady(cachedProviderId, cachedBrowserPlanner);
+    if (mlx || noCreds) {
+      const hint = mlx
+        ? "MLX uses a server-side worker; switch text provider to google or http for browser autoplay."
+        : "Add browser planner credentials (SSE text_llm or GET /api/text-llm).";
+      if (panelEls.contextEl) {
+        panelEls.contextEl.textContent = `Planner: ${hint}`;
+      }
+    }
+
+    return cognitionActor;
+  }
+
   es.addEventListener("getin_prompt_ready", (ev) => {
     void (async () => {
       const d = parseSseJson(/** @type {MessageEvent} */ (ev).data);
       if (!d || typeof d.transcriptSoFar !== "string") return;
       try {
-        await ensureCognition();
-        const mod = await loadBundle();
-        const phase =
-          d.phase === "first" || d.phase === "continue" ? d.phase : "continue";
-        const gameOut =
-          typeof d.gameOutputSinceLastCommand === "string"
-            ? d.gameOutputSinceLastCommand
-            : "";
-        if (phase === "first") {
-          memory.seedOpening(d.transcriptSoFar, { adventureDb: db });
-        } else if (lastGetinLine.length > 0) {
-          memory.recordCommandOutcome(lastGetinLine, gameOut, {
-            adventureDb: db,
-          });
-        }
-
-        if (mod.gameOutputLooksLikePlayAgainPrompt(gameOut)) {
-          moveNumber += 1;
-          const line = "Y";
-          const plan = { primaryToken: "Y", continuePlaying: true };
-          const er = await api.postEngineInput({
-            getinLine: line,
-            plan,
-            moveNumber,
-            motionGridHint: null,
-          });
-          if (!er.ok) throw new Error("engine input failed (play again)");
-          lastGetinLine = line;
-          return;
-        }
-
-        const plannerSnap = await ensurePlannerSnapshot();
-        if (plannerSnap.providerId === "mlx") {
-          console.error(
-            "adventure-nl: browser autoplay planning needs google or http text provider (MLX uses a server-side worker). Switch provider or set ADVENTURE_NL_BROWSER_ORCHESTRATED_AUTOPLAY=0 for server-side NL.",
-          );
-          return;
-        }
-        if (
-          !plannerCredentialsReady(
-            plannerSnap.providerId,
-            plannerSnap.browserPlanner,
-          )
-        ) {
-          console.error(
-            "adventure-nl: missing browser planner credentials (expect googleApiKey or httpBaseUrl from SSE / GET /api/text-llm)",
-          );
-          return;
-        }
-
-        const overrides = await getPlannerOverrides();
-        const inv = mod.buildAutoplayPlannerInvocation({
-          db,
-          memory,
-          contextChars,
-          providerId: plannerSnap.providerId,
-          recentForRepairRaw: phase === "first" ? d.transcriptSoFar : gameOut,
-          overrides,
+        const actor = await ensureCognitionActor();
+        actor.send({
+          type: "ENGINE.GETIN_PROMPT_READY",
+          transcriptSoFar: d.transcriptSoFar,
+          phase: d.phase,
+          gameOutputSinceLastCommand: d.gameOutputSinceLastCommand,
         });
-
-        let plan = await mod.planAutoplayInBrowser(
-          db,
-          {
-            plannerUserPrompt: inv.plannerUserPrompt,
-            recentGameTextForRepair: inv.recentGameTextForRepair,
-            includeDatHelpInSystem: inv.includeDatHelpInSystem,
-          },
-          {
-            providerId: plannerSnap.providerId,
-            modelId: plannerSnap.modelId,
-            browserPlanner: plannerSnap.browserPlanner,
-          },
-        );
-        plan = mod.planAfterAutoplayGuards(memory, plan, () => {});
-        const scripted = mod.plannerToScriptedGetin(plan);
-        const getinLine =
-          typeof scripted === "string" ? scripted : scripted.line;
-        moveNumber += 1;
-        if (plan.continuePlaying === false) {
-          const er = await api.postEngineInput({
-            getinLine,
-            plan,
-            moveNumber,
-            motionGridHint: null,
-          });
-          if (!er.ok) throw new Error("engine input failed (stop)");
-          lastGetinLine = getinLine;
-          return;
-        }
-        const er = await api.postEngineInput({
-          getinLine,
-          plan,
-          moveNumber,
-          motionGridHint: null,
-        });
-        if (!er.ok) throw new Error("engine input failed");
-        lastGetinLine = getinLine;
-
-        const uiSnap = memory.buildAutoplayUiSnapshot();
-        applySnapshot(uiSnap);
       } catch (e) {
         console.error("adventure-nl: browser autoplay cognition", e);
       }

@@ -638,6 +638,59 @@
               </details>
             </section>
             <section
+              class="panel cognition-orchestration-card"
+              aria-label="Autoplay cognition orchestration"
+            >
+              <div class="map-fsm-head">
+                <div class="map-fsm-title-row">
+                  <h3 class="map-fsm-title">Cognition (orchestration)</h3>
+                  <button
+                    type="button"
+                    class="help-icon-btn"
+                    data-help-template="help-tpl-cognition-orchestration"
+                    data-help-title="Cognition orchestration"
+                    aria-label="About cognition orchestration"
+                  >
+                    ?
+                  </button>
+                </div>
+              </div>
+              <p class="small muted">
+                Live XState actor for browser-orchestrated autoplay (ADR0013).
+                Read-only. Set
+                <code class="mono">localStorage.adventureNlGlueMcp='1'</code>
+                to ping Glue MCP <code class="mono">tools/list</code> each turn
+                (dev).
+              </p>
+              <p class="small"><strong>State</strong></p>
+              <pre
+                id="cognition-orchestration-state"
+                class="mono small cognition-orchestration-pre"
+              >
+                —
+              </pre>
+              <p class="small"><strong>Active children</strong></p>
+              <p
+                id="cognition-orchestration-child"
+                class="mono small cognition-orchestration-child"
+              >
+                —
+              </p>
+              <p class="small"><strong>Context</strong></p>
+              <p
+                id="cognition-orchestration-context"
+                class="mono small cognition-orchestration-context"
+                aria-live="polite"
+              >
+                —
+              </p>
+              <p class="small"><strong>Recent events</strong></p>
+              <ul
+                id="cognition-orchestration-events"
+                class="cognition-orchestration-events mono small"
+              ></ul>
+            </section>
+            <section
               class="panel map-hero map-hero-center"
               aria-label="Inferred exploration map"
             >
@@ -808,6 +861,22 @@
           Arrows show observed commands. Self-loops mean a reject, blocked move,
           or NULL (no location or inventory change). The highlighted node is the
           current state.
+        </p>
+      </div>
+    </template>
+    <template id="help-tpl-cognition-orchestration">
+      <div class="help-dialog-prose">
+        <p>
+          This card shows the <strong>autoplay orchestration</strong> state
+          machine (XState), not the session exploration graph above. It updates
+          when browser-orchestrated autoplay handles each
+          <code class="mono">getin_prompt_ready</code> SSE event.
+        </p>
+        <p>
+          Values are read-only. Optional Glue MCP: set
+          <code class="mono">localStorage.adventureNlGlueMcp='1'</code> and
+          reload to run <code class="mono">tools/list</code> on the Worker each
+          turn (ADR0016).
         </p>
       </div>
     </template>

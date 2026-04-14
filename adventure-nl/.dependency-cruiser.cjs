@@ -23,7 +23,7 @@ module.exports = {
       from: {
         path: "^src/browser",
         pathNot:
-          "^src/browser/(cognitionBundle\\.ts|glueMcp/glueMcpWorkerEntry\\.ts)$",
+          "^src/browser/(cognitionBundle\\.ts|glueMcp/glueMcpWorkerEntry\\.ts|autoplayCognitionMachine\\.ts|autoplayCognitionMachine\\.test\\.ts)$",
       },
       to: {
         path: "^packages/nl-glue",

@@ -19,7 +19,16 @@ export {
   paceMsFromOverrides,
   maxMovesFromOverrides,
 } from "../nl/autoplayThrottle.js";
-export { browserAutoplayCognitionMachine } from "./autoplayCognitionMachine.js";
+export {
+  browserAutoplayOrchestratorLogic,
+  createBrowserAutoplayCognitionActor,
+  type BrowserAutoplayCognitionInput,
+  type BrowserAutoplayCognitionContext,
+  type BrowserAutoplayCognitionEvent,
+  type BrowserAutoplayCognitionMod,
+  type PlannerSnapshot,
+} from "./autoplayCognitionMachine.js";
+export { createActor } from "xstate";
 export {
   planAutoplayInBrowser,
   type BrowserPlannerCredentialsPayload,
