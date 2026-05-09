@@ -129,11 +129,43 @@ describe("HTTP API + SSE", () => {
     try {
       const res = await fetch(`${baseUrl}/health`);
       expect(res.status).toBe(200);
-      const body = (await res.json()) as { status?: string; service?: string };
+      const body = (await res.json()) as {
+        status?: string;
+        service?: string;
+        oracleMode?: string;
+        processOracleScript?: string | null;
+      };
       expect(body.status).toBe("ok");
       expect(body.service).toBe("adventure-v2");
+      expect(body.oracleMode).toBe("synthetic");
+      expect(body.processOracleScript).toBeNull();
     } finally {
       await closeServer(server);
+    }
+  });
+
+  it("GET /health reports process oracle when ADV_V2_PROCESS_ORACLE_SCRIPT is set", async () => {
+    const envKey = "ADV_V2_PROCESS_ORACLE_SCRIPT";
+    const previous = process.env[envKey];
+    process.env[envKey] = "/some/path/oracle-fortran-bridge.mjs";
+    const coordinator = new RunCoordinator();
+    const { server, baseUrl } = await listenAdventureServer(coordinator, 0);
+    try {
+      const res = await fetch(`${baseUrl}/health`);
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        oracleMode?: string;
+        processOracleScript?: string | null;
+      };
+      expect(body.oracleMode).toBe("process");
+      expect(body.processOracleScript).toBe("oracle-fortran-bridge.mjs");
+    } finally {
+      await closeServer(server);
+      if (previous === undefined) {
+        delete process.env[envKey];
+      } else {
+        process.env[envKey] = previous;
+      }
     }
   });
 

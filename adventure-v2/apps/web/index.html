@@ -195,6 +195,12 @@
       #session-loading.session-loading-visible {
         display: flex;
       }
+      #api-shell-status {
+        margin: 0.35rem 0 0.75rem 0;
+        font-size: 0.82rem;
+        color: #8b949e;
+        line-height: 1.45;
+      }
     </style>
   </head>
   <body>
@@ -223,6 +229,7 @@
       it is <strong>not</strong> an LLM. Optional replay demo uses checkpoints + <code>POST /replay</code>.
     </p>
     <div id="run-meta">run: —</div>
+    <p id="api-shell-status">Oracle: … · SSE: … · API</p>
     <p style="margin: 0.35rem 0 0.75rem 0; font-size: 0.82rem; color: #8b949e">
       <button
         type="button"

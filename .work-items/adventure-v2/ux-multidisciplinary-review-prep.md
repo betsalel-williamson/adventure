@@ -18,7 +18,7 @@ Use this to rehearse demos and to debug “nothing looks like Adventure.” All 
 
 **Web shell (all scenarios):** second terminal: `npm run dev:web` (default API `http://127.0.0.1:8787`). Override with `VITE_API_URL=…` if the API port differs.
 
-**If the game terminal stays empty or stale:** confirm the API is running; check browser **raw SSE** panel for `(EventSource error — is the API running?)` in `main.ts`. Confirm **`#run-meta`** shows a **`runId`** after load (session bootstrap calls `POST /runs`).
+**If the game terminal stays empty or stale:** confirm the API is running; check browser **raw SSE** panel for `(EventSource error — is the API running?)` in `main.ts`. Confirm **`#run-meta`** shows a **`runId`** after load (session bootstrap calls `POST /runs`). If **`oracle_observation`** lines appear in raw SSE but not “where you’re looking,” scroll the game terminal up — legacy ordering put **`>`** after oracle at the bottom of the lane (fixed: **`submitTurn`** echoes **before** **`POST /turns`** and auto-scrolls the CRT **`pre`**).
 
 ---
 

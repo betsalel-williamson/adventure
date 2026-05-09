@@ -31,6 +31,10 @@ NL_PKG := $(NL_DIR)/package.json
 NL_LOCK := $(NL_DIR)/package-lock.json
 NL_REPORTS := $(NL_DIR)/reports/dependency-check
 
+V2_DIR := adventure-v2
+V2_PKG := $(V2_DIR)/package.json
+V2_LOCK := $(V2_DIR)/package-lock.json
+
 NPM := npm
 NPM_RUN := $(NPM) --prefix $(NL_DIR) run
 
@@ -41,6 +45,7 @@ NPM_RUN := $(NPM) --prefix $(NL_DIR) run
 	run run-classic \
 	install-nl build-nl \
 	run-nl run-autoplay run-autoplay-web run-autoplay-web-insecure \
+	adventure-v2-dev \
 	smoke smoke-build qa \
 	dependency-check dependency-check-quick
 
@@ -66,6 +71,9 @@ clean:
 $(NL_DIR)/node_modules: $(NL_PKG) $(NL_LOCK)
 	$(NPM) install --prefix $(NL_DIR) --no-audit --no-fund
 
+$(V2_DIR)/node_modules: $(V2_PKG) $(V2_LOCK)
+	$(NPM) install --prefix $(V2_DIR) --no-audit --no-fund
+
 install-nl: $(NL_DIR)/node_modules
 
 build-nl: $(NL_DIR)/node_modules
@@ -80,7 +88,11 @@ build-nl: $(NL_DIR)/node_modules
 #   make run-autoplay      — Self-acting CLI (--autoplay).
 #   make run-autoplay-web  — Local HTTPS dashboard (web:tls-init if no dev cert).
 #   make run-autoplay-web-insecure — Plain HTTP (ADVENTURE_NL_WEB_INSECURE_HTTP=1).
+#   make adventure-v2-dev — adventure-v2 API + web shell (npm run dev).
 #
+
+adventure-v2-dev: $(V2_DIR)/node_modules
+	$(NPM) --prefix $(V2_DIR) run dev
 
 run run-classic: $(TARGET)
 	./$(TARGET)

@@ -51,6 +51,14 @@ make run-autoplay-web
 Open [http://127.0.0.1:8787/](http://127.0.0.1:8787/) — see
 [`DEMO.md`](DEMO.md) for a judge-oriented walkthrough.
 
+**adventure-v2** (orchestration shell + SSE dev UI — separate from NL dashboard):
+
+```sh
+make adventure-v2-dev
+```
+
+See [`adventure-v2/README.md`](adventure-v2/README.md).
+
 ## Docs & community
 
 | Doc | Purpose |

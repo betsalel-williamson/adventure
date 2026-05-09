@@ -20,6 +20,8 @@ Code and tests now live under [`adventure-v2/`](../../adventure-v2/). **Authorit
 
 **Slice 17 (web shell modularity + UX U3–U5):** Split **`agentDiagramPanel`**, **`gameTerminalBuffer`**, **`runCheckpointsApi`**, **`shellUiPreferences`** out of **`main.ts`**; oracle-mode intro copy + stub autoplay tooltip; raw SSE toggle persisted (default off); game terminal placeholder until first **`oracle_observation`**. Plan: [`adventure-v2-slice-17-web-shell-modularity-ux.plan.md`](adventure-v2-slice-17-web-shell-modularity-ux.plan.md); close-out: [`slice-17-multidisciplinary-review.md`](slice-17-multidisciplinary-review.md).
 
+**Slice 18 (game terminal — oracle empty line):** **`gameTerminalTurnAppendFromWire`** maps SSE turns to CRT appends with **`vtChunk !== null`** semantics so whitespace-only **`oracle_observation.output`** still clears the wait banner; **`main.ts`** uses the helper. Close-out: [`slice-18-multidisciplinary-review.md`](slice-18-multidisciplinary-review.md).
+
 **UX multidisciplinary review (end-user lens):** prep artifacts, demo matrix, and **incremental work-queue steps U0–U7** — [`ux-multidisciplinary-review-prep.md`](ux-multidisciplinary-review-prep.md) (§5 registers with [plan queue index](../planning/plan-queues-index.md)).
 
 ## Requirements traceability

@@ -5,7 +5,6 @@ import {
   COGNITION_TRACE_EMPTY_PLACEHOLDER,
   formatReconcilePanel,
   formatVirtualTerminalUserEcho,
-  formatVirtualTerminalWireChunk,
   formatWireEventForTranscript,
   parseSseWirePayload
 } from "./wireDisplay.js";
@@ -13,6 +12,7 @@ import { setupAgentDiagramPanel } from "./agentDiagramPanel.js";
 import {
   appendGameTerminalVirtualLine,
   GAME_TERMINAL_AWAITING_ORACLE_PLACEHOLDER,
+  gameTerminalTurnAppendFromWire,
   type GameTerminalChunkKind
 } from "./gameTerminalBuffer.js";
 import {
@@ -38,6 +38,7 @@ const reconcileEl = document.querySelector<HTMLElement>("#reconcile");
 const checkpointsEl = document.querySelector<HTMLElement>("#checkpoints");
 const cognitionTraceEl = document.querySelector<HTMLElement>("#cognition-trace");
 const runMetaEl = document.querySelector<HTMLElement>("#run-meta");
+const apiShellStatusEl = document.querySelector<HTMLElement>("#api-shell-status");
 const commandInputEl = document.querySelector<HTMLInputElement>("#command");
 const sendBtnEl = document.querySelector<HTMLButtonElement>("#send");
 const replayDemoBtnEl = document.querySelector<HTMLButtonElement>("#replay-demo");
@@ -60,6 +61,46 @@ let autoplayRunning = false;
 
 let persistTimer: ReturnType<typeof setTimeout> | null = null;
 let uiListenersAttached = false;
+
+let healthOracleStatusLine = "Oracle: …";
+let sseConnectionStatusLine = "SSE: …";
+
+const refreshApiShellStatus = (): void => {
+  if (!apiShellStatusEl) {
+    return;
+  }
+  apiShellStatusEl.textContent = `${healthOracleStatusLine} · ${sseConnectionStatusLine} · API ${apiBase}`;
+};
+
+const loadHealthMetadata = async (): Promise<void> => {
+  try {
+    const res = await fetch(`${apiBase}/health`);
+    if (!res.ok) {
+      healthOracleStatusLine = `Oracle: GET /health failed (${res.status})`;
+      refreshApiShellStatus();
+      return;
+    }
+    const body = (await res.json()) as {
+      oracleMode?: string;
+      processOracleScript?: string | null;
+    };
+    if (body.oracleMode === "process") {
+      const hint =
+        body.processOracleScript !== undefined &&
+        body.processOracleScript !== null &&
+        body.processOracleScript.length > 0
+          ? ` · ${body.processOracleScript}`
+          : "";
+      healthOracleStatusLine = `Oracle: process${hint}`;
+    } else {
+      healthOracleStatusLine =
+        "Oracle: synthetic (expect terse mock text such as OK. — use ADV_V2_PROCESS_ORACLE_SCRIPT on the API for a real game binary)";
+    }
+  } catch {
+    healthOracleStatusLine = "Oracle: could not reach API (check VITE_API_URL and dev server)";
+  }
+  refreshApiShellStatus();
+};
 
 const showSessionLoading = (show: boolean): void => {
   if (!sessionLoadingEl) {
@@ -170,6 +211,7 @@ const appendGameTerminalLine = (line: string, chunkKind: GameTerminalChunkKind):
   awaitingOracleObservation = r.awaitingOracleObservation;
   if (gameTerminalEl) {
     gameTerminalEl.textContent = gameTerminalText;
+    gameTerminalEl.scrollTop = gameTerminalEl.scrollHeight;
   }
   schedulePersistSession();
 };
@@ -228,18 +270,16 @@ const handleWireData = (raw: string, eventType: string): void => {
   const wire = parseSseWirePayload(raw);
   if (!wire) {
     log(`[parse error] event=${eventType} raw=${raw.slice(0, 200)}…`);
+    appendGameTerminalLine(
+      `[wire] SSE event failed schema validation — enable “Show raw SSE log” for details (${eventType}).`,
+      "meta"
+    );
     return;
   }
   log(formatWireEventForTranscript(wire));
-  const vtChunk = formatVirtualTerminalWireChunk(wire);
-  if (vtChunk && wire.event === "turn") {
-    const chunkKind: GameTerminalChunkKind =
-      wire.envelope.kind === "oracle_observation"
-        ? "oracle"
-        : wire.envelope.kind === "proposal"
-          ? "proposal"
-          : "meta";
-    appendGameTerminalLine(vtChunk, chunkKind);
+  const gtAppend = gameTerminalTurnAppendFromWire(wire);
+  if (gtAppend) {
+    appendGameTerminalLine(gtAppend.line, gtAppend.chunkKind);
   }
   if (wire.event === "phase") {
     appendPhaseTimeline(formatWireEventForTranscript(wire));
@@ -273,6 +313,13 @@ const submitTurn = async (input: string): Promise<boolean> => {
   }
   setShellBusy(true);
   try {
+    /* Echo before POST: the server emits SSE (proposal + oracle) before 204, so if echo ran after
+     * await fetch the CRT lane would read [agent] · oracle · then “> cmd” — oracle sat above the
+     * scroll fold and looked “missing.” Classic order is > echo, then agent, then game text. */
+    const echo = formatVirtualTerminalUserEcho(trimmed);
+    if (echo) {
+      appendGameTerminalLine(echo, "user_echo");
+    }
     const turnRes = await fetch(`${apiBase}/runs/${runId}/turns`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -281,10 +328,6 @@ const submitTurn = async (input: string): Promise<boolean> => {
     if (!turnRes.ok) {
       log(`POST /turns failed: ${turnRes.status}`);
       return false;
-    }
-    const echo = formatVirtualTerminalUserEcho(trimmed);
-    if (echo) {
-      appendGameTerminalLine(echo, "user_echo");
     }
     log(`(rest) POST /turns → 204 input=${JSON.stringify(trimmed)}`);
     await refreshCheckpointsPanel();
@@ -372,6 +415,8 @@ const attachStreamListeners = (): void => {
     return;
   }
   source?.close();
+  sseConnectionStatusLine = "SSE: connecting…";
+  refreshApiShellStatus();
   source = new EventSource(`${apiBase}/runs/${runId}/events`);
 
   source.addEventListener("turn", (event) => {
@@ -386,7 +431,14 @@ const attachStreamListeners = (): void => {
     handleWireData((event as MessageEvent).data as string, "trace");
   });
 
-  source.onerror = () => {
+  source.onopen = (): void => {
+    sseConnectionStatusLine = "SSE: connected";
+    refreshApiShellStatus();
+  };
+
+  source.onerror = (): void => {
+    sseConnectionStatusLine = "SSE: error or closed — check API and transcript";
+    refreshApiShellStatus();
     log("(EventSource error — is the API running?)");
     source?.close();
   };
@@ -522,6 +574,7 @@ const attachUiListeners = (): void => {
     }
     applyPersistedToShell(p);
     log("(restore) reapplied local snapshot (SSE unchanged — refresh to reconnect if the run still exists)");
+    void loadHealthMetadata();
     schedulePersistSession();
   });
 };
@@ -529,7 +582,8 @@ const attachUiListeners = (): void => {
 const bootstrap = async (): Promise<void> => {
   showSessionLoading(true);
   try {
-    await setupAgentDiagramPanel();
+    refreshApiShellStatus();
+    await Promise.all([setupAgentDiagramPanel(), loadHealthMetadata()]);
     attachUiListeners();
 
     const persisted = loadPersistedSession();

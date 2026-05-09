@@ -6,10 +6,10 @@ Planned v2 runtime for benchmark-oriented adventure orchestration.
 
 - **Contracts** (`packages/contracts`): turn/reconcile/checkpoint schemas plus **HTTP/SSE wire types** (`CreateRunRequest`, `SseWireEvent`, …).
 - **Server** (`apps/server`): `RunCoordinator` with **LangGraph.js** pre-oracle cognition (`perceive` → `plan` → `act`), **`xstate`** loop policy, a **swappable oracle bridge** (synthetic default, optional **process** adapter per [oracle subprocess IPC](../docs/architecture/adventure-v2/oracle-subprocess-ipc.md)), **SSE fanout** of turn, phase, and cognition trace events, and a small **HTTP API** (`POST /runs`, `POST /runs/:id/turns`, `GET /runs/:id/events`).
-- **Web shell** (`apps/web`): Vite page that starts a run, opens SSE (`EventSource`), and provides an **interactive command** input (multi-turn **`POST /turns`**), optional **replay demo** (first checkpoint), and **stub autoplay** (deterministic command cycle, no LLM). Panels: **game terminal** (CRT-style phosphor lane), optional raw SSE log (visibility persists per browser via `shellUiPreferences`), phase, reconcile, checkpoints, **accumulated cognition trace**, **agent structure** (Mermaid: LangGraph brain + XState control). **Session:** console + side panels are **saved in `localStorage`** (debounced); on refresh a **loading overlay** runs while the shell tries **`GET /runs/:id/checkpoints`** — if the server still has that **`runId`**, the UI restores from the snapshot and **reconnects SSE**; if the run is gone (**404**), the snapshot stays visible and a **new run** starts below. **Restore saved console snapshot** reapplies the last save without reconnecting.
+- **Web shell** (`apps/web`): Vite page that starts a run, opens SSE (`EventSource`), and provides an **interactive command** input (multi-turn **`POST /turns`**), optional **replay demo** (first checkpoint), and **stub autoplay** (deterministic command cycle, no LLM). Panels: **game terminal** (`#game-terminal`, CRT-style phosphor lane — player-facing transcript), optional **raw SSE log** (debug — toggle **Show raw SSE log**; reconcile/checkpoint envelopes appear here but are not duplicated into the game terminal by design), phase, reconcile, checkpoints, **accumulated cognition trace**, **agent structure** (Mermaid: LangGraph brain + XState control). **Persisted shell snapshot:** console + side panels (including game terminal text) are **saved in `localStorage`** (debounced); on refresh a **loading overlay** runs while the shell tries **`GET /runs/:id/checkpoints`** — if the server still has that **`runId`**, the UI restores from the snapshot and **reconnects SSE**; if the run is gone (**404**), the snapshot stays visible and a **new run** starts below. **Restore saved console snapshot** reapplies the last save without reconnecting SSE (refresh to reconnect). The status line under the run header reports **oracle mode** (from **`GET /health`**) and **SSE connection** state.
 - **Tests**: Vitest contract, in-process acceptance (`tests/acceptance.test.ts`), and **HTTP acceptance** (`tests/http.acceptance.test.ts`) against a real listener on an ephemeral port.
 
-**Optional (local benchmarks):** set `ADV_V2_PROCESS_ORACLE_SCRIPT` when running `npm run dev:server` to a `.js`/`.mjs` oracle implementing the subprocess JSON line protocol in [oracle subprocess IPC](../docs/architecture/adventure-v2/oracle-subprocess-ipc.md) (typically `fixtures/oracle-stub.mjs`). **Vitest stays on the synthetic oracle** unless a test constructs `createProcessOracleBridge` explicitly.
+**Dev API oracle selection:** With no env override, `npm run dev:server` **automatically** uses [`fixtures/oracle-fortran-bridge.mjs`](fixtures/oracle-fortran-bridge.mjs) when both that file and the repo-root **`./adventure`** binary exist (after `make adventure` from the repository root). Otherwise it falls back to the **synthetic** oracle (`OK.`). Set **`ADV_V2_PROCESS_ORACLE_SCRIPT`** to force a specific subprocess oracle (see [oracle subprocess IPC](../docs/architecture/adventure-v2/oracle-subprocess-ipc.md); e.g. `fixtures/oracle-stub.mjs`). Set **`ADV_V2_DISABLE_AUTO_FORTRAN_ORACLE=1`** to force synthetic even when `./adventure` exists (also set automatically for **`npm test`** / **`npm run test:cucumber`** so acceptance tests stay deterministic).
 
 **Fortran oracle (CI + opt-in local):** GitHub Actions compiles the repo-root `./adventure` and runs `npm run test:oracle-fortran`, which drives [`fixtures/oracle-fortran-bridge.mjs`](fixtures/oracle-fortran-bridge.mjs) against that binary. Locally: `make adventure` from the repo root, then the same npm script from `adventure-v2/`. **Default `npm test` does not** run `tests/oracleFortran.ci.test.ts` (see [`vitest.config.ts`](vitest.config.ts) exclude list).
 
@@ -23,8 +23,9 @@ The web shell includes a **game terminal** lane (human-readable): echoed command
 
 | Goal | Command |
 |------|---------|
-| Default dev (synthetic oracle, no Fortran) | `npm run dev:server` |
-| Real `./adventure` subprocess via bridge | From repo root: `make adventure`, then from `adventure-v2/`: `ADV_V2_PROCESS_ORACLE_SCRIPT=fixtures/oracle-fortran-bridge.mjs npm run dev:server` |
+| Dev with real game text (when `./adventure` exists at repo root) | From repo root: `make adventure`, then from `adventure-v2/`: `npm run dev:server` — picks the Fortran bridge automatically |
+| Dev without building Fortran (synthetic `OK.` responses) | Do not build `./adventure`, or run `ADV_V2_DISABLE_AUTO_FORTRAN_ORACLE=1 npm run dev:server` |
+| Explicit subprocess oracle script | `ADV_V2_PROCESS_ORACLE_SCRIPT=fixtures/oracle-fortran-bridge.mjs npm run dev:server` (same as auto when paths exist) |
 
 CI exercises the Fortran bridge via `npm run test:oracle-fortran` after `make adventure`.
 
@@ -40,13 +41,17 @@ CI exercises the Fortran bridge via `npm run test:oracle-fortran` after `make ad
 
 **Slice 16 (CRT shell + diagrams + cognition log):** Phosphor/bezel styling around **`#game-terminal`** (VT323); **`appendCognitionTraceEntry`** keeps **plan** prompts visible alongside later **`reconcile`** traces (cap **`COGNITION_TRACE_CAP_CHARS`** in `wireDisplay.ts`). **Agent structure** panel renders **Mermaid**: LangGraph string from **`compiledBrainGraph.getGraph().drawMermaid()`** via **`npm run codegen:brain-mermaid`** → `brainGraphMermaid.generated.ts`; XState topology in **`agentDiagrams.ts`** with **`tests/agentDiagrams.test.ts`** guarding **`ControlPhase`** names. Stub autoplay runs **10** moves per click. **Dev shell:** optional **`config.cognitionProfile`** on **`POST /runs`** labels the run for benchmarks / future routing; **custom Mermaid** for LangGraph/XState can be edited and **saved in the browser** (`agentDiagramSettings.ts`) to compare agent plans without rebuilding—the **live** brain graph remains server-side until additional profiles are wired. Close-out: [`slice-16-multidisciplinary-review.md`](../.work-items/adventure-v2/slice-16-multidisciplinary-review.md).
 
+**Slice 18 (game terminal — oracle visibility):** **`gameTerminalTurnAppendFromWire`** (`gameTerminalBuffer.ts`) maps SSE **`turn`** events to CRT lines using **`vtChunk === null`** only for non-terminal kinds; **`oracle_observation`** with whitespace-only **`output`** formats to **`""`** but still appends so the wait placeholder clears. Covered in **`tests/gameTerminalBuffer.test.ts`**. Close-out: [`slice-18-multidisciplinary-review.md`](../.work-items/adventure-v2/slice-18-multidisciplinary-review.md).
+
 **Slice 8 (R3 reconcile visibility):** `ReconcileOutcome` adds optional `correlationId`, `driftSummary`, and `evidence` (oracle outcome + capped output excerpt). Oracle turn payloads include optional `outcome` (`accepted` \| `rejected` \| `transport_error`); subprocess harness failures map to `transport_error` so reconcile uses `driftClass: "unknown"` vs validation-style `parser` rejection.
 
 **Slice 9 (HTTP Gherkin):** `npm run test:cucumber` runs `@cucumber/cucumber` against `tests/features/http/*.feature` using the same HTTP+SSE helpers as `tests/http.acceptance.test.ts` (`tests/helpers/httpWire.ts`). Vitest remains the primary CI gate; Cucumber is an optional readability layer for wire scenarios.
 
 **Slice 10 (R5 on HTTP wire):** `tests/http.acceptance.test.ts` asserts invalid-action escalation (`test` and `chaos` phases on SSE) after repeated `forceReject` turns; `tests/features/http/r5_invalid_action_recovery.feature` mirrors that path in Gherkin.
 
-**Slice 11 (operational readiness):** `GET /health` returns `200` with `{ "status": "ok", "service": "adventure-v2" }` for liveness checks. JSON bodies on `POST` routes are capped at **256 KiB** (`HTTP_MAX_JSON_BODY_BYTES` in `apps/server/src/http/createServer.ts`); oversize requests get **`413`** with `{ "error": "payload_too_large", … }`. Covered in `tests/http.acceptance.test.ts`.
+**Slice 11 (operational readiness):** `GET /health` returns `200` with `{ "status": "ok", "service": "adventure-v2", "oracleMode": "synthetic" \| "process", "processOracleScript": string | null }` (`processOracleScript` is basename-only when `oracleMode` is `process`). **`oracleMode`** reflects the same resolution as the CLI: explicit **`ADV_V2_PROCESS_ORACLE_SCRIPT`**, else auto-Fortran when `./adventure` + bridge exist, else synthetic (`apps/server/src/oracle/oracleStartupConfig.ts`). JSON bodies on `POST` routes are capped at **256 KiB** (`HTTP_MAX_JSON_BODY_BYTES` in `apps/server/src/http/createServer.ts`); oversize requests get **`413`** with `{ "error": "payload_too_large", … }`. Covered in `tests/http.acceptance.test.ts`.
+
+**Shell observability (game terminal):** `tests/gameTerminalWire.integration.test.ts` asserts one synthetic-oracle turn produces CRT-mappable SSE (`[agent] …`, `OK.`). The dev shell surfaces **`GET /health`** oracle hints and SSE status in-page; schema drift that breaks `parseSseWirePayload` logs **`[parse error]`** in the raw SSE panel and appends a short **`[wire]`** line to the game terminal.
 
 ## Planned structure
 
@@ -82,7 +87,7 @@ adventure-v2/
 
 | Method | Path | Purpose |
 |--------|------|--------|
-| `GET` | `/health` | `200` `{ "status": "ok", "service": "adventure-v2" }` — liveness (no run state) |
+| `GET` | `/health` | `200` liveness JSON: `status`, `service`, **`oracleMode`** (`synthetic` \| `process`), **`processOracleScript`** (basename or `null`) — matches resolved oracle (explicit env, auto-Fortran, or synthetic) |
 | `POST` | `/runs` | Body `{ "config": RunConfig }` → `201` `{ runId, config }` |
 | `POST` | `/runs/:runId/turns` | Body `{ "input": string, "forceReject"?: boolean }` → `204` |
 | `GET` | `/runs/:runId/events` | **SSE** stream: `event: turn` / `event: phase` / `event: trace` with JSON payloads matching `SseWireEvent` |
@@ -95,13 +100,33 @@ adventure-v2/
 
 ## Local dev
 
-Terminal A — API (default port `8787`; bind `0.0.0.0`):
+This matches the **v1-style mental model**: start one stack and serve clients. The API holds **per-run session state** (`runId`) and wires each turn through cognition → **oracle / game runtime** → reconcile; browsers attach via **SSE** and **REST**.
+
+### One command (recommended)
+
+From `adventure-v2/` after `npm install`:
+
+```bash
+npm run dev
+```
+
+Starts **both** the HTTP API (default **8787**) and the web shell (**5173**). Open **http://127.0.0.1:5173**. Build the Fortran binary first if you want real room text (repository root):
+
+```bash
+make adventure
+```
+
+The API startup banner lists **Sessions / turns / SSE** routes and the resolved **game oracle** (`auto_fortran` when `./adventure` exists; otherwise synthetic).
+
+### Split processes (optional)
+
+API only (default port `8787`; bind `0.0.0.0`):
 
 ```bash
 npm run dev:server
 ```
 
-Terminal B — web shell (Vite, port `5173`):
+Web shell only (Vite, port `5173`):
 
 ```bash
 npm run dev:web
@@ -124,6 +149,26 @@ Restrict browser origins when the API and web app use different origins (comma-s
 ```bash
 ADV_V2_CORS_ORIGINS=http://127.0.0.1:5173,http://localhost:5173 npm run dev:server
 ```
+
+## Troubleshooting: game terminal looks empty
+
+Use this table before assuming a UI regression. The **game terminal** is `#game-terminal`; detailed envelopes (reconcile, checkpoint, full trace JSON) appear only under **Show raw SSE log**.
+
+| Symptom | What to check |
+|--------|----------------|
+| Nothing appears after Send | Status line: **SSE: connected**? If **error**, confirm API is running and **`VITE_API_URL`** matches the server used for **`POST /runs`**. |
+| Raw SSE shows events but CRT does not | Look for **`[parse error]`** in the raw panel — wire payload failed **`SseWireEvent`** validation; the game terminal also gets a **`[wire]`** meta line. Fix server contract or client schema. |
+| Only `OK.` or terse text | Status line **Oracle: synthetic** — build repo-root **`./adventure`** and restart the API so auto-Fortran activates, or set **`ADV_V2_PROCESS_ORACLE_SCRIPT`** explicitly (see table above). |
+| Looking for reconcile/checkpoint text | By design those **`turn`** kinds are **not** copied into the game terminal; use **raw SSE log**. |
+| Expected room text after configuring Fortran | Confirm **`ADV_V2_PROCESS_ORACLE_SCRIPT`** is set on the **API process** (`npm run dev:server`), not the Vite process. |
+
+### Manual wire check
+
+1. Start API + web (`npm run dev:server`, `npm run dev:web`).
+2. Enable **Show raw SSE log**.
+3. Send one command (e.g. `look`).
+4. In raw SSE, confirm a **`turn`** envelope with **`oracle_observation`** and a string **`output`**.
+5. In **game terminal**, confirm **`> look`**, **`[agent] look`**, then oracle text (**`OK.`** with the default synthetic oracle).
 
 ## Bootstrap plan (historical)
 

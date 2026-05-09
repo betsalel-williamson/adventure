@@ -12,6 +12,10 @@ export default defineConfig({
     }
   },
   test: {
+    /** Prevent flaky HTTP tests when repo-root `./adventure` exists locally (auto Fortran oracle). */
+    env: {
+      ADV_V2_DISABLE_AUTO_FORTRAN_ORACLE: "1"
+    },
     include: ["tests/**/*.test.ts"],
     exclude: ["tests/oracleFortran.ci.test.ts"],
     /** HTTP + SSE tests use 5s read windows; allow headroom for slow CI. */

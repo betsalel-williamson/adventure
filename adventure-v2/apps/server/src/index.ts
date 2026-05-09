@@ -10,5 +10,10 @@ export type { OracleBridge, OracleObservationInput, OracleObservationResult } fr
 export { createSyntheticOracleBridge, normalizeOracleObservation } from "./oracle/oracleBridge.js";
 export type { ProcessOracleBridgeOptions } from "./oracle/processOracleBridge.js";
 export { createProcessOracleBridge } from "./oracle/processOracleBridge.js";
+export {
+  ADV_V2_DISABLE_AUTO_FORTRAN_ORACLE_ENV,
+  healthOracleWireFields,
+  resolveOracleStartupConfig
+} from "./oracle/oracleStartupConfig.js";
 export type { WireStreamItem } from "./http/wireStream.js";
 

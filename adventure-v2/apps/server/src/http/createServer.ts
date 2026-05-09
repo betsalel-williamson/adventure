@@ -15,11 +15,14 @@ import {
   type CreateRunResponse,
   type SseWireEvent
 } from "../../../../packages/contracts/src/index.js";
+import { healthOracleWireFields } from "../oracle/oracleStartupConfig.js";
 import type { RunCoordinator } from "../run/runCoordinator.js";
 import type { WireStreamItem } from "./wireStream.js";
 
 /** Maximum bytes read for JSON request bodies (`POST` routes using `readJsonBody`). */
 export const HTTP_MAX_JSON_BODY_BYTES = 256 * 1024;
+
+export { healthOracleWireFields };
 
 /**
  * Comma-separated list of allowed browser `Origin` values. When unset or blank,
@@ -186,7 +189,11 @@ const handleHttp = async (
 
   try {
     if (route.kind === "get-health") {
-      sendJson(req, res, 200, { status: "ok", service: "adventure-v2" });
+      sendJson(req, res, 200, {
+        status: "ok",
+        service: "adventure-v2",
+        ...healthOracleWireFields()
+      });
       return;
     }
 
