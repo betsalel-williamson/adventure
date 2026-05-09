@@ -110,7 +110,7 @@ From `adventure-v2/` after `npm install`:
 npm run dev
 ```
 
-Starts **both** the HTTP API (default **8787**) and the web shell (**5173**). Open **http://127.0.0.1:5173**. Build the Fortran binary first if you want real room text (repository root):
+Starts **both** the HTTP API (default **8787**) and the web shell (**5173**). Open **http://localhost:5173** in the browser. Prefer **`localhost`** over **`127.0.0.1`** when navigating manually or with tools such as Chrome DevTools MCP — some setups only load the app reliably on `localhost`. (`curl` / **`GET /health`** can still use `127.0.0.1`.) Build the Fortran binary first if you want real room text (repository root):
 
 ```bash
 make adventure
@@ -161,6 +161,27 @@ Use this table before assuming a UI regression. The **game terminal** is `#game-
 | Only `OK.` or terse text | Status line **Oracle: synthetic** — build repo-root **`./adventure`** and restart the API so auto-Fortran activates, or set **`ADV_V2_PROCESS_ORACLE_SCRIPT`** explicitly (see table above). |
 | Looking for reconcile/checkpoint text | By design those **`turn`** kinds are **not** copied into the game terminal; use **raw SSE log**. |
 | Expected room text after configuring Fortran | Confirm **`ADV_V2_PROCESS_ORACLE_SCRIPT`** is set on the **API process** (`npm run dev:server`), not the Vite process. |
+
+### Verify `/health` matches oracle resolution
+
+[`resolveOracleStartupConfig`](apps/server/src/oracle/oracleStartupConfig.ts) and **`GET /health`** use the same logic. Quick check while the API is up:
+
+```bash
+curl -sS http://127.0.0.1:8787/health
+```
+
+| On disk | Expected `oracleMode` | Notes |
+|--------|------------------------|--------|
+| Repo-root **`./adventure`** executable exists **and** auto-disable is off | `"process"` | `processOracleScript` is the basename of the bridge (e.g. **`oracle-fortran-bridge.mjs`**) |
+| **`./adventure` missing** (or **`ADV_V2_DISABLE_AUTO_FORTRAN_ORACLE=1`**) | `"synthetic"` | `processOracleScript` is `null` |
+
+Game text from Fortran never prints in the **`npm run dev`** terminal; it appears in the browser **game terminal** after SSE `oracle_observation` events.
+
+### Autoplay vs cognition “agent”
+
+**Autoplay** in the dev shell is a **deterministic stub**: it cycles fixed commands via [`stubAutoplayPlanner.ts`](apps/web/src/stubAutoplayPlanner.ts) and does **not** call an LLM. It exercises the same **`POST /turns`** + SSE path as manual play so you can watch multi-turn output quickly.
+
+**Cognition** still runs each turn (LangGraph **`perceive` → `plan` → `act`** per architecture), but **`plan`** uses stub prompts/digests until a real **ModelAdapter** is wired. A future **LLM-driven autoplay** would be a separate feature (new planner or server endpoint), not the current button.
 
 ### Manual wire check
 

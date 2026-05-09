@@ -49,9 +49,20 @@ Ordered by impact on “does this look broken?” for a first-time operator.
 | **P0** | **Stub autoplay** sounds like “AI plays” | Expectation mismatch when commands are cyclic and non-adaptive. | `stubAutoplayPlanner.ts`, **Stub autoplay** button, README |
 | **P1** | No **model category / name** controls | Cannot reproduce v1 “try SLM vs LLM” from the shell; run meta shows labels but POST body is fixed. | `createNewRun` in `apps/web/src/main.ts` |
 | **P1** | No **explored map** or world visualization | v1 memory includes spatial/map UX; v2 only has agent Mermaid and panels. | Design § console-first + observability; no map feature |
-| **P2** | **Raw SSE** defaults to **on** | Debug-first layout overwhelms visitors; obscures the CRT game lane. | `index.html` checkbox default checked |
+| **P2** | **Raw SSE** visibility | First-time default is **off** ([`shellUiPreferences.ts`](../../adventure-v2/apps/web/src/shellUiPreferences.ts)); returning browsers may still show raw SSE if they saved prefs earlier — debug noise can still bury the game lane. | `index.html` + prefs |
 | **P2** | Many panels without hierarchy | Phase, reconcile, checkpoints, cognition trace all compete for attention before “is the loop alive?” | `index.html` structure |
 | **P2** | **Session restore** / offline API | Snapshot restore can show text while SSE is dead — message is easy to miss. | `main.ts` bootstrap + EventSource `onerror` |
+
+### 3.1 Narrative — “simple like v1” vs what shipped
+
+The uncomfortable summary for stakeholders expecting **v1’s theatre** (one clear place to watch the game, with an agent clearly “playing”):
+
+- **Job-to-be-done mismatch.** The current page is a **dev instrument panel**: wire validation, phases, reconcile, checkpoints, cognition trace, and agent Mermaid are first-class. The **game terminal** is one panel among many and does not read as “the product.” For someone whose goal is only *see Colossal Cave output while something intelligent acts*, the UI is **busy, bottom-heavy, and backwards** relative to that goal.
+- **“AI plays the game” is not what runs.** Cognition (`perceive` → `plan` → `act`) runs, but **stub autoplay** is a fixed verb cycle with **no** model-chosen strategy; it is honest in copy and `title`, yet the overall story still says “agent” and “autoplay,” which pulls mental models toward **v1-style autonomous play**. Until there is a real planner loop or a dedicated **demo mode**, comparisons to v1 will keep landing as failure.
+- **Oracle reality vs expectation.** Room prose requires the **Fortran process oracle** (repo-root `./adventure`). Default synthetic oracle produces **`OK.`**-style lines — fine for CI, thin for humans — so the **same UI** can feel “broken” or “empty” without the README-level context the operators never read.
+- **What “simple” would imply (product direction, not implemented here).** A v1-aligned slice would **invert hierarchy**: full-width game transcript first, one obvious **Oracle:** / **Mode:** strip, optional **Watch demo** that either drives real cognition-backed play or is renamed so it cannot be mistaken for an LLM; collapse observability into **Advanced** / **Debug** until expanded.
+
+That gap is **expectation and positioning**, not only missing widgets: shipping clarity requires either **narrowing the promise** (benchmark shell, not consumer demo) or **adding a deliberate “simple demo” surface** so the theatre goal has a home.
 
 ---
 
@@ -68,6 +79,8 @@ Capture answers in meeting notes; these steer the next milestone.
 ---
 
 ## 5. Work queue: incremental steps
+
+**Product note:** “Simple CRT-first, watch Adventure play” work now lives in the **Adventure v3** shard hub [`../adventure-v3/index.md`](../adventure-v3/index.md) (epics **E1–E3**, stories **US-1-1** … **US-3-1**). The **U*** steps in the table below remain **adventure-v2** shell maintenance unless folded into v3.
 
 Use this section to promote work through [`.work-items/planning/plan-queues-index.md`](../planning/plan-queues-index.md) (**Draft** → **Ready** → **Implementing**). Steps are **ordered by dependency**; later coding steps assume **decision prompts (§4)** are answered or explicitly deferred.
 

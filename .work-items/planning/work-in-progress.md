@@ -1,27 +1,25 @@
 # Work in progress (short pointer)
 
-**Update when focus shifts.** Last touched: **2026-05-09** (Slice 13 shipped snapshot)
+**Update when focus shifts.** Last touched: **2026-05-09** (v3 planning hub linked from queue index)
 
 ## Where we are right now
 
-[**Current development loop snapshot**](plan-queues-index.md#current-development-loop-snapshot) in [`plan-queues-index.md`](plan-queues-index.md) — **source of truth** for loop state, plan/slice, blocking, and “next after this.”
+[**Current development loop snapshot**](plan-queues-index.md#current-development-loop-snapshot) in [`plan-queues-index.md`](plan-queues-index.md) — **source of truth** for loop state, blocking, and queue placement.
 
-**As of last edit:** Adventure v2 **`BetweenPlans`** — **Slice 13** (LangGraph + XState + cognition trace observability) **shipped**; slices 1–13 **complete** in-tree per [`plan-queues-index.md`](plan-queues-index.md). AAB **`Implementing`** per active queue.
+## Primary direction (product)
 
-## Primary focus
+**Adventure v3** — CRT-first, game-first shell (supersedes v2 for human-facing demos). **Sharded** epics and stories: [`../adventure-v3/index.md`](../adventure-v3/index.md) · stories [`../adventure-v3/stories/index.md`](../adventure-v3/stories/index.md).
 
-Agentic Adventure Benchmarker (AAB) — LangGraph.js brain + deterministic world (XState), per pivoted PRD.
+## Concurrent engineering track
 
-## Canonical Cursor plan file
+**AAB** (LangGraph pivot) — [`Concurrently active`](plan-queues-index.md#concurrently-active-queue) in the queue index when staffed. Canonical plan: [`.cursor/plans/aab_langgraph_pivot_eb03f964.plan.md`](../../.cursor/plans/aab_langgraph_pivot_eb03f964.plan.md).
 
-[`.cursor/plans/aab_langgraph_pivot_eb03f964.plan.md`](../../.cursor/plans/aab_langgraph_pivot_eb03f964.plan.md)
+## Adventure v2 (experimental / maintenance)
 
-## Adventure v2 (secondary track)
-
-Roadmap and queues: [`plan-queues-index.md`](plan-queues-index.md). Status and finished slices: **§ Current development loop snapshot** and **Finished queue** in that file. Historical plans (examples): [slice 1 — minimal milestones](../../.cursor/plans/adventure-v2-minimal-milestones_cba1cb3e.plan.md), [slice 2 — HTTP/SSE](../../.cursor/plans/adventure-v2-slice-2-http-sse_f4a2b91c.plan.md). Code: [`adventure-v2/`](../../adventure-v2/) (`npm test`). When a slice is green and uncommitted, list it under **Awaiting commit / HIL gate** in the index.
+Orchestration shell and slices 1–18 close-outs — [`adventure-v2/`](../../adventure-v2/), queues in [`plan-queues-index.md`](plan-queues-index.md). Not the primary track for “watch Adventure play” UX; see [`../adventure-v3/lessons-from-v2.md`](../adventure-v3/lessons-from-v2.md).
 
 ## Queue roster
 
-Maintain lifecycle queues and loop snapshot in [`plan-queues-index.md`](plan-queues-index.md).
+Lifecycle queues and `.cursor/plans` inventory: [`plan-queues-index.md`](plan-queues-index.md). **Planning hubs** table at top of that file lists this index + v3 + v2.
 
-This file intentionally stays short; detailed status and inventories live there.
+This file stays short; detail lives in the queue index and v3 shards.

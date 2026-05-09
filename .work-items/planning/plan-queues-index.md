@@ -1,30 +1,37 @@
 # Plan queue index (adventure repo)
 
-Track Cursor implementation plans (`*.plan.md`) and related copies under `.work-items/` by lifecycle queue.
+Track Cursor implementation plans (`*.plan.md`) and lifecycle queues for work under `.work-items/`.
 
-- **Inventory** at the bottom is authoritative for “what exists.”
-- **Queues** are editable; move rows when status changes. **Finished** entries are a **best-effort audit** — confirm before archiving.
+- **Inventory** at the bottom lists `.cursor/plans/*.plan.md` (best-effort **mtime** sort).
+- **Queues** are editable; move rows when status changes. **Finished** is an audit trail — verify before treating as archival truth.
 
-Convention: paths below are repo-relative (`adventure/` root).
+Paths are repo-relative (`adventure/` root).
+
+---
+
+## Planning hubs (where to read first)
+
+| Hub | Purpose |
+| --- | --- |
+| **This file** | Loop snapshot, Draft / Ready / Active / Finished / Revisit queues |
+| **[`../adventure-v3/index.md`](../adventure-v3/index.md)** | **Adventure v3** — sharded [lessons, epics, user stories](https://docs.bmad-method.org/how-to/shard-large-documents/) (CRT-first product direction; v2 superseded for human-facing demo) |
+| **[`../adventure-v2/`](../adventure-v2/)** | adventure-v2 slice reviews, design copies — **experimental orchestration shell**, still in-repo |
 
 ---
 
 ## Current development loop snapshot
 
-**Keep this row honest when focus changes** (starting a session or closing one). Goal: glance here and always know whether you’re implementing, gated on a human commit, blocked, or between plans.
+**Refresh when focus changes** (session start/end).
 
 | Field | Value |
-|--------|--------|
+| --- | --- |
 | **Loop state** | `BetweenPlans` |
-| **Plan / slice** | **Slice 18** (game terminal oracle visibility — empty formatted line): [`slice-18-multidisciplinary-review.md`](../adventure-v2/slice-18-multidisciplinary-review.md). Prior **slice 17** (web shell modularity, UX U3–U5): [`slice-17-multidisciplinary-review.md`](../adventure-v2/slice-17-multidisciplinary-review.md); **slice 16** (CRT shell, Mermaid, cognition trace): [`slice-16-multidisciplinary-review.md`](../adventure-v2/slice-16-multidisciplinary-review.md); **slice 15**–**14**; **slice 13** (LangGraph + XState); **slice 12** (CORS); slice **7** (Fortran oracle CI): [`.github/workflows/adventure-v2.yml`](../../.github/workflows/adventure-v2.yml). |
+| **Primary direction** | **Adventure v3** — sharded backlog [`../adventure-v3/index.md`](../adventure-v3/index.md); implement **[`../adventure-v3/stories/index.md`](../adventure-v3/stories/index.md)** order (**US-1-1** → **US-3-1**). |
+| **Secondary tracks** | **AAB** LangGraph pivot — [`Implementing`](#concurrently-active-queue). **Adventure v2** — maintenance / slice close-out only (e.g. [`slice-18-multidisciplinary-review.md`](../adventure-v2/slice-18-multidisciplinary-review.md)); not the path for “simple game-first” UX (see [`lessons-from-v2.md`](../adventure-v3/lessons-from-v2.md)). |
 | **Blocking** | _(none)_ |
-| **Next after this** | README **Not yet** (further hardening: auth, rate limits, TLS termination; Playwright for `apps/web` when justified); optional **LangGraph checkpointer** vs **`CheckpointRegistry`**; **ModelAdapter** / real SLM in **`plan`**. |
+| **Next after v3 MLP** | Per [`../adventure-v3/deferred.md`](../adventure-v3/deferred.md); v2 **README Not yet** items (auth, TLS, Playwright, …) remain backlog unless reprioritized. |
 
-**Process:** Implement **Adventure v2** one increment at a time. **Slice 1** ([minimal milestones](../../.cursor/plans/adventure-v2-minimal-milestones_cba1cb3e.plan.md) M1–M8) through **slice 13** are **complete** in-tree; slice 7 wires **Fortran subprocess oracle** validation into CI; slice 8 deepens **R3** fields on the wire; slice 9 adds **Cucumber HTTP** scenarios in CI; slice 10 adds **R5** HTTP wire + Gherkin ([`slice-10-multidisciplinary-review.md`](../adventure-v2/slice-10-multidisciplinary-review.md)); slice 11 adds **`GET /health`**, **POST body size limit**, and design/README alignment ([`slice-11-multidisciplinary-review.md`](../adventure-v2/slice-11-multidisciplinary-review.md)); slice 12 adds **env-driven CORS allowlist** ([`slice-12-multidisciplinary-review.md`](../adventure-v2/slice-12-multidisciplinary-review.md)); slice 13 adds **LangGraph + xstate + trace fields** ([`slice-13-multidisciplinary-review.md`](../adventure-v2/slice-13-multidisciplinary-review.md), [`adventure-v2-slice-13-langgraph-xstate.plan.md`](../adventure-v2/adventure-v2-slice-13-langgraph-xstate.plan.md)); slice **14** interactive shell + prompts ([`slice-14-multidisciplinary-review.md`](../adventure-v2/slice-14-multidisciplinary-review.md)); slice **15** virtual terminal lane ([`slice-15-multidisciplinary-review.md`](../adventure-v2/slice-15-multidisciplinary-review.md)); slice **16** CRT + diagrams + cognition log ([`slice-16-multidisciplinary-review.md`](../adventure-v2/slice-16-multidisciplinary-review.md)).
-
-*Other staffed work:* AAB LangGraph Pivot — **`Implementing`** (see [**Concurrently active**](#concurrently-active-queue)).
-
-*Template when you reset:* set **Loop state** from the vocabulary; **Plan / slice** = `.cursor/plans/*.plan.md` + milestone or PR; **Blocking** / **Next after this** explicit.
+*v2 slice history (1–17 shipped):* see [**Finished queue**](#finished-queue) — exhaustive paragraph removed in favor of indexed slice reviews under [`../adventure-v2/`](../adventure-v2/).
 
 ---
 
@@ -64,9 +71,10 @@ Slices that are **green** and awaiting **human review + version-control commit**
 
 **Loop state:** `Ready` — next up once promoted; dependencies clear.
 
-- **AAB** — follow phased delivery in [`.cursor/plans/aab_langgraph_pivot_eb03f964.plan.md`](../../.cursor/plans/aab_langgraph_pivot_eb03f964.plan.md) after world+XState scaffold exists (first todo: `world-xstate-schema`).
-- **Adventure v2 (post–slice 15)** — follow README **Not yet** and planning snapshot **Next after this**.
-- **Adventure v2 UX review follow-through** — **U3–U5** shipped in slice 17 ([`slice-17-multidisciplinary-review.md`](../adventure-v2/slice-17-multidisciplinary-review.md)); remaining prep steps **U1–U2** (session + outcomes doc), **U6–U7** in [`.work-items/adventure-v2/ux-multidisciplinary-review-prep.md`](../adventure-v2/ux-multidisciplinary-review-prep.md) §5; **U6** blocked until ModelAdapter / run config is honored server-side.
+- **Adventure v3 (product)** — Epic/story backlog is **sharded**: start at [`../adventure-v3/index.md`](../adventure-v3/index.md). Execution order: [`../adventure-v3/stories/index.md`](../adventure-v3/stories/index.md). Guideline: [`../../guidelines/adventure-v3/orchestration-before-playability.md`](../../guidelines/adventure-v3/orchestration-before-playability.md).
+- **Adventure v2 (maintenance)** — README **Not yet** and residual UX prep (**U1–U2** outcomes, **U6–U7** in [`ux-multidisciplinary-review-prep.md`](../adventure-v2/ux-multidisciplinary-review-prep.md) §5). **Secondary** to v3 for demo-facing work; **U6** blocked until ModelAdapter / run config is honored server-side.
+
+_(**AAB** is listed under [Concurrently active](#concurrently-active-queue) while staffed — avoid duplicating it here.)_
 
 ---
 
