@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 import {
   listCheckpointsResponseSchema,
   postReplayRequestSchema,
@@ -8,11 +10,19 @@ import {
 } from "../packages/contracts/src/index.js";
 import {
   RunCoordinator,
+  createProcessOracleBridge,
   createSyntheticOracleBridge,
   listenAdventureServer,
   type OracleBridge
 } from "../apps/server/src/index.js";
 import { createRunConfig } from "./steps/runSteps.js";
+
+const oracleStubPath = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "fixtures",
+  "oracle-stub.mjs"
+);
 
 const readSseUntilCount = async (
   res: globalThis.Response,
@@ -122,6 +132,42 @@ describe("HTTP API + SSE", () => {
       expect(oracleEnvelope).toBeDefined();
       const payload = oracleEnvelope!.envelope.payload as { output?: string };
       expect(payload.output).toBe("INJECTED-ORACLE-OUTPUT");
+    } finally {
+      await new Promise<void>((resolve, reject) => {
+        server.close((err) => (err ? reject(err) : resolve()));
+      });
+    }
+  });
+
+  it("propagates process oracle stub output on SSE without changing routes", async () => {
+    const coordinator = new RunCoordinator(
+      createProcessOracleBridge({ command: process.execPath, args: [oracleStubPath] })
+    );
+    const { server, baseUrl } = await listenAdventureServer(coordinator, 0);
+    try {
+      const start = await fetch(`${baseUrl}/runs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ config: createRunConfig("SLM") })
+      });
+      const { runId } = (await start.json()) as { runId: string };
+
+      const sseRes = await fetch(`${baseUrl}/runs/${runId}/events`);
+      const readPromise = readSseUntilCount(sseRes, 6);
+      await fetch(`${baseUrl}/runs/${runId}/turns`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ input: "__PROCESS_ORACLE_LINE__" })
+      });
+      const wire = await readPromise;
+
+      const oracleEnvelope = wire.find(
+        (w): w is Extract<SseWireEvent, { event: "turn" }> =>
+          w.event === "turn" && w.envelope.kind === "oracle_observation"
+      );
+      expect(oracleEnvelope).toBeDefined();
+      const payload = oracleEnvelope!.envelope.payload as { output?: string };
+      expect(payload.output).toBe("PROCESS-ORACLE-STUB-LINE");
     } finally {
       await new Promise<void>((resolve, reject) => {
         server.close((err) => (err ? reject(err) : resolve()));

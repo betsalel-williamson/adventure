@@ -10,5 +10,5 @@
 
 - `src/http/` routes and SSE handlers.
 - `src/run/` run coordinator and sequence assignment.
-- `src/oracle/` external process bridge adapter.
+- `src/oracle/` synthetic default, `createProcessOracleBridge` (subprocess JSON line protocol — see `docs/architecture/adventure-v2/oracle-subprocess-ipc.md`).
 - `src/replay/` checkpoint registry and replay entrypoints.

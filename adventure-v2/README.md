@@ -5,11 +5,11 @@ Planned v2 runtime for benchmark-oriented adventure orchestration.
 ## Scope in this phase
 
 - **Contracts** (`packages/contracts`): turn/reconcile/checkpoint schemas plus **HTTP/SSE wire types** (`CreateRunRequest`, `SseWireEvent`, …).
-- **Server** (`apps/server`): `RunCoordinator` with a **swappable oracle bridge** (synthetic default), **SSE fanout** of turn + phase events, and a small **HTTP API** (`POST /runs`, `POST /runs/:id/turns`, `GET /runs/:id/events`).
+- **Server** (`apps/server`): `RunCoordinator` with a **swappable oracle bridge** (synthetic default, optional **process** adapter per [oracle subprocess IPC](../docs/architecture/adventure-v2/oracle-subprocess-ipc.md)), **SSE fanout** of turn + phase events, and a small **HTTP API** (`POST /runs`, `POST /runs/:id/turns`, `GET /runs/:id/events`).
 - **Web shell** (`apps/web`): minimal Vite page that starts a run, issues a sample turn, and reads the SSE stream (`EventSource`).
 - **Tests**: Vitest contract, in-process acceptance (`tests/acceptance.test.ts`), and **HTTP acceptance** (`tests/http.acceptance.test.ts`) against a real listener on an ephemeral port.
 
-**Not yet:** real external oracle process bridge, production deployment hardening.
+**Optional (local benchmarks):** set `ADV_V2_PROCESS_ORACLE_SCRIPT` when running `npm run dev:server` to a `.js`/`.mjs` oracle implementing the subprocess JSON line protocol in [oracle subprocess IPC](../docs/architecture/adventure-v2/oracle-subprocess-ipc.md) (typically `fixtures/oracle-stub.mjs`). **Vitest stays on the synthetic oracle** unless a test constructs `createProcessOracleBridge` explicitly. **Not yet:** production deployment hardening; wiring the legacy Fortran executable as the subprocess oracle in CI unless added later as a deliberate target.
 
 ### Cucumber / Gherkin CLI
 
@@ -75,6 +75,12 @@ Point the UI at a different API origin if needed:
 
 ```bash
 VITE_API_URL=http://127.0.0.1:9999 npm run dev:web
+```
+
+Optional process oracle for the HTTP server (`cwd` should be `adventure-v2` so relative paths resolve):
+
+```bash
+ADV_V2_PROCESS_ORACLE_SCRIPT=fixtures/oracle-stub.mjs npm run dev:server
 ```
 
 ## Bootstrap plan (historical)

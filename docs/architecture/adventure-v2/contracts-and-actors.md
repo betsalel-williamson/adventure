@@ -30,6 +30,8 @@ replay, session lifecycle) are documented as actor sequence diagrams in
 - `confidenceAfter`: number (0..1)
 - `nextPolicy`: `"continue" | "test" | "chaos"`
 
+An optional **subprocess oracle** implementing the bridge observation contract is specified in [oracle-subprocess-ipc.md](./oracle-subprocess-ipc.md).
+
 ### Checkpoint contract (`CheckpointRef`)
 
 - `checkpointId`: string

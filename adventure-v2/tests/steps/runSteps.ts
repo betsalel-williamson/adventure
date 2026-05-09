@@ -1,5 +1,5 @@
 import type { ModelCategory, RunConfig } from "../../packages/contracts/src/index.js";
-import { RunCoordinator } from "../../apps/server/src/index.js";
+import { RunCoordinator, type OracleBridge } from "../../apps/server/src/index.js";
 
 export type RunWorld = {
   coordinator: RunCoordinator;
@@ -14,8 +14,11 @@ export const createRunConfig = (modelCategory: ModelCategory): RunConfig => ({
   seed: 42
 });
 
-export const givenStartedRun = (modelCategory: ModelCategory = "SLM"): RunWorld => {
-  const coordinator = new RunCoordinator();
+export const givenStartedRun = (
+  modelCategory: ModelCategory = "SLM",
+  oracle?: OracleBridge
+): RunWorld => {
+  const coordinator = oracle !== undefined ? new RunCoordinator(oracle) : new RunCoordinator();
   const { runId } = coordinator.startRun(createRunConfig(modelCategory));
   return { coordinator, runId };
 };
