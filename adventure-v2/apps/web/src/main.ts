@@ -1,10 +1,11 @@
 /// <reference types="vite/client" />
 
 import {
+  formatCognitionTracePanel,
   formatReconcilePanel,
   formatWireEventForTranscript,
   parseSseWirePayload
-} from "./wireDisplay";
+} from "./wireDisplay.js";
 
 const apiBase: string = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8787";
 
@@ -13,6 +14,7 @@ const phaseCurrentEl = document.querySelector<HTMLElement>("#phase-current");
 const phaseTimelineEl = document.querySelector<HTMLElement>("#phase-timeline");
 const reconcileEl = document.querySelector<HTMLElement>("#reconcile");
 const checkpointsEl = document.querySelector<HTMLElement>("#checkpoints");
+const cognitionTraceEl = document.querySelector<HTMLElement>("#cognition-trace");
 const runMetaEl = document.querySelector<HTMLElement>("#run-meta");
 
 const log = (line: string): void => {
@@ -86,6 +88,9 @@ const run = async (): Promise<void> => {
         reconcileEl.textContent = block;
       }
     }
+    if (wire.event === "trace" && cognitionTraceEl) {
+      cognitionTraceEl.textContent = formatCognitionTracePanel(wire.trace);
+    }
   };
 
   source.addEventListener("turn", (event) => {
@@ -94,6 +99,10 @@ const run = async (): Promise<void> => {
 
   source.addEventListener("phase", (event) => {
     handleWireData((event as MessageEvent).data as string, "phase");
+  });
+
+  source.addEventListener("trace", (event) => {
+    handleWireData((event as MessageEvent).data as string, "trace");
   });
 
   source.onerror = () => {

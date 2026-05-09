@@ -62,9 +62,27 @@ export const ssePhaseEventSchema = z.object({
   transition: phaseTransitionWireSchema
 });
 
+export const cognitionTraceWireSchema = z.object({
+  runId: z.string().min(1),
+  turnId: z.string().min(1),
+  sequence: z.number().int().nonnegative(),
+  nodeId: z.string().min(1),
+  label: z.string().min(1),
+  ts: z.string().min(1),
+  payload: z.record(z.unknown())
+});
+
+export type CognitionTraceWire = z.infer<typeof cognitionTraceWireSchema>;
+
+export const sseTraceEventSchema = z.object({
+  event: z.literal("trace"),
+  trace: cognitionTraceWireSchema
+});
+
 export const sseWireEventSchema = z.discriminatedUnion("event", [
   sseTurnEventSchema,
-  ssePhaseEventSchema
+  ssePhaseEventSchema,
+  sseTraceEventSchema
 ]);
 
 export type SseWireEvent = z.infer<typeof sseWireEventSchema>;

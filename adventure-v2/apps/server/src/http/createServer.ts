@@ -60,6 +60,9 @@ const wireItemToSse = (item: WireStreamItem): SseWireEvent => {
   if (item.type === "turn") {
     return { event: "turn", envelope: item.envelope };
   }
+  if (item.type === "trace") {
+    return { event: "trace", trace: item.trace };
+  }
   return {
     event: "phase",
     transition: item.transition

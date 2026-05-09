@@ -2,6 +2,7 @@ import {
   checkpointRefSchema,
   reconcileOutcomeSchema,
   sseWireEventSchema,
+  type CognitionTraceWire,
   type PhaseTransitionWire,
   type SseWireEvent,
   type TurnEnvelope
@@ -20,6 +21,9 @@ export const parseSseWirePayload = (raw: string): SseWireEvent | null => {
 
 export const formatPhaseTransitionLine = (t: PhaseTransitionWire): string =>
   `[phase] ${t.from} → ${t.to} · ${t.reason} · seq=${t.sequence} · ${t.ts}`;
+
+export const formatCognitionTraceLine = (trace: CognitionTraceWire): string =>
+  `[trace:${trace.nodeId}] seq=${trace.sequence} · ${trace.label} · payload=${JSON.stringify(trace.payload)} · ${trace.ts}`;
 
 export const formatTurnTranscriptLine = (env: TurnEnvelope): string => {
   const head = `[turn:${env.kind}] seq=${env.sequence} · ${env.source}`;
@@ -57,10 +61,25 @@ export const formatTurnTranscriptLine = (env: TurnEnvelope): string => {
   }
 };
 
-export const formatWireEventForTranscript = (wire: SseWireEvent): string =>
-  wire.event === "turn"
-    ? formatTurnTranscriptLine(wire.envelope)
-    : formatPhaseTransitionLine(wire.transition);
+export const formatWireEventForTranscript = (wire: SseWireEvent): string => {
+  if (wire.event === "turn") {
+    return formatTurnTranscriptLine(wire.envelope);
+  }
+  if (wire.event === "trace") {
+    return formatCognitionTraceLine(wire.trace);
+  }
+  return formatPhaseTransitionLine(wire.transition);
+};
+
+export const formatCognitionTracePanel = (trace: CognitionTraceWire): string =>
+  [
+    "Latest cognition trace",
+    `  nodeId:   ${trace.nodeId}`,
+    `  label:    ${trace.label}`,
+    `  turnId:   ${trace.turnId}`,
+    `  sequence: ${trace.sequence}`,
+    `  payload:  ${JSON.stringify(trace.payload)}`
+  ].join("\n");
 
 export const formatReconcilePanel = (env: TurnEnvelope): string | null => {
   if (env.kind !== "reconcile") {

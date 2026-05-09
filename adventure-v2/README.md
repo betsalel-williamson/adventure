@@ -5,8 +5,8 @@ Planned v2 runtime for benchmark-oriented adventure orchestration.
 ## Scope in this phase
 
 - **Contracts** (`packages/contracts`): turn/reconcile/checkpoint schemas plus **HTTP/SSE wire types** (`CreateRunRequest`, `SseWireEvent`, …).
-- **Server** (`apps/server`): `RunCoordinator` with a **swappable oracle bridge** (synthetic default, optional **process** adapter per [oracle subprocess IPC](../docs/architecture/adventure-v2/oracle-subprocess-ipc.md)), **SSE fanout** of turn + phase events, and a small **HTTP API** (`POST /runs`, `POST /runs/:id/turns`, `GET /runs/:id/events`).
-- **Web shell** (`apps/web`): minimal Vite page that starts a run, issues a sample turn, and reads the SSE stream (`EventSource`).
+- **Server** (`apps/server`): `RunCoordinator` with a **swappable oracle bridge** (synthetic default, optional **process** adapter per [oracle subprocess IPC](../docs/architecture/adventure-v2/oracle-subprocess-ipc.md)), **SSE fanout** of turn, phase, and cognition trace events, and a small **HTTP API** (`POST /runs`, `POST /runs/:id/turns`, `GET /runs/:id/events`).
+- **Web shell** (`apps/web`): minimal Vite page that starts a run, issues a sample turn, and reads the SSE stream (`EventSource`) into transcript, phase, reconcile, checkpoint, and cognition trace panels.
 - **Tests**: Vitest contract, in-process acceptance (`tests/acceptance.test.ts`), and **HTTP acceptance** (`tests/http.acceptance.test.ts`) against a real listener on an ephemeral port.
 
 **Optional (local benchmarks):** set `ADV_V2_PROCESS_ORACLE_SCRIPT` when running `npm run dev:server` to a `.js`/`.mjs` oracle implementing the subprocess JSON line protocol in [oracle subprocess IPC](../docs/architecture/adventure-v2/oracle-subprocess-ipc.md) (typically `fixtures/oracle-stub.mjs`). **Vitest stays on the synthetic oracle** unless a test constructs `createProcessOracleBridge` explicitly. **Not yet:** production deployment hardening; wiring the legacy Fortran executable as the subprocess oracle in CI unless added later as a deliberate target.
@@ -47,7 +47,7 @@ adventure-v2/
 |--------|------|--------|
 | `POST` | `/runs` | Body `{ "config": RunConfig }` → `201` `{ runId, config }` |
 | `POST` | `/runs/:runId/turns` | Body `{ "input": string, "forceReject"?: boolean }` → `204` |
-| `GET` | `/runs/:runId/events` | **SSE** stream: `event: turn` / `event: phase` with JSON payloads matching `SseWireEvent` |
+| `GET` | `/runs/:runId/events` | **SSE** stream: `event: turn` / `event: phase` / `event: trace` with JSON payloads matching `SseWireEvent` |
 | `GET` | `/runs/:runId/checkpoints` | `200` JSON array of `CheckpointRef` (empty until at least one turn completes) |
 | `POST` | `/runs/:runId/replay` | Body `{ "checkpointId": string }` → `200` `{ ReplayRestorePayload }`; `404` `{ "error":"not_found" }` if the id is unknown or not for this run |
 
@@ -99,7 +99,7 @@ ADV_V2_PROCESS_ORACLE_SCRIPT=fixtures/oracle-stub.mjs npm run dev:server
 | In-process acceptance | `tests/acceptance.test.ts`, `tests/steps/runSteps.ts` | R1–R5 behaviors via `RunCoordinator` without HTTP. |
 | HTTP + SSE | `tests/http.acceptance.test.ts` | Same contracts over a real listener on an ephemeral port; matches what the web shell uses. |
 | Oracle subprocess | `tests/oracleProcess.test.ts` | `createProcessOracleBridge` + `fixtures/oracle-stub.mjs`. |
-| Web helpers | `tests/wireDisplay.test.ts` | Pure parse/format helpers from `apps/web` (Node environment; no DOM). |
+| Web helpers | `tests/wireDisplay.test.ts` | Pure parse/format helpers for transcript, reconcile, and cognition trace panels from `apps/web` (Node environment; no DOM). |
 
 **Gherkin feature files** (`tests/features/*.feature`) are the **behavioral spec reference** for R1–R5. They are **not** executed by Cucumber in CI today. `acceptance.test.ts` includes a smoke test that the files exist and contain expected keywords, and scenario-level requirements are implemented as Vitest examples. This keeps a single runner while preserving readable scenarios for humans.
 

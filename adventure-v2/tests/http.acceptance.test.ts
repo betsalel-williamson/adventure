@@ -68,7 +68,7 @@ describe("HTTP API + SSE", () => {
       const sseRes = await fetch(`${baseUrl}/runs/${runId}/events`);
       expect(sseRes.ok).toBe(true);
 
-      const readPromise = readSseUntilCount(sseRes, 6);
+      const readPromise = readSseUntilCount(sseRes, 7);
 
       const turn = await fetch(`${baseUrl}/runs/${runId}/turns`, {
         method: "POST",
@@ -88,6 +88,19 @@ describe("HTTP API + SSE", () => {
         .filter((w): w is Extract<SseWireEvent, { event: "phase" }> => w.event === "phase")
         .map((w) => w.transition.to);
       expect(phases).toEqual(["disorder", "act"]);
+
+      const trace = wire.find(
+        (w): w is Extract<SseWireEvent, { event: "trace" }> => w.event === "trace"
+      );
+      expect(trace).toBeDefined();
+      expect(trace!.trace).toMatchObject({
+        runId,
+        turnId: `${runId}:turn:1`,
+        sequence: 1,
+        nodeId: "proposal",
+        label: "Proposal drafted",
+        payload: { action: "look" }
+      });
     } finally {
       await closeServer(server);
     }

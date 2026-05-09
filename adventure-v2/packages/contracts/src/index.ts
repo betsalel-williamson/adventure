@@ -15,17 +15,20 @@ export {
 export type { CheckpointRef, ReplayRestorePayload } from "./checkpoints/checkpoint.js";
 
 export {
+  cognitionTraceWireSchema,
   controlPhaseWireSchema,
   createRunRequestSchema,
   createRunResponseSchema,
   phaseTransitionWireSchema,
   postTurnRequestSchema,
   ssePhaseEventSchema,
+  sseTraceEventSchema,
   sseTurnEventSchema,
   sseWireEventSchema
 } from "./http/wire.js";
 
 export type {
+  CognitionTraceWire,
   ControlPhaseWire,
   CreateRunRequest,
   CreateRunResponse,

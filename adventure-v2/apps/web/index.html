@@ -68,14 +68,11 @@
         margin-bottom: 0.5rem;
       }
       #reconcile,
-      #checkpoints {
+      #checkpoints,
+      #cognition-trace {
         white-space: pre-wrap;
         max-height: 14rem;
         overflow: auto;
-        font-size: 0.82rem;
-      }
-      #actors-placeholder {
-        color: #8b949e;
         font-size: 0.82rem;
       }
     </style>
@@ -109,10 +106,8 @@
     </div>
 
     <div class="panel" style="margin-top: 1rem">
-      <h2>LangGraph / actors</h2>
-      <p id="actors-placeholder">
-        Graph-shaped actor trace is not wired in this slice — see <code>packages/cognition</code> for the pipeline seam.
-      </p>
+      <h2>cognition trace</h2>
+      <pre id="cognition-trace">(no cognition trace yet)</pre>
     </div>
 
     <script type="module" src="/src/main.ts"></script>

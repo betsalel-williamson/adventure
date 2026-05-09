@@ -1,5 +1,6 @@
 import type {
   CheckpointRef,
+  CognitionTraceWire,
   ReplayRestorePayload,
   RunConfig,
   TurnEnvelope
@@ -117,6 +118,17 @@ export class RunCoordinator {
     };
     run.events.push(proposal);
     this.emitStream(runId, { type: "turn", envelope: proposal });
+
+    const proposalTrace: CognitionTraceWire = {
+      runId,
+      turnId,
+      sequence,
+      nodeId: "proposal",
+      label: "Proposal drafted",
+      ts: now(),
+      payload: { action: input }
+    };
+    this.emitStream(runId, { type: "trace", trace: proposalTrace });
 
     const obs = this.oracle.observe({
       runId,

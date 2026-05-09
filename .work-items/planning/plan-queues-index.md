@@ -15,9 +15,9 @@ Convention: paths below are repo-relative (`adventure/` root).
 
 | Field | Value |
 |--------|--------|
-| **Loop state** | `Implementing` |
-| **Plan / slice** | **Slice 6** — R4 cognition trace on SSE + web ([adventure-v2-slice-6-r4-cognition-trace](../adventure-v2/adventure-v2-slice-6-r4-cognition-trace.plan.md)). **Slice 5** (structured R4 panels: [`wireDisplay.ts`](../../adventure-v2/apps/web/src/wireDisplay.ts)) **complete**; Vitest stack documented in [adventure-v2/README](../../adventure-v2/README.md). **Slices 1–4** unchanged below ([`createServer.ts`](../../adventure-v2/apps/server/src/http/createServer.ts), process oracle, etc.). |
-| **Blocking** | none |
+| **Loop state** | `AwaitingHILCommit` |
+| **Plan / slice** | **Slice 6** — R4 cognition trace on SSE + web ([adventure-v2-slice-6-r4-cognition-trace](../adventure-v2/adventure-v2-slice-6-r4-cognition-trace.plan.md)) is green locally (`cd adventure-v2 && npm test`). **Slice 5** (structured R4 panels: [`wireDisplay.ts`](../../adventure-v2/apps/web/src/wireDisplay.ts)) **complete**; Vitest stack documented in [adventure-v2/README](../../adventure-v2/README.md). **Slices 1–4** unchanged below ([`createServer.ts`](../../adventure-v2/apps/server/src/http/createServer.ts), process oracle, etc.). |
+| **Blocking** | human review + version-control commit |
 | **Next after this** | Richer SSE payloads, Fortran oracle in CI, optional Cucumber runner (see [adventure-v2 README](../../adventure-v2/README.md)) |
 
 **Process:** Implement **Adventure v2** one increment at a time. **Slice 1** ([minimal milestones](../../.cursor/plans/adventure-v2-minimal-milestones_cba1cb3e.plan.md) M1–M8) and **slices 2–5** are **complete** in-tree; **slice 6** adds **cognition-shaped trace** visibility on the existing wire.
@@ -48,7 +48,7 @@ Convention: paths below are repo-relative (`adventure/` root).
 
 Slices that are **green** and awaiting **human review + version-control commit**. Remove the row once committed (or bump back to Implementing if review requests changes).
 
-- _(vacant)_
+- **Adventure v2 — slice 6** (R4 cognition trace) — green locally; awaiting human review + commit.
 
 ---
 
@@ -73,7 +73,6 @@ Slices that are **green** and awaiting **human review + version-control commit**
 
 **Loop state:** `Implementing`. Explicitly staffed **this cycle** — keep short; if you stall, move snapshot to `Blocked` or `AwaitingHILCommit` and shrink this list accordingly.
 
-- **Adventure v2 — slice 6** (R4 cognition trace) — [adventure-v2-slice-6-r4-cognition-trace](../adventure-v2/adventure-v2-slice-6-r4-cognition-trace.plan.md)
 - [`.cursor/plans/aab_langgraph_pivot_eb03f964.plan.md`](../../.cursor/plans/aab_langgraph_pivot_eb03f964.plan.md) — **AAB LangGraph Pivot**
 
 ---

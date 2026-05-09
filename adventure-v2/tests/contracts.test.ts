@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  cognitionTraceWireSchema,
   checkpointRefSchema,
   listCheckpointsResponseSchema,
   postReplayRequestSchema,
@@ -124,6 +125,28 @@ describe("contracts", () => {
     expect(phaseEv.event).toBe("phase");
     if (phaseEv.event === "phase") {
       expect(phaseEv.transition.to).toBe("disorder");
+    }
+  });
+
+  it("parses SSE wire cognition trace events", () => {
+    const trace = cognitionTraceWireSchema.parse({
+      runId: "run-1",
+      turnId: "t-1",
+      sequence: 1,
+      nodeId: "proposal",
+      label: "Proposal drafted",
+      ts: new Date().toISOString(),
+      payload: { action: "look" }
+    });
+    expect(trace.nodeId).toBe("proposal");
+
+    const traceEv = sseWireEventSchema.parse({
+      event: "trace",
+      trace
+    });
+    expect(traceEv.event).toBe("trace");
+    if (traceEv.event === "trace") {
+      expect(traceEv.trace.label).toBe("Proposal drafted");
     }
   });
 });
