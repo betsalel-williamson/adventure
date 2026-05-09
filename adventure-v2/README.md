@@ -17,7 +17,7 @@ Planned v2 runtime for benchmark-oriented adventure orchestration.
 
 **Slice 8 (R3 reconcile visibility):** `ReconcileOutcome` adds optional `correlationId`, `driftSummary`, and `evidence` (oracle outcome + capped output excerpt). Oracle turn payloads include optional `outcome` (`accepted` \| `rejected` \| `transport_error`); subprocess harness failures map to `transport_error` so reconcile uses `driftClass: "unknown"` vs validation-style `parser` rejection.
 
-**Scheduled follow-ons (incremental PRs):** optional `@cucumber/cucumber` steps calling the same HTTP surface as `http.acceptance.test.ts`—see Testing strategy below.
+**Slice 9 (HTTP Gherkin):** `npm run test:cucumber` runs `@cucumber/cucumber` against `tests/features/http/*.feature` using the same HTTP+SSE helpers as `tests/http.acceptance.test.ts` (`tests/helpers/httpWire.ts`). Vitest remains the primary CI gate; Cucumber is an optional readability layer for wire scenarios.
 
 ## Planned structure
 
@@ -97,7 +97,7 @@ ADV_V2_PROCESS_ORACLE_SCRIPT=fixtures/oracle-stub.mjs npm run dev:server
 
 ## Testing strategy
 
-**CI gate:** from this directory, `npm test` runs Vitest once (`vitest run`) over `tests/**/*.test.ts` but **`vitest.config.ts` excludes** `tests/oracleFortran.ci.test.ts`. `npm run test:oracle-fortran` uses [`vitest.oracle-ci.config.ts`](vitest.oracle-ci.config.ts) so only that file runs, with `ADV_V2_CI_FORTRAN=1`. The root workflow [`.github/workflows/adventure-v2.yml`](../.github/workflows/adventure-v2.yml) installs `gfortran`, runs `make adventure` at the repo root, then `npm run test:oracle-fortran`.
+**CI gate:** from this directory, `npm test` runs Vitest once (`vitest run`) over `tests/**/*.test.ts` but **`vitest.config.ts` excludes** `tests/oracleFortran.ci.test.ts`. GitHub Actions runs `npm audit` after `npm ci`, then `npm run test:cucumber` for HTTP Gherkin scenarios. `npm run test:oracle-fortran` uses [`vitest.oracle-ci.config.ts`](vitest.oracle-ci.config.ts) so only that file runs, with `ADV_V2_CI_FORTRAN=1`. The root workflow [`.github/workflows/adventure-v2.yml`](../.github/workflows/adventure-v2.yml) installs `gfortran`, runs `make adventure` at the repo root, then `npm run test:oracle-fortran`.
 
 **Layers (test pyramid):**
 
@@ -105,14 +105,15 @@ ADV_V2_PROCESS_ORACLE_SCRIPT=fixtures/oracle-stub.mjs npm run dev:server
 |--------|--------|------|
 | Contracts | `tests/contracts.test.ts` | Schema and wire-shape regressions against `packages/contracts`. |
 | In-process acceptance | `tests/acceptance.test.ts`, `tests/steps/runSteps.ts` | R1–R5 behaviors via `RunCoordinator` without HTTP. |
-| HTTP + SSE | `tests/http.acceptance.test.ts` | Same contracts over a real listener on an ephemeral port; matches what the web shell uses. |
+| HTTP + SSE | `tests/http.acceptance.test.ts`, `tests/helpers/httpWire.ts` | Same contracts over a real listener on an ephemeral port; matches what the web shell uses. |
+| HTTP Gherkin (optional) | `tests/features/http/*.feature`, `tests/cucumber/*.ts` | Cucumber reuses `httpWire` + `listenAdventureServer`; run via `npm run test:cucumber`. |
 | Oracle subprocess | `tests/oracleProcess.test.ts` | `createProcessOracleBridge` + `fixtures/oracle-stub.mjs`. |
 | Fortran oracle (CI / opt-in) | `tests/oracleFortran.ci.test.ts` | Same bridge seam against `fixtures/oracle-fortran-bridge.mjs` + built `./adventure`; run via `npm run test:oracle-fortran` (`vitest.oracle-ci.config.ts`) only. |
 | Web helpers | `tests/wireDisplay.test.ts` | Pure parse/format helpers for transcript, reconcile, and cognition trace panels from `apps/web` (Node environment; no DOM). |
 
-**Gherkin feature files** (`tests/features/*.feature`) are the **behavioral spec reference** for R1–R5. They are **not** executed by Cucumber in CI today. `acceptance.test.ts` includes a smoke test that the files exist and contain expected keywords, and scenario-level requirements are implemented as Vitest examples. This keeps a single runner while preserving readable scenarios for humans.
+**Gherkin feature files:** `tests/features/r*.feature` remain the **human-readable** R1–R5 reference; those scenarios are implemented in Vitest (`acceptance.test.ts`). **`tests/features/http/`** is executed by Cucumber (`npm run test:cucumber`) against the real HTTP API so Gherkin stays aligned with the wire contract without replacing Vitest.
 
-**Design doc alignment:** the work-item design describes a Cucumber-style outer loop; **implemented policy** is Vitest-only until maintaining parallel step definitions pays off. A proportionate next step would be optional `@cucumber/cucumber` steps that call the **same HTTP surface** as `http.acceptance.test.ts`, not a second divergent stack.
+**Design doc alignment:** parallel step definitions are limited to **HTTP** scenarios and share `httpWire` parsing with `http.acceptance.test.ts`, avoiding a second interpretation of SSE payloads.
 
 **Browser / DOM:** interactive wiring in `apps/web/src/main.ts` is covered indirectly by HTTP acceptance (wire format) and by unit tests on `wireDisplay.ts`. There is no Playwright or happy-dom suite yet; add one only when DOM integration bugs outweigh maintenance cost.
 
@@ -129,6 +130,7 @@ npm run test:coverage   # HTML report under coverage/ (gitignored)
 ```bash
 npm install   # once
 npm test      # contract + acceptance + HTTP + oracle stub + wireDisplay
+npm run test:cucumber   # optional; HTTP Gherkin vs same listener as http.acceptance.test.ts
 
 # After `make adventure` at repo root (optional locally; CI runs this):
 npm run test:oracle-fortran

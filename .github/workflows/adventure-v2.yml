@@ -29,9 +29,17 @@ jobs:
         working-directory: adventure-v2
         run: npm ci
 
+      - name: Audit dependencies
+        working-directory: adventure-v2
+        run: npm audit
+
       - name: Run tests
         working-directory: adventure-v2
         run: npm test
+
+      - name: Cucumber HTTP scenarios
+        working-directory: adventure-v2
+        run: npm run test:cucumber
 
       - name: Fortran oracle bridge (subprocess IPC vs built binary)
         working-directory: adventure-v2
