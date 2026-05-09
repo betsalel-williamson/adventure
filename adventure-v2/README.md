@@ -45,13 +45,15 @@ adventure-v2/
 - `API`: provider-backed model access through typed server-side integrations.
 - `MLX`: local Apple Silicon execution path for on-device model experiments.
 
-## HTTP API (slice 2)
+## HTTP API (slices 2–3)
 
 | Method | Path | Purpose |
 |--------|------|--------|
 | `POST` | `/runs` | Body `{ "config": RunConfig }` → `201` `{ runId, config }` |
 | `POST` | `/runs/:runId/turns` | Body `{ "input": string, "forceReject"?: boolean }` → `204` |
 | `GET` | `/runs/:runId/events` | **SSE** stream: `event: turn` / `event: phase` with JSON payloads matching `SseWireEvent` |
+| `GET` | `/runs/:runId/checkpoints` | `200` JSON array of `CheckpointRef` (empty until at least one turn completes) |
+| `POST` | `/runs/:runId/replay` | Body `{ "checkpointId": string }` → `200` `{ ReplayRestorePayload }`; `404` `{ "error":"not_found" }` if the id is unknown or not for this run |
 
 `OPTIONS` is supported for CORS preflight (`Access-Control-Allow-Origin: *` on responses).
 

@@ -22,13 +22,25 @@
         margin-top: 0.75rem;
         color: #58a6ff;
       }
+      #checkpoints {
+        white-space: pre-wrap;
+        background: #161b22;
+        border: 1px solid #30363d;
+        padding: 0.75rem;
+        margin-top: 0.75rem;
+        font-size: 0.85rem;
+        max-height: 14rem;
+        overflow: auto;
+      }
     </style>
   </head>
   <body>
-    <h1>adventure-v2 (slice 2 shell)</h1>
-    <p>Start run + one sample turn + SSE transcript (requires API; see README).</p>
+    <h1>adventure-v2 (dev shell)</h1>
+    <p>Start run + sample turn + SSE transcript; after the turn, fetches checkpoints and replay payload.</p>
     <pre id="transcript"></pre>
     <p id="phase">control phase: —</p>
+    <h2 style="font-size: 1rem; margin-top: 1rem">checkpoints + replay restore</h2>
+    <pre id="checkpoints">(waiting for turn …)</pre>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

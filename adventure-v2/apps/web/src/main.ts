@@ -4,6 +4,7 @@ const apiBase: string = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8787";
 
 const transcriptEl = document.querySelector<HTMLElement>("#transcript");
 const phaseEl = document.querySelector<HTMLElement>("#phase");
+const checkpointsEl = document.querySelector<HTMLElement>("#checkpoints");
 
 const log = (line: string): void => {
   if (transcriptEl) {
@@ -74,6 +75,44 @@ const run = async (): Promise<void> => {
 
   if (!turnRes.ok) {
     log(`POST /turns failed: ${turnRes.status}`);
+    return;
+  }
+
+  const cpRes = await fetch(`${apiBase}/runs/${runId}/checkpoints`);
+  if (!cpRes.ok) {
+    log(`GET /checkpoints failed: ${cpRes.status}`);
+    if (checkpointsEl) {
+      checkpointsEl.textContent = `GET /checkpoints failed: ${cpRes.status}`;
+    }
+    return;
+  }
+
+  const checkpointsUnknown = await cpRes.json();
+  const checkpoints = checkpointsUnknown as { checkpointId: string }[];
+
+  if (checkpointsEl) {
+    checkpointsEl.textContent =
+      checkpoints.length === 0
+        ? "(no checkpoints yet)"
+        : `checkpoints (${checkpoints.length}):\n${JSON.stringify(checkpoints, null, 2)}`;
+  }
+
+  if (checkpoints.length > 0) {
+    const cid = checkpoints[0]!.checkpointId;
+    const replayRes = await fetch(`${apiBase}/runs/${runId}/replay`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ checkpointId: cid })
+    });
+    const replayPayload = await replayRes.json();
+    log(
+      replayRes.ok
+        ? `[replay restore] ${JSON.stringify(replayPayload)}`
+        : `[replay failed] ${replayRes.status} ${JSON.stringify(replayPayload)}`
+    );
+    if (checkpointsEl) {
+      checkpointsEl.textContent += `\n\nPOST /replay (first checkpoint):\n${JSON.stringify(replayPayload, null, 2)}`;
+    }
   }
 };
 

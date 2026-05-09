@@ -29,8 +29,17 @@ export type {
   ControlPhaseWire,
   CreateRunRequest,
   CreateRunResponse,
+  ListCheckpointsResponse,
   PhaseTransitionWire,
+  PostReplayRequest,
+  PostReplayResponse,
   PostTurnRequest,
   SseWireEvent
+} from "./http/wire.js";
+
+export {
+  listCheckpointsResponseSchema,
+  postReplayRequestSchema,
+  postReplayResponseSchema
 } from "./http/wire.js";
 

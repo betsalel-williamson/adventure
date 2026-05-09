@@ -16,11 +16,11 @@ Convention: paths below are repo-relative (`adventure/` root).
 | Field | Value |
 |--------|--------|
 | **Loop state** | `Implementing` |
-| **Plan / slice** | [adventure-v2-slice-2-http-sse](../../.cursor/plans/adventure-v2-slice-2-http-sse_f4a2b91c.plan.md) — HTTP/SSE APIs, oracle bridge seam, optional Cucumber, `apps/web` shell |
+| **Plan / slice** | **Slice 3** — HTTP checkpoints + replay: `GET /runs/:id/checkpoints`, `POST /runs/:id/replay` (Cursor plan document: `adventure-v2-slice-3-http-replay`). **Slice 2** shipped: [adventure-v2-slice-2-http-sse](../../.cursor/plans/adventure-v2-slice-2-http-sse_f4a2b91c.plan.md). |
 | **Blocking** | none |
-| **Next after this** | After slice 2 green + HIL: extend v2 plan or return to **Ready** / other staffed work |
+| **Next after this** | External oracle subprocess bridge / deeper R4 UI / cognition-control extraction per v2 backlog |
 
-**Process:** Implement **Adventure v2** one increment at a time. **Slice 1** ([minimal milestones](../../.cursor/plans/adventure-v2-minimal-milestones_cba1cb3e.plan.md) M1–M8) is **complete**; **slice 2** uses the HTTP/SSE plan above until superseded.
+**Process:** Implement **Adventure v2** one increment at a time. **Slice 1** ([minimal milestones](../../.cursor/plans/adventure-v2-minimal-milestones_cba1cb3e.plan.md) M1–M8) and **slice 2** ([HTTP/SSE](../../.cursor/plans/adventure-v2-slice-2-http-sse_f4a2b91c.plan.md)) are **complete** as implemented in-tree; slice 3 extends the wire API.
 
 *Other staffed work:* AAB LangGraph Pivot — **`Implementing`** (see [**Concurrently active**](#concurrently-active-queue)).
 
@@ -65,7 +65,7 @@ Slices that are **green** and awaiting **human review + version-control commit**
 **Loop state:** `Ready` — next up once promoted; dependencies clear.
 
 - **AAB** — follow phased delivery in [`.cursor/plans/aab_langgraph_pivot_eb03f964.plan.md`](../../.cursor/plans/aab_langgraph_pivot_eb03f964.plan.md) after world+XState scaffold exists (first todo: `world-xstate-schema`).
-- **Adventure v2 (slice 2+)** — active roadmap: [`.cursor/plans/adventure-v2-slice-2-http-sse_f4a2b91c.plan.md`](../../.cursor/plans/adventure-v2-slice-2-http-sse_f4a2b91c.plan.md). **Slice 1** complete: [`.cursor/plans/adventure-v2-minimal-milestones_cba1cb3e.plan.md`](../../.cursor/plans/adventure-v2-minimal-milestones_cba1cb3e.plan.md) (see **Finished**).
+- **Adventure v2 (slice 3+)** — active work: checkpoints/replay HTTP (see snapshot). **Slices 1–2** finished (see **Finished**). Optional backlog: oracle bridge, richer UI observability.
 
 ---
 
@@ -73,7 +73,7 @@ Slices that are **green** and awaiting **human review + version-control commit**
 
 **Loop state:** `Implementing`. Explicitly staffed **this cycle** — keep short; if you stall, move snapshot to `Blocked` or `AwaitingHILCommit` and shrink this list accordingly.
 
-- [`.cursor/plans/adventure-v2-slice-2-http-sse_f4a2b91c.plan.md`](../../.cursor/plans/adventure-v2-slice-2-http-sse_f4a2b91c.plan.md) — **Adventure v2 — slice 2 (HTTP/SSE, oracle seam, web)**
+- **Adventure v2 — slice 3** (HTTP checkpoints + replay) — no repo-local `.plan.md` copy; see snapshot **Plan / slice** for name.
 - [`.cursor/plans/aab_langgraph_pivot_eb03f964.plan.md`](../../.cursor/plans/aab_langgraph_pivot_eb03f964.plan.md) — **AAB LangGraph Pivot**
 
 ---
@@ -83,6 +83,7 @@ Slices that are **green** and awaiting **human review + version-control commit**
 Shipped / merged / superseded to your satisfaction (**verify** before treating as archival).
 
 - `.cursor/plans/adventure-v2-minimal-milestones_cba1cb3e.plan.md` — Adventure v2 **slice 1**: M1–M8 minimal baseline (harness, contracts, `RunCoordinator`, R1–R5 paths); **superseded by** [adventure-v2-slice-2-http-sse_f4a2b91c.plan.md](../../.cursor/plans/adventure-v2-slice-2-http-sse_f4a2b91c.plan.md)
+- [`.cursor/plans/adventure-v2-slice-2-http-sse_f4a2b91c.plan.md`](../../.cursor/plans/adventure-v2-slice-2-http-sse_f4a2b91c.plan.md) — Adventure v2 **slice 2**: HTTP/SSE, oracle bridge seam, Vitest HTTP gate, minimal `apps/web`; **superseded for focus** by slice 3 (checkpoints + replay wire API)
 - `.cursor/plans/adventure_v2_docs_scaffold_a6da04d7.plan.md` — Adventure v2 docs scaffold (baseline docs + `adventure-v2/` layout; **follow-on code** tracked under minimal-milestones then slice-2 plans above)
 - `.cursor/plans/web_ui_autoplay_dashboard_151128c8.plan.md` — Web UI autoplay dashboard
 - `.cursor/plans/web_session_cookies_tls_5a486f40.plan.md` — Web session cookies TLS

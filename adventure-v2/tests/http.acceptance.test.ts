@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { sseWireEventSchema, type SseWireEvent } from "../packages/contracts/src/index.js";
+import {
+  listCheckpointsResponseSchema,
+  postReplayRequestSchema,
+  postReplayResponseSchema,
+  sseWireEventSchema,
+  type SseWireEvent
+} from "../packages/contracts/src/index.js";
 import {
   RunCoordinator,
   createSyntheticOracleBridge,
@@ -128,5 +134,143 @@ describe("HTTP API + SSE", () => {
     expect(o.observe({ runId: "r", turnId: "t", sequence: 1, action: "x", forceReject: true }).rejected).toBe(
       true
     );
+  });
+
+  it("GET /runs/:id/checkpoints is empty then lists checkpoint after one turn", async () => {
+    const coordinator = new RunCoordinator();
+    const { server, baseUrl } = await listenAdventureServer(coordinator, 0);
+    try {
+      const start = await fetch(`${baseUrl}/runs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ config: createRunConfig("SLM") })
+      });
+      const { runId } = (await start.json()) as { runId: string };
+
+      const empty = await fetch(`${baseUrl}/runs/${runId}/checkpoints`);
+      expect(empty.status).toBe(200);
+      const emptyBody = listCheckpointsResponseSchema.parse(await empty.json());
+      expect(emptyBody).toEqual([]);
+
+      await fetch(`${baseUrl}/runs/${runId}/turns`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ input: "look" })
+      });
+
+      const listed = await fetch(`${baseUrl}/runs/${runId}/checkpoints`);
+      expect(listed.status).toBe(200);
+      const checkpoints = listCheckpointsResponseSchema.parse(await listed.json());
+      expect(checkpoints).toHaveLength(1);
+      expect(checkpoints[0]!.runId).toBe(runId);
+      expect(checkpoints[0]!.sequence).toBe(1);
+    } finally {
+      await new Promise<void>((resolve, reject) => {
+        server.close((err) => (err ? reject(err) : resolve()));
+      });
+    }
+  });
+
+  it("POST /runs/:id/replay returns restore payload for run checkpoint", async () => {
+    const coordinator = new RunCoordinator();
+    const { server, baseUrl } = await listenAdventureServer(coordinator, 0);
+    try {
+      const start = await fetch(`${baseUrl}/runs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ config: createRunConfig("SLM") })
+      });
+      const { runId } = (await start.json()) as { runId: string };
+
+      await fetch(`${baseUrl}/runs/${runId}/turns`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ input: "look" })
+      });
+
+      const listed = await fetch(`${baseUrl}/runs/${runId}/checkpoints`);
+      const [{ checkpointId }] = listCheckpointsResponseSchema.parse(await listed.json());
+
+      const replay = await fetch(`${baseUrl}/runs/${runId}/replay`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(postReplayRequestSchema.parse({ checkpointId }))
+      });
+      expect(replay.status).toBe(200);
+      const payload = postReplayResponseSchema.parse(await replay.json());
+      expect(payload.checkpointId).toBe(checkpointId);
+      expect(payload.runId).toBe(runId);
+      expect(payload.controlPhase).toBe("act");
+      expect(payload.replayInputRef).toContain(runId);
+    } finally {
+      await new Promise<void>((resolve, reject) => {
+        server.close((err) => (err ? reject(err) : resolve()));
+      });
+    }
+  });
+
+  it("POST /runs/:id/replay returns 404 for unknown checkpointId", async () => {
+    const coordinator = new RunCoordinator();
+    const { server, baseUrl } = await listenAdventureServer(coordinator, 0);
+    try {
+      const start = await fetch(`${baseUrl}/runs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ config: createRunConfig("SLM") })
+      });
+      const { runId } = (await start.json()) as { runId: string };
+
+      const replay = await fetch(`${baseUrl}/runs/${runId}/replay`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ checkpointId: "no-such-cp" })
+      });
+      expect(replay.status).toBe(404);
+      const body = (await replay.json()) as { error?: string };
+      expect(body.error).toBe("not_found");
+    } finally {
+      await new Promise<void>((resolve, reject) => {
+        server.close((err) => (err ? reject(err) : resolve()));
+      });
+    }
+  });
+
+  it("POST /runs/:id/replay returns 404 when checkpoint belongs to another run", async () => {
+    const coordinator = new RunCoordinator();
+    const { server, baseUrl } = await listenAdventureServer(coordinator, 0);
+    try {
+      const a = await fetch(`${baseUrl}/runs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ config: createRunConfig("SLM") })
+      });
+      const { runId: runA } = (await a.json()) as { runId: string };
+      const b = await fetch(`${baseUrl}/runs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ config: createRunConfig("API") })
+      });
+      const { runId: runB } = (await b.json()) as { runId: string };
+
+      await fetch(`${baseUrl}/runs/${runA}/turns`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ input: "look" })
+      });
+      const [{ checkpointId }] = listCheckpointsResponseSchema.parse(
+        await (await fetch(`${baseUrl}/runs/${runA}/checkpoints`)).json()
+      );
+
+      const replay = await fetch(`${baseUrl}/runs/${runB}/replay`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ checkpointId })
+      });
+      expect(replay.status).toBe(404);
+    } finally {
+      await new Promise<void>((resolve, reject) => {
+        server.close((err) => (err ? reject(err) : resolve()));
+      });
+    }
   });
 });

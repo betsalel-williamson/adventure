@@ -7,6 +7,9 @@ import {
 import {
   createRunRequestSchema,
   createRunResponseSchema,
+  listCheckpointsResponseSchema,
+  postReplayRequestSchema,
+  postReplayResponseSchema,
   postTurnRequestSchema,
   sseWireEventSchema,
   type CreateRunResponse,
@@ -73,6 +76,8 @@ type Route =
   | { kind: "post-runs" }
   | { kind: "post-turn"; runId: string }
   | { kind: "get-events"; runId: string }
+  | { kind: "get-checkpoints"; runId: string }
+  | { kind: "post-replay"; runId: string }
   | { kind: "not-found" };
 
 const parseRoute = (pathname: string, method: string): Route => {
@@ -88,8 +93,22 @@ const parseRoute = (pathname: string, method: string): Route => {
   if (method === "GET" && eventsMatch) {
     return { kind: "get-events", runId: eventsMatch[1]! };
   }
+  const checkpointsMatch = path.match(/^\/runs\/([^/]+)\/checkpoints$/);
+  if (method === "GET" && checkpointsMatch) {
+    return { kind: "get-checkpoints", runId: checkpointsMatch[1]! };
+  }
+  const replayMatch = path.match(/^\/runs\/([^/]+)\/replay$/);
+  if (method === "POST" && replayMatch) {
+    return { kind: "post-replay", runId: replayMatch[1]! };
+  }
   return { kind: "not-found" };
 };
+
+const isUnknownRunError = (err: unknown): boolean =>
+  err instanceof Error && err.message.startsWith("Unknown run:");
+
+const isUnknownCheckpointError = (err: unknown): boolean =>
+  err instanceof Error && err.message.startsWith("Unknown checkpoint:");
 
 export const createAdventureHttpServer = (coordinator: RunCoordinator): Server => {
   return createServer((req, res) => {
@@ -158,6 +177,49 @@ const handleHttp = async (
       req.on("close", () => {
         unsub();
       });
+      return;
+    }
+
+    if (route.kind === "get-checkpoints") {
+      try {
+        const checkpoints = coordinator.checkpointsForRun(route.runId);
+        sendJson(res, 200, listCheckpointsResponseSchema.parse(checkpoints));
+      } catch (err) {
+        if (isUnknownRunError(err)) {
+          sendJson(res, 404, { error: "not_found", message: (err as Error).message });
+          return;
+        }
+        throw err;
+      }
+      return;
+    }
+
+    if (route.kind === "post-replay") {
+      const raw = await readJsonBody(req);
+      let body;
+      try {
+        body = postReplayRequestSchema.parse(raw);
+      } catch {
+        sendJson(res, 400, { error: "bad_request", message: "Invalid replay request body" });
+        return;
+      }
+      try {
+        const restore = coordinator.replay(body.checkpointId);
+        if (restore.runId !== route.runId) {
+          sendJson(res, 404, {
+            error: "not_found",
+            message: "Checkpoint does not belong to this run"
+          });
+          return;
+        }
+        sendJson(res, 200, postReplayResponseSchema.parse(restore));
+      } catch (err) {
+        if (isUnknownCheckpointError(err) || isUnknownRunError(err)) {
+          sendJson(res, 404, { error: "not_found", message: (err as Error).message });
+          return;
+        }
+        throw err;
+      }
       return;
     }
 

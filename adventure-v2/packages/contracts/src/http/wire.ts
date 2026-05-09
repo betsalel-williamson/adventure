@@ -1,6 +1,22 @@
 import { z } from "zod";
 import { runConfigSchema } from "../api/run.js";
+import { checkpointRefSchema, replayRestorePayloadSchema } from "../checkpoints/checkpoint.js";
 import { turnEnvelopeSchema } from "../events/turn.js";
+
+/** JSON body for `GET /runs/:runId/checkpoints`. */
+export const listCheckpointsResponseSchema = z.array(checkpointRefSchema);
+export type ListCheckpointsResponse = z.infer<typeof listCheckpointsResponseSchema>;
+
+/** JSON body for `POST /runs/:runId/replay`. */
+export const postReplayRequestSchema = z.object({
+  checkpointId: z.string().min(1)
+});
+
+export type PostReplayRequest = z.infer<typeof postReplayRequestSchema>;
+
+/** Response body mirrors `replayRestorePayloadSchema` (validated on send). */
+export const postReplayResponseSchema = replayRestorePayloadSchema;
+export type PostReplayResponse = z.infer<typeof postReplayResponseSchema>;
 
 /** Control phase labels (wire); aligns with packages/control PhaseTransitionEvent. */
 export const controlPhaseWireSchema = z.enum(["act", "think", "test", "chaos", "disorder"]);
