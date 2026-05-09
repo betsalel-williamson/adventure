@@ -15,12 +15,12 @@ Convention: paths below are repo-relative (`adventure/` root).
 
 | Field | Value |
 |--------|--------|
-| **Loop state** | `AwaitingHILCommit` |
-| **Plan / slice** | [adventure-v2-minimal-milestones](../../.cursor/plans/adventure-v2-minimal-milestones_cba1cb3e.plan.md) — **commit slice 1** done (milestones **M1–M8**: harness, contracts, synthetic `RunCoordinator`, reconcile/control/replay paths, model matrix; **`npm test` in `adventure-v2/` green**) — **pending human review + VC commit** |
+| **Loop state** | `Implementing` |
+| **Plan / slice** | [adventure-v2-slice-2-http-sse](../../.cursor/plans/adventure-v2-slice-2-http-sse_f4a2b91c.plan.md) — HTTP/SSE APIs, oracle bridge seam, optional Cucumber, `apps/web` shell |
 | **Blocking** | none |
-| **Next after this** | Same plan — **slice 2:** HTTP/SSE run APIs + event fanout, oracle bridge seam, optional Cucumber CLI, then `apps/web` shell _(promote back to `Implementing` after commit)_ |
+| **Next after this** | After slice 2 green + HIL: extend v2 plan or return to **Ready** / other staffed work |
 
-**Process:** Implement **Adventure v2** one increment at a time (TDD slices on that plan doc). Slice 1 = first commit-sized vertical; slice 2+ stay on the same plan until the roadmap is superseded.
+**Process:** Implement **Adventure v2** one increment at a time. **Slice 1** ([minimal milestones](../../.cursor/plans/adventure-v2-minimal-milestones_cba1cb3e.plan.md) M1–M8) is **complete**; **slice 2** uses the HTTP/SSE plan above until superseded.
 
 *Other staffed work:* AAB LangGraph Pivot — **`Implementing`** (see [**Concurrently active**](#concurrently-active-queue)).
 
@@ -48,7 +48,7 @@ Convention: paths below are repo-relative (`adventure/` root).
 
 Slices that are **green** and awaiting **human review + version-control commit**. Remove the row once committed (or bump back to Implementing if review requests changes).
 
-- **Adventure v2** — [adventure-v2-minimal-milestones](../../.cursor/plans/adventure-v2-minimal-milestones_cba1cb3e.plan.md) **slice 1** (M1–M8 minimal in-tree baseline; `cd adventure-v2 && npm test`). After commit: clear this row → set snapshot **Loop state** to **`Implementing`** (slice 2) or **`BetweenPlans`** if pausing v2 work.
+- _(vacant)_
 
 ---
 
@@ -65,7 +65,7 @@ Slices that are **green** and awaiting **human review + version-control commit**
 **Loop state:** `Ready` — next up once promoted; dependencies clear.
 
 - **AAB** — follow phased delivery in [`.cursor/plans/aab_langgraph_pivot_eb03f964.plan.md`](../../.cursor/plans/aab_langgraph_pivot_eb03f964.plan.md) after world+XState scaffold exists (first todo: `world-xstate-schema`).
-- **Adventure v2 (implementation roadmap, one slice at a time)** — canonical plan: [`.cursor/plans/adventure-v2-minimal-milestones_cba1cb3e.plan.md`](../../.cursor/plans/adventure-v2-minimal-milestones_cba1cb3e.plan.md). **Slice 1** (M1–M8 baseline) is **complete in working tree** and listed under [**Awaiting commit / HIL gate**](#awaiting-commit--hil-gate); **slice 2+** (same doc): HTTP/SSE, oracle bridge seam, optional Cucumber for `tests/features`, `apps/web` shell.
+- **Adventure v2 (slice 2+)** — active roadmap: [`.cursor/plans/adventure-v2-slice-2-http-sse_f4a2b91c.plan.md`](../../.cursor/plans/adventure-v2-slice-2-http-sse_f4a2b91c.plan.md). **Slice 1** complete: [`.cursor/plans/adventure-v2-minimal-milestones_cba1cb3e.plan.md`](../../.cursor/plans/adventure-v2-minimal-milestones_cba1cb3e.plan.md) (see **Finished**).
 
 ---
 
@@ -73,6 +73,7 @@ Slices that are **green** and awaiting **human review + version-control commit**
 
 **Loop state:** `Implementing`. Explicitly staffed **this cycle** — keep short; if you stall, move snapshot to `Blocked` or `AwaitingHILCommit` and shrink this list accordingly.
 
+- [`.cursor/plans/adventure-v2-slice-2-http-sse_f4a2b91c.plan.md`](../../.cursor/plans/adventure-v2-slice-2-http-sse_f4a2b91c.plan.md) — **Adventure v2 — slice 2 (HTTP/SSE, oracle seam, web)**
 - [`.cursor/plans/aab_langgraph_pivot_eb03f964.plan.md`](../../.cursor/plans/aab_langgraph_pivot_eb03f964.plan.md) — **AAB LangGraph Pivot**
 
 ---
@@ -81,7 +82,8 @@ Slices that are **green** and awaiting **human review + version-control commit**
 
 Shipped / merged / superseded to your satisfaction (**verify** before treating as archival).
 
-- `.cursor/plans/adventure_v2_docs_scaffold_a6da04d7.plan.md` — Adventure v2 docs scaffold (baseline docs + `adventure-v2/` layout; **follow-on code** tracked under minimal-milestones plan above)
+- `.cursor/plans/adventure-v2-minimal-milestones_cba1cb3e.plan.md` — Adventure v2 **slice 1**: M1–M8 minimal baseline (harness, contracts, `RunCoordinator`, R1–R5 paths); **superseded by** [adventure-v2-slice-2-http-sse_f4a2b91c.plan.md](../../.cursor/plans/adventure-v2-slice-2-http-sse_f4a2b91c.plan.md)
+- `.cursor/plans/adventure_v2_docs_scaffold_a6da04d7.plan.md` — Adventure v2 docs scaffold (baseline docs + `adventure-v2/` layout; **follow-on code** tracked under minimal-milestones then slice-2 plans above)
 - `.cursor/plans/web_ui_autoplay_dashboard_151128c8.plan.md` — Web UI autoplay dashboard
 - `.cursor/plans/web_session_cookies_tls_5a486f40.plan.md` — Web session cookies TLS
 - `.cursor/plans/mlx_model_dropdown_761bb9c5.plan.md` — MLX model dropdown
@@ -126,6 +128,7 @@ Sorted by last modified (**newest first**). Title from plan frontmatter `name:`.
 
 | Modified | File | Title (`name`) |
 |---------|------|----------------|
+| 2026-05-08 | `adventure-v2-slice-2-http-sse_f4a2b91c.plan.md` | adventure-v2-slice-2-http-sse |
 | 2026-05-09 | `adventure-v2-minimal-milestones_cba1cb3e.plan.md` | adventure-v2-minimal-milestones |
 | 2026-05-08 | `adventure_v2_docs_scaffold_a6da04d7.plan.md` | Adventure V2 Docs Scaffold |
 | 2026-05-08 | `aab_langgraph_pivot_eb03f964.plan.md` | AAB LangGraph Pivot |

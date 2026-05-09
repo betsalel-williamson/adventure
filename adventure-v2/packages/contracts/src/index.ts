@@ -14,3 +14,23 @@ export {
 } from "./checkpoints/checkpoint.js";
 export type { CheckpointRef, ReplayRestorePayload } from "./checkpoints/checkpoint.js";
 
+export {
+  controlPhaseWireSchema,
+  createRunRequestSchema,
+  createRunResponseSchema,
+  phaseTransitionWireSchema,
+  postTurnRequestSchema,
+  ssePhaseEventSchema,
+  sseTurnEventSchema,
+  sseWireEventSchema
+} from "./http/wire.js";
+
+export type {
+  ControlPhaseWire,
+  CreateRunRequest,
+  CreateRunResponse,
+  PhaseTransitionWire,
+  PostTurnRequest,
+  SseWireEvent
+} from "./http/wire.js";
+

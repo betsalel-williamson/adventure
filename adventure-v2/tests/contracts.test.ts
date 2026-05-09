@@ -3,6 +3,7 @@ import {
   checkpointRefSchema,
   reconcileOutcomeSchema,
   runConfigSchema,
+  sseWireEventSchema,
   turnEnvelopeSchema
 } from "../packages/contracts/src/index.js";
 
@@ -58,6 +59,37 @@ describe("contracts", () => {
       createdAt: new Date().toISOString()
     });
     expect(parsed.checkpointId).toBe("cp-1");
+  });
+
+  it("parses SSE wire phase and turn envelopes", () => {
+    const turnEv = sseWireEventSchema.parse({
+      event: "turn",
+      envelope: {
+        runId: "run-1",
+        turnId: "t-1",
+        sequence: 0,
+        source: "oracle",
+        kind: "oracle_observation",
+        ts: new Date().toISOString(),
+        payload: { output: "OK.", rejected: false }
+      }
+    });
+    expect(turnEv.event).toBe("turn");
+
+    const phaseEv = sseWireEventSchema.parse({
+      event: "phase",
+      transition: {
+        from: "act",
+        to: "disorder",
+        reason: "oracle-dispatched",
+        sequence: 0,
+        ts: new Date().toISOString()
+      }
+    });
+    expect(phaseEv.event).toBe("phase");
+    if (phaseEv.event === "phase") {
+      expect(phaseEv.transition.to).toBe("disorder");
+    }
   });
 });
 

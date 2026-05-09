@@ -1,13 +1,22 @@
-# adventure-v2 web app (planned)
+# adventure-v2 web app (slice 2 shell)
 
 ## Responsibility
 
-- Render console-first transcript and controls.
-- Display XState control phase and LangGraph actor/node timeline.
-- Consume server SSE/event stream and replay endpoints.
+Minimal console-style page: start a run via `POST /runs`, subscribe with `EventSource` to `GET /runs/:runId/events`, then `POST /runs/:runId/turns` with a sample action. Displays streamed turn JSON and the latest control phase from phase events.
 
-## Initial scaffold targets
+## Run
 
-- `src/app/` shell layout (console + observability panes).
-- `src/state/` view-model adapters for stream events.
-- `src/api/` typed API client wrappers from `packages/contracts`.
+Requires the HTTP API (`npm run dev:server` from `adventure-v2/` root).
+
+```bash
+# from adventure-v2/
+npm run dev:web
+```
+
+Override API origin (default `http://127.0.0.1:8787`):
+
+```bash
+VITE_API_URL=http://localhost:8787 npm run dev:web
+```
+
+Stack: Vite, TypeScript, vanilla DOM. Root config: [`../../vite.config.ts`](../../vite.config.ts).

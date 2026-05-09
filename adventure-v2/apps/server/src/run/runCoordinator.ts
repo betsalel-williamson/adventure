@@ -8,6 +8,9 @@ import { classifyReconcile } from "../../../../packages/cognition/src/index.js";
 import { createControlMachine } from "../../../../packages/control/src/index.js";
 import type { ControlPhase, PhaseTransitionEvent } from "../../../../packages/control/src/index.js";
 import { CheckpointRegistry } from "../replay/checkpointRegistry.js";
+import type { OracleBridge } from "../oracle/oracleBridge.js";
+import { createSyntheticOracleBridge } from "../oracle/oracleBridge.js";
+import type { WireStreamItem } from "../http/wireStream.js";
 
 type RunState = {
   runId: string;
@@ -38,6 +41,40 @@ export class RunCoordinator {
   private readonly runs = new Map<string, RunState>();
   private readonly controlByRunId = new Map<string, ReturnType<typeof createControlMachine>>();
   private readonly registry = new CheckpointRegistry();
+  private readonly oracle: OracleBridge;
+  private readonly streamListeners = new Map<string, Set<(item: WireStreamItem) => void>>();
+
+  constructor(oracle: OracleBridge = createSyntheticOracleBridge()) {
+    this.oracle = oracle;
+  }
+
+  /**
+   * Subscribe to turn envelopes and phase transitions emitted during a run (for SSE fanout).
+   */
+  subscribeToRun(runId: string, listener: (item: WireStreamItem) => void): () => void {
+    let set = this.streamListeners.get(runId);
+    if (!set) {
+      set = new Set();
+      this.streamListeners.set(runId, set);
+    }
+    set.add(listener);
+    return () => {
+      set!.delete(listener);
+      if (set!.size === 0) {
+        this.streamListeners.delete(runId);
+      }
+    };
+  }
+
+  private emitStream(runId: string, item: WireStreamItem): void {
+    const set = this.streamListeners.get(runId);
+    if (!set) {
+      return;
+    }
+    for (const listener of set) {
+      listener(item);
+    }
+  }
 
   startRun(config: RunConfig): { runId: string; config: RunConfig } {
     const runId = `run-${this.runs.size + 1}`;
@@ -68,7 +105,6 @@ export class RunCoordinator {
     const control = this.requireControl(runId);
     const sequence = run.nextSequence;
     const turnId = turnIdFor(runId, sequence);
-    const rejected = Boolean(options.forceReject);
 
     const proposal: TurnEnvelope = {
       runId,
@@ -80,7 +116,15 @@ export class RunCoordinator {
       payload: { action: input }
     };
     run.events.push(proposal);
+    this.emitStream(runId, { type: "turn", envelope: proposal });
 
+    const obs = this.oracle.observe({
+      runId,
+      turnId,
+      sequence,
+      action: input,
+      forceReject: options.forceReject
+    });
     const observation: TurnEnvelope = {
       runId,
       turnId,
@@ -88,18 +132,20 @@ export class RunCoordinator {
       source: "oracle",
       kind: "oracle_observation",
       ts: now(),
-      payload: { rejected, output: rejected ? "I do not understand that." : "OK." }
+      payload: { rejected: obs.rejected, output: obs.output }
     };
     run.events.push(observation);
+    this.emitStream(runId, { type: "turn", envelope: observation });
 
     const disorderTransition = control.onOracleObservationDispatched(sequence);
     run.phaseTransitions.push(disorderTransition);
+    this.emitStream(runId, { type: "phase", transition: disorderTransition });
 
     const reconcile = classifyReconcile({
       runId,
       turnId,
       sequence,
-      oracleRejected: rejected
+      oracleRejected: obs.rejected
     });
     const reconcileEvent: TurnEnvelope = {
       runId,
@@ -111,12 +157,14 @@ export class RunCoordinator {
       payload: reconcile
     };
     run.events.push(reconcileEvent);
+    this.emitStream(runId, { type: "turn", envelope: reconcileEvent });
 
-    const policyTransition = rejected
+    const policyTransition = obs.rejected
       ? control.onInvalidAction(sequence)
       : control.onReconcileOutcome(sequence, reconcile.nextPolicy);
     run.phaseTransitions.push(policyTransition);
     run.controlPhase = policyTransition.to;
+    this.emitStream(runId, { type: "phase", transition: policyTransition });
 
     const checkpoint: CheckpointRef = {
       checkpointId: checkpointIdFor(runId, sequence),
@@ -139,6 +187,7 @@ export class RunCoordinator {
       payload: checkpoint
     };
     run.events.push(checkpointEvent);
+    this.emitStream(runId, { type: "turn", envelope: checkpointEvent });
 
     const restorePayload: ReplayRestorePayload = {
       checkpointId: checkpoint.checkpointId,

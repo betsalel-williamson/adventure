@@ -10,7 +10,7 @@ Lifecycle queues and Cursor plan inventory: [`.work-items/planning/plan-queues-i
 
 **Always know loop state:** that file’s [**Current development loop snapshot**](../planning/plan-queues-index.md#current-development-loop-snapshot) plus **Awaiting commit / HIL gate** (green work waiting on human commit) and [**State vocabulary**](../planning/plan-queues-index.md#state-vocabulary-development-loop) (`Implementing`, `AwaitingHILCommit`, `BetweenPlans`, `Blocked`, …).
 
-**Adventure v2** roadmap link: [`.cursor/plans/adventure-v2-minimal-milestones_cba1cb3e.plan.md`](../../.cursor/plans/adventure-v2-minimal-milestones_cba1cb3e.plan.md). Work proceeds **one commit slice at a time** on that doc; **slice 1** (M1–M8 baseline) is currently under **Awaiting commit / HIL** pending human VC commit (**slice 2** follows on the same plan). Docs-only scaffold remains in **Finished** as superseded for coding by this roadmap.
+**Adventure v2** roadmap link: [`.cursor/plans/adventure-v2-slice-2-http-sse_f4a2b91c.plan.md`](../../.cursor/plans/adventure-v2-slice-2-http-sse_f4a2b91c.plan.md) (slice 2: HTTP/SSE, oracle seam, optional Cucumber, web shell). **Slice 1** plan: [adventure-v2-minimal-milestones](./../../.cursor/plans/adventure-v2-minimal-milestones_cba1cb3e.plan.md) is **complete** (M1–M8). Work proceeds **one commit slice at a time** on the slice 2 doc. Docs-only scaffold remains in **Finished** as superseded for coding by the milestones roadmap.
 
 ## Acceptance criteria
 

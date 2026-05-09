@@ -4,8 +4,16 @@ Planned v2 runtime for benchmark-oriented adventure orchestration.
 
 ## Scope in this phase
 
-- Documentation plus a **minimal in-repo vertical slice**: contracts (`packages/contracts`), synthetic run coordinator (`apps/server`), control + cognition stubs, Vitest acceptance tests that mirror R1–R5 Gherkin feature files.
-- **Not yet:** HTTP/SSE APIs, real oracle process bridge, Cucumber CLI wiring, or web UI (see Bootstrap plan steps 4 onward).
+- **Contracts** (`packages/contracts`): turn/reconcile/checkpoint schemas plus **HTTP/SSE wire types** (`CreateRunRequest`, `SseWireEvent`, …).
+- **Server** (`apps/server`): `RunCoordinator` with a **swappable oracle bridge** (synthetic default), **SSE fanout** of turn + phase events, and a small **HTTP API** (`POST /runs`, `POST /runs/:id/turns`, `GET /runs/:id/events`).
+- **Web shell** (`apps/web`): minimal Vite page that starts a run, issues a sample turn, and reads the SSE stream (`EventSource`).
+- **Tests**: Vitest contract, in-process acceptance (`tests/acceptance.test.ts`), and **HTTP acceptance** (`tests/http.acceptance.test.ts`) against a real listener on an ephemeral port.
+
+**Not yet:** real external oracle process bridge, production deployment hardening.
+
+### Cucumber / Gherkin CLI
+
+Feature files under `tests/features/` remain the behavioral spec reference. **Cucumber is not wired** as a second test runner in this package; **`npm test` (Vitest)** is the automated gate. Optional future work: add `@cucumber/cucumber` with step definitions that call the HTTP API.
 
 ## Planned structure
 
@@ -37,7 +45,37 @@ adventure-v2/
 - `API`: provider-backed model access through typed server-side integrations.
 - `MLX`: local Apple Silicon execution path for on-device model experiments.
 
-## Bootstrap plan
+## HTTP API (slice 2)
+
+| Method | Path | Purpose |
+|--------|------|--------|
+| `POST` | `/runs` | Body `{ "config": RunConfig }` → `201` `{ runId, config }` |
+| `POST` | `/runs/:runId/turns` | Body `{ "input": string, "forceReject"?: boolean }` → `204` |
+| `GET` | `/runs/:runId/events` | **SSE** stream: `event: turn` / `event: phase` with JSON payloads matching `SseWireEvent` |
+
+`OPTIONS` is supported for CORS preflight (`Access-Control-Allow-Origin: *` on responses).
+
+## Local dev
+
+Terminal A — API (default port `8787`; bind `0.0.0.0`):
+
+```bash
+npm run dev:server
+```
+
+Terminal B — web shell (Vite, port `5173`):
+
+```bash
+npm run dev:web
+```
+
+Point the UI at a different API origin if needed:
+
+```bash
+VITE_API_URL=http://127.0.0.1:9999 npm run dev:web
+```
+
+## Bootstrap plan (historical)
 
 1. Define workspace/package manifests.
 2. Add Cucumber-style behavior features (Gherkin) plus schema-first contract tests.
@@ -47,7 +85,7 @@ adventure-v2/
 
 ## Testing principles
 
-- Use Cucumber-style BDD as the acceptance layer and TDD as the implementation loop.
+- Use Cucumber-style BDD as the **spec** layer; Vitest implements the TDD loop.
 - Keep feature files focused on observable benchmark behaviors (replay, drift, loop transitions).
 - Map each feature to deterministic fixtures and typed step helpers.
 
@@ -57,5 +95,5 @@ From this directory:
 
 ```bash
 npm install   # once
-npm test      # Vitest — contract + acceptance tests (`tests/`)
+npm test      # Vitest — contract + acceptance + HTTP tests (`tests/`)
 ```
