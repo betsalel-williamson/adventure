@@ -4,13 +4,13 @@ overview: "Emit or surface structured cognition / LangGraph-shaped trace data on
 todos:
   - id: contracts-trace
     content: Add cognition trace wire types in packages/contracts + schema tests
-    status: pending
+    status: completed
   - id: server-sse
     content: Extend RunCoordinator / SSE emission (createServer) for new event kind(s); HTTP tests
-    status: pending
+    status: completed
   - id: web-panels
     content: wireDisplay + index.html panel + Vitest for parse/format
-    status: pending
+    status: completed
 isProject: false
 ---
 

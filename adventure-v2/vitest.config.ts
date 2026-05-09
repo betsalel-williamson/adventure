@@ -13,6 +13,7 @@ export default defineConfig({
   },
   test: {
     include: ["tests/**/*.test.ts"],
+    exclude: ["tests/oracleFortran.ci.test.ts"],
     /** HTTP + SSE tests use 5s read windows; allow headroom for slow CI. */
     testTimeout: 15_000,
     coverage: {

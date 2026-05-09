@@ -15,12 +15,12 @@ Convention: paths below are repo-relative (`adventure/` root).
 
 | Field | Value |
 |--------|--------|
-| **Loop state** | `AwaitingHILCommit` |
-| **Plan / slice** | **Slice 6** — R4 cognition trace on SSE + web ([adventure-v2-slice-6-r4-cognition-trace](../adventure-v2/adventure-v2-slice-6-r4-cognition-trace.plan.md)) is green locally (`cd adventure-v2 && npm test`). **Slice 5** (structured R4 panels: [`wireDisplay.ts`](../../adventure-v2/apps/web/src/wireDisplay.ts)) **complete**; Vitest stack documented in [adventure-v2/README](../../adventure-v2/README.md). **Slices 1–4** unchanged below ([`createServer.ts`](../../adventure-v2/apps/server/src/http/createServer.ts), process oracle, etc.). |
-| **Blocking** | human review + version-control commit |
-| **Next after this** | Richer SSE payloads, Fortran oracle in CI, optional Cucumber runner (see [adventure-v2 README](../../adventure-v2/README.md)) |
+| **Loop state** | `BetweenPlans` |
+| **Plan / slice** | **Slice 6** (R4 cognition trace) **shipped**; **Slice 7** (Fortran oracle in CI): [`.github/workflows/adventure-v2.yml`](../../.github/workflows/adventure-v2.yml) builds `./adventure` and runs `npm run test:oracle-fortran`. Follow-ons: richer SSE payloads, optional Cucumber ([adventure-v2 README](../../adventure-v2/README.md)). |
+| **Blocking** | _(none)_ |
+| **Next after this** | Richer SSE payloads (R3 visibility), optional `@cucumber/cucumber` HTTP steps—incremental PRs ([README Testing strategy](../../adventure-v2/README.md)). |
 
-**Process:** Implement **Adventure v2** one increment at a time. **Slice 1** ([minimal milestones](../../.cursor/plans/adventure-v2-minimal-milestones_cba1cb3e.plan.md) M1–M8) and **slices 2–5** are **complete** in-tree; **slice 6** adds **cognition-shaped trace** visibility on the existing wire.
+**Process:** Implement **Adventure v2** one increment at a time. **Slice 1** ([minimal milestones](../../.cursor/plans/adventure-v2-minimal-milestones_cba1cb3e.plan.md) M1–M8) through **slice 6** are **complete** in-tree; slice 7 wires **Fortran subprocess oracle** validation into CI.
 
 *Other staffed work:* AAB LangGraph Pivot — **`Implementing`** (see [**Concurrently active**](#concurrently-active-queue)).
 
@@ -48,7 +48,7 @@ Convention: paths below are repo-relative (`adventure/` root).
 
 Slices that are **green** and awaiting **human review + version-control commit**. Remove the row once committed (or bump back to Implementing if review requests changes).
 
-- **Adventure v2 — slice 6** (R4 cognition trace) — green locally; awaiting human review + commit.
+- _(vacant)_
 
 ---
 
@@ -65,7 +65,7 @@ Slices that are **green** and awaiting **human review + version-control commit**
 **Loop state:** `Ready` — next up once promoted; dependencies clear.
 
 - **AAB** — follow phased delivery in [`.cursor/plans/aab_langgraph_pivot_eb03f964.plan.md`](../../.cursor/plans/aab_langgraph_pivot_eb03f964.plan.md) after world+XState scaffold exists (first todo: `world-xstate-schema`).
-- **Adventure v2 (post–slice 6)** — optional backlog: Fortran oracle in CI, optional `@cucumber/cucumber` (see [adventure-v2 README](../../adventure-v2/README.md)).
+- **Adventure v2 (post–slice 7)** — optional backlog: richer SSE / reconcile fields, optional `@cucumber/cucumber` (see [adventure-v2 README](../../adventure-v2/README.md)); Fortran CI covered by `test:oracle-fortran` in [adventure-v2 workflow](../../.github/workflows/adventure-v2.yml).
 
 ---
 
@@ -86,6 +86,7 @@ Shipped / merged / superseded to your satisfaction (**verify** before treating a
 - **Adventure v2 slice 3** (retrospective) — HTTP checkpoints + replay: [`adventure-v2/apps/server/src/http/createServer.ts`](../../adventure-v2/apps/server/src/http/createServer.ts), [`adventure-v2/tests/http.acceptance.test.ts`](../../adventure-v2/tests/http.acceptance.test.ts); **superseded** by slice 4 (process oracle) then slice 5 (R4 UI)
 - **Adventure v2 slice 4** (retrospective) — process-backed `OracleBridge`: [`adventure-v2/apps/server/src/oracle/processOracleBridge.ts`](../../adventure-v2/apps/server/src/oracle/processOracleBridge.ts), [`adventure-v2/apps/server/src/cli.ts`](../../adventure-v2/apps/server/src/cli.ts), [`oracleProcess.test.ts`](../../adventure-v2/tests/oracleProcess.test.ts), [`docs/architecture/adventure-v2/oracle-subprocess-ipc.md`](../../docs/architecture/adventure-v2/oracle-subprocess-ipc.md); **superseded for focus** by slice 5 then slice 6 ([adventure-v2-slice-6-r4-cognition-trace](../adventure-v2/adventure-v2-slice-6-r4-cognition-trace.plan.md))
 - [`.cursor/plans/adventure-v2-slice-5-r4-web-observability.plan.md`](../../.cursor/plans/adventure-v2-slice-5-r4-web-observability.plan.md) — Adventure v2 **slice 5**: structured SSE panels + `wireDisplay` tests; **superseded for focus** by [slice 6 — cognition trace](../adventure-v2/adventure-v2-slice-6-r4-cognition-trace.plan.md)
+- [`.work-items/adventure-v2/adventure-v2-slice-6-r4-cognition-trace.plan.md`](../adventure-v2/adventure-v2-slice-6-r4-cognition-trace.plan.md) — Adventure v2 **slice 6**: cognition trace on SSE + web; **superseded for focus** by slice 7 (Fortran oracle CI — workflow + `oracle-fortran-bridge.mjs`)
 - `.cursor/plans/adventure_v2_docs_scaffold_a6da04d7.plan.md` — Adventure v2 docs scaffold (baseline docs + `adventure-v2/` layout; **follow-on code** tracked under minimal-milestones then slice-2 plans above)
 - `.cursor/plans/web_ui_autoplay_dashboard_151128c8.plan.md` — Web UI autoplay dashboard
 - `.cursor/plans/web_session_cookies_tls_5a486f40.plan.md` — Web session cookies TLS

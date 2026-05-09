@@ -9,7 +9,13 @@ Planned v2 runtime for benchmark-oriented adventure orchestration.
 - **Web shell** (`apps/web`): minimal Vite page that starts a run, issues a sample turn, and reads the SSE stream (`EventSource`) into transcript, phase, reconcile, checkpoint, and cognition trace panels.
 - **Tests**: Vitest contract, in-process acceptance (`tests/acceptance.test.ts`), and **HTTP acceptance** (`tests/http.acceptance.test.ts`) against a real listener on an ephemeral port.
 
-**Optional (local benchmarks):** set `ADV_V2_PROCESS_ORACLE_SCRIPT` when running `npm run dev:server` to a `.js`/`.mjs` oracle implementing the subprocess JSON line protocol in [oracle subprocess IPC](../docs/architecture/adventure-v2/oracle-subprocess-ipc.md) (typically `fixtures/oracle-stub.mjs`). **Vitest stays on the synthetic oracle** unless a test constructs `createProcessOracleBridge` explicitly. **Not yet:** production deployment hardening; wiring the legacy Fortran executable as the subprocess oracle in CI unless added later as a deliberate target.
+**Optional (local benchmarks):** set `ADV_V2_PROCESS_ORACLE_SCRIPT` when running `npm run dev:server` to a `.js`/`.mjs` oracle implementing the subprocess JSON line protocol in [oracle subprocess IPC](../docs/architecture/adventure-v2/oracle-subprocess-ipc.md) (typically `fixtures/oracle-stub.mjs`). **Vitest stays on the synthetic oracle** unless a test constructs `createProcessOracleBridge` explicitly.
+
+**Fortran oracle (CI + opt-in local):** GitHub Actions compiles the repo-root `./adventure` and runs `npm run test:oracle-fortran`, which drives [`fixtures/oracle-fortran-bridge.mjs`](fixtures/oracle-fortran-bridge.mjs) against that binary. Locally: `make adventure` from the repo root, then the same npm script from `adventure-v2/`. **Default `npm test` does not** run `tests/oracleFortran.ci.test.ts` (see [`vitest.config.ts`](vitest.config.ts) exclude list).
+
+**Not yet:** production deployment hardening.
+
+**Scheduled follow-ons (incremental PRs):** richer SSE / reconcile payloads for R3 visibility; optional `@cucumber/cucumber` steps calling the same HTTP surface as `http.acceptance.test.ts`—see Testing strategy below.
 
 ## Planned structure
 
@@ -89,7 +95,7 @@ ADV_V2_PROCESS_ORACLE_SCRIPT=fixtures/oracle-stub.mjs npm run dev:server
 
 ## Testing strategy
 
-**CI gate:** from this directory, `npm test` runs Vitest once (`vitest run`) over `tests/**/*.test.ts`. That is the authoritative automated gate for this package.
+**CI gate:** from this directory, `npm test` runs Vitest once (`vitest run`) over `tests/**/*.test.ts` but **`vitest.config.ts` excludes** `tests/oracleFortran.ci.test.ts`. `npm run test:oracle-fortran` uses [`vitest.oracle-ci.config.ts`](vitest.oracle-ci.config.ts) so only that file runs, with `ADV_V2_CI_FORTRAN=1`. The root workflow [`.github/workflows/adventure-v2.yml`](../.github/workflows/adventure-v2.yml) installs `gfortran`, runs `make adventure` at the repo root, then `npm run test:oracle-fortran`.
 
 **Layers (test pyramid):**
 
@@ -99,6 +105,7 @@ ADV_V2_PROCESS_ORACLE_SCRIPT=fixtures/oracle-stub.mjs npm run dev:server
 | In-process acceptance | `tests/acceptance.test.ts`, `tests/steps/runSteps.ts` | R1–R5 behaviors via `RunCoordinator` without HTTP. |
 | HTTP + SSE | `tests/http.acceptance.test.ts` | Same contracts over a real listener on an ephemeral port; matches what the web shell uses. |
 | Oracle subprocess | `tests/oracleProcess.test.ts` | `createProcessOracleBridge` + `fixtures/oracle-stub.mjs`. |
+| Fortran oracle (CI / opt-in) | `tests/oracleFortran.ci.test.ts` | Same bridge seam against `fixtures/oracle-fortran-bridge.mjs` + built `./adventure`; run via `npm run test:oracle-fortran` (`vitest.oracle-ci.config.ts`) only. |
 | Web helpers | `tests/wireDisplay.test.ts` | Pure parse/format helpers for transcript, reconcile, and cognition trace panels from `apps/web` (Node environment; no DOM). |
 
 **Gherkin feature files** (`tests/features/*.feature`) are the **behavioral spec reference** for R1–R5. They are **not** executed by Cucumber in CI today. `acceptance.test.ts` includes a smoke test that the files exist and contain expected keywords, and scenario-level requirements are implemented as Vitest examples. This keeps a single runner while preserving readable scenarios for humans.
@@ -119,5 +126,8 @@ npm run test:coverage   # HTML report under coverage/ (gitignored)
 
 ```bash
 npm install   # once
-npm test      # contract + acceptance + HTTP + oracle + wireDisplay
+npm test      # contract + acceptance + HTTP + oracle stub + wireDisplay
+
+# After `make adventure` at repo root (optional locally; CI runs this):
+npm run test:oracle-fortran
 ```

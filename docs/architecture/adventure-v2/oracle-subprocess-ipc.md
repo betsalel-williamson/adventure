@@ -54,4 +54,6 @@ All failures are surfaced as **`rejected: true`** so downstream control/recovery
 1. **Tests / custom servers:** inject `createProcessOracleBridge({ command, args, timeoutMs?, cwd?, env? })` into `RunCoordinator`.
 2. **Local dev CLI:** optionally set **`ADV_V2_PROCESS_ORACLE_SCRIPT`** to an absolute path, or to a path relative to the **`adventure-v2` current working directory** when starting `npm run dev:server`. The CLI runs `process.execPath` with that script as the single argv entry (Node executes `.mjs` / `.js` stubs). When unset, the **synthetic** oracle remains the default (zero-config CI and local runs).
 
-**Binding** a Fortran or other authoritative engine **in CI** is out of scope unless explicitly added later; benchmarks may opt in locally via the env hook or a dedicated constructor wiring.
+**CI:** GitHub Actions runs [`adventure-v2/fixtures/oracle-fortran-bridge.mjs`](../../../adventure-v2/fixtures/oracle-fortran-bridge.mjs) after `make adventure` at the repo root (`npm run test:oracle-fortran` in [`adventure-v2/README.md`](../../../adventure-v2/README.md)). That adapter batches stdin to the Fortran binary (decline instructions + one GETIN line); the engine may exit non-zero when stdin closes—bridge logic treats a substantive transcript as success for benchmark parity (see script comments).
+
+**Local:** benchmarks may opt in via `ADV_V2_PROCESS_ORACLE_SCRIPT`, `createProcessOracleBridge`, or `npm run test:oracle-fortran` after building `./adventure`.
