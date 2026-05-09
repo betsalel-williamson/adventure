@@ -4,6 +4,10 @@
 
 Produce implementation-ready v2 documentation and scaffold definition for a new `adventure-v2` monorepo project, with requirement traceability from user story through architecture and stepwise tasks.
 
+## Implementation status
+
+Code and tests now live under [`adventure-v2/`](../../adventure-v2/). **Authoritative loop state** (which slice is active, finished, or next) is in the planning index [**Current development loop snapshot**](../planning/plan-queues-index.md#current-development-loop-snapshot). Product and engineering detail for the current HTTP surface, tests, and backlog: [`adventure-v2/README.md`](../../adventure-v2/README.md).
+
 ## Requirements traceability
 
 - **R1** Model swap benchmark execution across `SLM`, `LLM`, `API`, and `MLX` categories.

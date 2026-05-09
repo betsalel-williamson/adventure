@@ -1,12 +1,12 @@
 # Work in progress (short pointer)
 
-**Update when focus shifts.** Last touched: **2026-05-08**
+**Update when focus shifts.** Last touched: **2026-05-09**
 
 ## Where we are right now
 
 [**Current development loop snapshot**](plan-queues-index.md#current-development-loop-snapshot) in [`plan-queues-index.md`](plan-queues-index.md) — **source of truth** for loop state, plan/slice, blocking, and “next after this.”
 
-**As of last edit:** Adventure v2 **`Implementing`** (**slice 2**, HTTP/SSE plan); slice 1 (minimal milestones M1–M8) **complete**. AAB **`Implementing`** per active queue.
+**As of last edit:** Adventure v2 **`BetweenPlans`** — slices 1–6 **complete** in-tree; slice 7 (Fortran oracle CI) per the snapshot; follow-ons in [`adventure-v2/README.md`](../../adventure-v2/README.md). AAB **`Implementing`** per active queue.
 
 ## Primary focus
 
@@ -18,7 +18,7 @@ Agentic Adventure Benchmarker (AAB) — LangGraph.js brain + deterministic world
 
 ## Adventure v2 (secondary track)
 
-Roadmap and queues: [`plan-queues-index.md`](plan-queues-index.md). **Slice 2** implementation plan: [`.cursor/plans/adventure-v2-slice-2-http-sse_f4a2b91c.plan.md`](../../.cursor/plans/adventure-v2-slice-2-http-sse_f4a2b91c.plan.md). **Slice 1** (complete): [`.cursor/plans/adventure-v2-minimal-milestones_cba1cb3e.plan.md`](../../.cursor/plans/adventure-v2-minimal-milestones_cba1cb3e.plan.md). Code lives under `adventure-v2/` (run `npm test` there). When a slice is green and uncommitted, list it under **Awaiting commit / HIL gate** in the index.
+Roadmap and queues: [`plan-queues-index.md`](plan-queues-index.md). Status and finished slices: **§ Current development loop snapshot** and **Finished queue** in that file. Historical plans (examples): [slice 1 — minimal milestones](../../.cursor/plans/adventure-v2-minimal-milestones_cba1cb3e.plan.md), [slice 2 — HTTP/SSE](../../.cursor/plans/adventure-v2-slice-2-http-sse_f4a2b91c.plan.md). Code: [`adventure-v2/`](../../adventure-v2/) (`npm test`). When a slice is green and uncommitted, list it under **Awaiting commit / HIL gate** in the index.
 
 ## Queue roster
 

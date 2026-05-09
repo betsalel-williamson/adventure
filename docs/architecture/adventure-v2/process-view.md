@@ -179,7 +179,7 @@ sequenceDiagram
   participant Cog as Cognition Graph
   participant Ctrl as Control Machine
 
-  Web->>Coord: POST /api/v2/runs/{runId}/replay (checkpointId)
+  Web->>Coord: POST /runs/{runId}/replay (checkpointId)
   Coord->>Ck: ResolveCheckpoint(id)
   Ck-->>Coord: ReplayRestorePayload(replayInputRef, controlPhase, pendingOracleSequence)
   Coord->>Cog: internal signal RestoreState(replayInputRef)
@@ -189,7 +189,9 @@ sequenceDiagram
   Coord-->>Web: replay-ready event over SSE (API contract)
 ```
 
-### Session start and stop
+### Run bootstrap (implemented HTTP)
+
+This matches [`adventure-v2/apps/server/src/http/createServer.ts`](../../../adventure-v2/apps/server/src/http/createServer.ts): create a run, open SSE, issue turns. CORS preflight uses `OPTIONS` as needed.
 
 ```mermaid
 sequenceDiagram
@@ -200,21 +202,17 @@ sequenceDiagram
   participant Cog as Cognition Graph
   participant Ctrl as Control Machine
 
-  Web->>Coord: POST /api/v2/sessions
-  Coord-->>Web: sessionPrincipal cookie
-  Web->>Coord: GET/PATCH /api/v2/client-settings
-  Coord-->>Web: ClientSessionSettings (session-scoped)
-  Web->>Coord: POST /api/v2/runs (RunConfig)
-  Coord->>Br: SpawnOracle
+  Web->>Coord: POST /runs (RunConfig)
+  Coord->>Br: SpawnOracle (as configured)
   Coord->>Cog: InitGraph(runId, threadId)
   Coord->>Ctrl: InitMachine(initialPhase=act)
-  Coord-->>Web: SSE run-started(runId)
-  Note over Web,Coord: Web subscribes to /api/v2/runs/{runId}/events.
-  Web->>Coord: POST /api/v2/runs/{runId}/stop
-  Coord->>Br: ShutdownOracle
-  Coord->>Cog: CommitFinalCheckpoint
-  Coord-->>Web: SSE run-stopped(runId)
+  Coord-->>Web: 201 CreateRunResponse (runId)
+  Web->>Coord: GET /runs/{runId}/events (SSE)
+  Note over Web,Coord: Turn, phase, trace envelopes on the wire.
+  Web->>Coord: POST /runs/{runId}/turns (input)
 ```
+
+**Planned / not on current wire:** separate session resources (`POST …/sessions`), client-settings, or an explicit stop route—the **Session model** section below describes principals as a target; benchmark flows today use the routes above.
 
 ## Actor ownership summary
 
@@ -235,6 +233,7 @@ contract definitions and guardrails.
 
 ## Session model
 
+- **HTTP gap:** dedicated session bootstrap, client-settings, and explicit stop resources are **not** on the current [`createServer`](../../../adventure-v2/apps/server/src/http/createServer.ts) surface; use **Run bootstrap (implemented HTTP)** above and [`adventure-v2/README.md`](../../../adventure-v2/README.md) until those routes exist.
 - v2 baseline uses a no-user-account design for benchmark workflows.
 - Each active session maps 1:1 to one effective user principal (session principal).
 - A session principal can mutate only its own runs/checkpoints; cross-session access is rejected by the Run Coordinator.

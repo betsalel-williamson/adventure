@@ -29,17 +29,17 @@ This design aligns with and supersedes relevant parts of:
 
 ### 3.1 API contracts
 
-Planned v2 API contract families:
+The **implemented** HTTP surface uses unversioned paths under `/runs` (see [`adventure-v2/README.md`](../../adventure-v2/README.md) for the canonical route table and payloads). At a glance:
 
-- Session and run control:
-  - `POST /api/v2/sessions`
-  - `POST /api/v2/runs`
-  - `POST /api/v2/runs/{runId}/stop`
-- Turn/event streaming:
-  - `GET /api/v2/runs/{runId}/events` (SSE)
-- Replay/checkpoint:
-  - `GET /api/v2/runs/{runId}/checkpoints`
-  - `POST /api/v2/runs/{runId}/replay`
+| Method | Path | Purpose |
+|--------|------|--------|
+| `POST` | `/runs` | Start a run (`CreateRunRequest` → `CreateRunResponse`) |
+| `POST` | `/runs/{runId}/turns` | Submit turn input |
+| `GET` | `/runs/{runId}/events` | SSE: turn, phase, trace events (`SseWireEvent`) |
+| `GET` | `/runs/{runId}/checkpoints` | List checkpoint refs |
+| `POST` | `/runs/{runId}/replay` | Replay from checkpoint |
+
+**Not on the current wire:** dedicated session bootstrap, client-settings, or explicit stop routes as separate HTTP resources—the README “Not yet” and testing strategy describe optional follow-ons.
 
 Final payloads are defined in `adventure-v2/packages/contracts`.
 
@@ -90,7 +90,12 @@ Best-practice mapping:
 
 ## 5. Out of scope
 
-- Full implementation of v2 runtime and UI in this phase.
+This section distinguishes the **original design-only phase** from **ongoing work**. The repo now contains substantial in-tree runtime code (`adventure-v2` apps, contracts, HTTP/SSE, oracle bridges, Vitest gates)—see [`adventure-v2/README.md`](../../adventure-v2/README.md) and the [planning queue snapshot](../planning/plan-queues-index.md#current-development-loop-snapshot).
+
+Remaining gaps and non-goals as of that README:
+
+- Production deployment hardening and full LangGraph/XState package depth (cognition/control stubs evolve incrementally).
 - Replacing the Fortran engine with a native TypeScript world engine for production-equivalent runs.
 - ADK integration in v2 baseline.
 - Production-grade energy profiling instrumentation (can be added later).
+- Optional `@cucumber/cucumber` as CI runner (Vitest remains the gate; Gherkin files are reference specs).
