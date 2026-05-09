@@ -1,20 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
 import { givenStartedRun } from "./steps/runSteps.js";
 import { createProcessOracleBridge } from "../apps/server/src/index.js";
-
-const fixtureScriptPath = join(
-  dirname(fileURLToPath(import.meta.url)),
-  "..",
-  "fixtures",
-  "oracle-stub.mjs"
-);
+import { oracleStubPath } from "./fixturePaths.js";
 
 const processOracle = () =>
   createProcessOracleBridge({
     command: process.execPath,
-    args: [fixtureScriptPath]
+    args: [oracleStubPath]
   });
 
 describe("process OracleBridge", () => {

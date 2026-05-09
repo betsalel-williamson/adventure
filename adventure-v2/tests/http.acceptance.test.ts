@@ -1,6 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
 import {
   listCheckpointsResponseSchema,
   postReplayRequestSchema,
@@ -15,14 +13,9 @@ import {
   listenAdventureServer,
   type OracleBridge
 } from "../apps/server/src/index.js";
+import { closeServer } from "./helpers/closeServer.js";
+import { oracleStubPath } from "./fixturePaths.js";
 import { createRunConfig } from "./steps/runSteps.js";
-
-const oracleStubPath = join(
-  dirname(fileURLToPath(import.meta.url)),
-  "..",
-  "fixtures",
-  "oracle-stub.mjs"
-);
 
 const readSseUntilCount = async (
   res: globalThis.Response,
@@ -96,9 +89,7 @@ describe("HTTP API + SSE", () => {
         .map((w) => w.transition.to);
       expect(phases).toEqual(["disorder", "act"]);
     } finally {
-      await new Promise<void>((resolve, reject) => {
-        server.close((err) => (err ? reject(err) : resolve()));
-      });
+      await closeServer(server);
     }
   });
 
@@ -133,9 +124,7 @@ describe("HTTP API + SSE", () => {
       const payload = oracleEnvelope!.envelope.payload as { output?: string };
       expect(payload.output).toBe("INJECTED-ORACLE-OUTPUT");
     } finally {
-      await new Promise<void>((resolve, reject) => {
-        server.close((err) => (err ? reject(err) : resolve()));
-      });
+      await closeServer(server);
     }
   });
 
@@ -169,9 +158,7 @@ describe("HTTP API + SSE", () => {
       const payload = oracleEnvelope!.envelope.payload as { output?: string };
       expect(payload.output).toBe("PROCESS-ORACLE-STUB-LINE");
     } finally {
-      await new Promise<void>((resolve, reject) => {
-        server.close((err) => (err ? reject(err) : resolve()));
-      });
+      await closeServer(server);
     }
   });
 
@@ -211,9 +198,7 @@ describe("HTTP API + SSE", () => {
       expect(checkpoints[0]!.runId).toBe(runId);
       expect(checkpoints[0]!.sequence).toBe(1);
     } finally {
-      await new Promise<void>((resolve, reject) => {
-        server.close((err) => (err ? reject(err) : resolve()));
-      });
+      await closeServer(server);
     }
   });
 
@@ -249,9 +234,7 @@ describe("HTTP API + SSE", () => {
       expect(payload.controlPhase).toBe("act");
       expect(payload.replayInputRef).toContain(runId);
     } finally {
-      await new Promise<void>((resolve, reject) => {
-        server.close((err) => (err ? reject(err) : resolve()));
-      });
+      await closeServer(server);
     }
   });
 
@@ -275,9 +258,7 @@ describe("HTTP API + SSE", () => {
       const body = (await replay.json()) as { error?: string };
       expect(body.error).toBe("not_found");
     } finally {
-      await new Promise<void>((resolve, reject) => {
-        server.close((err) => (err ? reject(err) : resolve()));
-      });
+      await closeServer(server);
     }
   });
 
@@ -314,9 +295,7 @@ describe("HTTP API + SSE", () => {
       });
       expect(replay.status).toBe(404);
     } finally {
-      await new Promise<void>((resolve, reject) => {
-        server.close((err) => (err ? reject(err) : resolve()));
-      });
+      await closeServer(server);
     }
   });
 });

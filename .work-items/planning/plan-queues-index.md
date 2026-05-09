@@ -16,11 +16,11 @@ Convention: paths below are repo-relative (`adventure/` root).
 | Field | Value |
 |--------|--------|
 | **Loop state** | `Implementing` |
-| **Plan / slice** | **Slice 5** — R4 console observability in [`adventure-v2/apps/web`](../../adventure-v2/apps/web) (SSE parsing, transcript/phase/reconcile panels): [adventure-v2-slice-5-r4-web-observability](../../.cursor/plans/adventure-v2-slice-5-r4-web-observability.plan.md). **Slice 4** (process oracle) **complete** in-tree — [`processOracleBridge.ts`](../../adventure-v2/apps/server/src/oracle/processOracleBridge.ts), [`cli.ts`](../../adventure-v2/apps/server/src/cli.ts) (`ADV_V2_PROCESS_ORACLE_SCRIPT`), [`oracle-subprocess-ipc.md`](../../docs/architecture/adventure-v2/oracle-subprocess-ipc.md); no standalone slice-4 `.plan.md` was committed. **Slices 1–3** complete as before ([`createServer.ts`](../../adventure-v2/apps/server/src/http/createServer.ts)). **Slice 2** doc: [adventure-v2-slice-2-http-sse](../../.cursor/plans/adventure-v2-slice-2-http-sse_f4a2b91c.plan.md). |
+| **Plan / slice** | **Slice 6** — R4 cognition trace on SSE + web ([adventure-v2-slice-6-r4-cognition-trace](../adventure-v2/adventure-v2-slice-6-r4-cognition-trace.plan.md)). **Slice 5** (structured R4 panels: [`wireDisplay.ts`](../../adventure-v2/apps/web/src/wireDisplay.ts)) **complete**; Vitest stack documented in [adventure-v2/README](../../adventure-v2/README.md). **Slices 1–4** unchanged below ([`createServer.ts`](../../adventure-v2/apps/server/src/http/createServer.ts), process oracle, etc.). |
 | **Blocking** | none |
-| **Next after this** | Cognition–control / LangGraph-shaped observability or richer SSE payloads (v2 backlog) |
+| **Next after this** | Richer SSE payloads, Fortran oracle in CI, optional Cucumber runner (see [adventure-v2 README](../../adventure-v2/README.md)) |
 
-**Process:** Implement **Adventure v2** one increment at a time. **Slice 1** ([minimal milestones](../../.cursor/plans/adventure-v2-minimal-milestones_cba1cb3e.plan.md) M1–M8) and **slices 2–4** are **complete** as implemented in-tree; **slice 5** deepens **R4** UI observability over existing SSE wire events.
+**Process:** Implement **Adventure v2** one increment at a time. **Slice 1** ([minimal milestones](../../.cursor/plans/adventure-v2-minimal-milestones_cba1cb3e.plan.md) M1–M8) and **slices 2–5** are **complete** in-tree; **slice 6** adds **cognition-shaped trace** visibility on the existing wire.
 
 *Other staffed work:* AAB LangGraph Pivot — **`Implementing`** (see [**Concurrently active**](#concurrently-active-queue)).
 
@@ -65,7 +65,7 @@ Slices that are **green** and awaiting **human review + version-control commit**
 **Loop state:** `Ready` — next up once promoted; dependencies clear.
 
 - **AAB** — follow phased delivery in [`.cursor/plans/aab_langgraph_pivot_eb03f964.plan.md`](../../.cursor/plans/aab_langgraph_pivot_eb03f964.plan.md) after world+XState scaffold exists (first todo: `world-xstate-schema`).
-- **Adventure v2 (post–slice 5)** — optional backlog: LangGraph actor pane, new SSE event kinds, Fortran oracle in CI (see snapshot **Next after this**).
+- **Adventure v2 (post–slice 6)** — optional backlog: Fortran oracle in CI, optional `@cucumber/cucumber` (see [adventure-v2 README](../../adventure-v2/README.md)).
 
 ---
 
@@ -73,7 +73,7 @@ Slices that are **green** and awaiting **human review + version-control commit**
 
 **Loop state:** `Implementing`. Explicitly staffed **this cycle** — keep short; if you stall, move snapshot to `Blocked` or `AwaitingHILCommit` and shrink this list accordingly.
 
-- **Adventure v2 — slice 5** (R4 web observability) — [adventure-v2-slice-5-r4-web-observability](../../.cursor/plans/adventure-v2-slice-5-r4-web-observability.plan.md)
+- **Adventure v2 — slice 6** (R4 cognition trace) — [adventure-v2-slice-6-r4-cognition-trace](../adventure-v2/adventure-v2-slice-6-r4-cognition-trace.plan.md)
 - [`.cursor/plans/aab_langgraph_pivot_eb03f964.plan.md`](../../.cursor/plans/aab_langgraph_pivot_eb03f964.plan.md) — **AAB LangGraph Pivot**
 
 ---
@@ -85,7 +85,8 @@ Shipped / merged / superseded to your satisfaction (**verify** before treating a
 - `.cursor/plans/adventure-v2-minimal-milestones_cba1cb3e.plan.md` — Adventure v2 **slice 1**: M1–M8 minimal baseline (harness, contracts, `RunCoordinator`, R1–R5 paths); **superseded by** [adventure-v2-slice-2-http-sse_f4a2b91c.plan.md](../../.cursor/plans/adventure-v2-slice-2-http-sse_f4a2b91c.plan.md)
 - [`.cursor/plans/adventure-v2-slice-2-http-sse_f4a2b91c.plan.md`](../../.cursor/plans/adventure-v2-slice-2-http-sse_f4a2b91c.plan.md) — Adventure v2 **slice 2**: HTTP/SSE, oracle bridge seam, Vitest HTTP gate, minimal `apps/web`; **superseded** by slice 3 (checkpoints + replay wire API, implemented in-tree)
 - **Adventure v2 slice 3** (retrospective) — HTTP checkpoints + replay: [`adventure-v2/apps/server/src/http/createServer.ts`](../../adventure-v2/apps/server/src/http/createServer.ts), [`adventure-v2/tests/http.acceptance.test.ts`](../../adventure-v2/tests/http.acceptance.test.ts); **superseded** by slice 4 (process oracle) then slice 5 (R4 UI)
-- **Adventure v2 slice 4** (retrospective) — process-backed `OracleBridge`: [`adventure-v2/apps/server/src/oracle/processOracleBridge.ts`](../../adventure-v2/apps/server/src/oracle/processOracleBridge.ts), [`adventure-v2/apps/server/src/cli.ts`](../../adventure-v2/apps/server/src/cli.ts), [`oracleProcess.test.ts`](../../adventure-v2/tests/oracleProcess.test.ts), [`docs/architecture/adventure-v2/oracle-subprocess-ipc.md`](../../docs/architecture/adventure-v2/oracle-subprocess-ipc.md); **superseded for focus** by slice 5 ([adventure-v2-slice-5-r4-web-observability](../../.cursor/plans/adventure-v2-slice-5-r4-web-observability.plan.md))
+- **Adventure v2 slice 4** (retrospective) — process-backed `OracleBridge`: [`adventure-v2/apps/server/src/oracle/processOracleBridge.ts`](../../adventure-v2/apps/server/src/oracle/processOracleBridge.ts), [`adventure-v2/apps/server/src/cli.ts`](../../adventure-v2/apps/server/src/cli.ts), [`oracleProcess.test.ts`](../../adventure-v2/tests/oracleProcess.test.ts), [`docs/architecture/adventure-v2/oracle-subprocess-ipc.md`](../../docs/architecture/adventure-v2/oracle-subprocess-ipc.md); **superseded for focus** by slice 5 then slice 6 ([adventure-v2-slice-6-r4-cognition-trace](../adventure-v2/adventure-v2-slice-6-r4-cognition-trace.plan.md))
+- [`.cursor/plans/adventure-v2-slice-5-r4-web-observability.plan.md`](../../.cursor/plans/adventure-v2-slice-5-r4-web-observability.plan.md) — Adventure v2 **slice 5**: structured SSE panels + `wireDisplay` tests; **superseded for focus** by [slice 6 — cognition trace](../adventure-v2/adventure-v2-slice-6-r4-cognition-trace.plan.md)
 - `.cursor/plans/adventure_v2_docs_scaffold_a6da04d7.plan.md` — Adventure v2 docs scaffold (baseline docs + `adventure-v2/` layout; **follow-on code** tracked under minimal-milestones then slice-2 plans above)
 - `.cursor/plans/web_ui_autoplay_dashboard_151128c8.plan.md` — Web UI autoplay dashboard
 - `.cursor/plans/web_session_cookies_tls_5a486f40.plan.md` — Web session cookies TLS
@@ -171,4 +172,5 @@ Not listed above (broken symlink — not a readable plan file):
 
 ## Other plan-like files
 
+- `.work-items/adventure-v2/adventure-v2-slice-6-r4-cognition-trace.plan.md` — Adventure v2 **slice 6** (R4 cognition trace); canonical in main repo (copy/symlink under `.cursor/plans` optional for Cursor UI).
 - `.work-items/adventure-nl/adventure-nl_specs_tdd_4d7c2af8.plan.md` — copy/version aligned with specs TDD; keep consistent with Finished entry above.

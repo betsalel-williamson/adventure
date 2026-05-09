@@ -11,10 +11,6 @@ Planned v2 runtime for benchmark-oriented adventure orchestration.
 
 **Optional (local benchmarks):** set `ADV_V2_PROCESS_ORACLE_SCRIPT` when running `npm run dev:server` to a `.js`/`.mjs` oracle implementing the subprocess JSON line protocol in [oracle subprocess IPC](../docs/architecture/adventure-v2/oracle-subprocess-ipc.md) (typically `fixtures/oracle-stub.mjs`). **Vitest stays on the synthetic oracle** unless a test constructs `createProcessOracleBridge` explicitly. **Not yet:** production deployment hardening; wiring the legacy Fortran executable as the subprocess oracle in CI unless added later as a deliberate target.
 
-### Cucumber / Gherkin CLI
-
-Feature files under `tests/features/` remain the behavioral spec reference. **Cucumber is not wired** as a second test runner in this package; **`npm test` (Vitest)** is the automated gate. Optional future work: add `@cucumber/cucumber` with step definitions that call the HTTP API.
-
 ## Planned structure
 
 ```text
@@ -91,17 +87,37 @@ ADV_V2_PROCESS_ORACLE_SCRIPT=fixtures/oracle-stub.mjs npm run dev:server
 4. Add web shell with transcript + state panel placeholders.
 5. Wire cognition/control packages behind stable contracts.
 
-## Testing principles
+## Testing strategy
 
-- Use Cucumber-style BDD as the **spec** layer; Vitest implements the TDD loop.
-- Keep feature files focused on observable benchmark behaviors (replay, drift, loop transitions).
-- Map each feature to deterministic fixtures and typed step helpers.
+**CI gate:** from this directory, `npm test` runs Vitest once (`vitest run`) over `tests/**/*.test.ts`. That is the authoritative automated gate for this package.
+
+**Layers (test pyramid):**
+
+| Layer | Files | Role |
+|--------|--------|------|
+| Contracts | `tests/contracts.test.ts` | Schema and wire-shape regressions against `packages/contracts`. |
+| In-process acceptance | `tests/acceptance.test.ts`, `tests/steps/runSteps.ts` | R1–R5 behaviors via `RunCoordinator` without HTTP. |
+| HTTP + SSE | `tests/http.acceptance.test.ts` | Same contracts over a real listener on an ephemeral port; matches what the web shell uses. |
+| Oracle subprocess | `tests/oracleProcess.test.ts` | `createProcessOracleBridge` + `fixtures/oracle-stub.mjs`. |
+| Web helpers | `tests/wireDisplay.test.ts` | Pure parse/format helpers from `apps/web` (Node environment; no DOM). |
+
+**Gherkin feature files** (`tests/features/*.feature`) are the **behavioral spec reference** for R1–R5. They are **not** executed by Cucumber in CI today. `acceptance.test.ts` includes a smoke test that the files exist and contain expected keywords, and scenario-level requirements are implemented as Vitest examples. This keeps a single runner while preserving readable scenarios for humans.
+
+**Design doc alignment:** the work-item design describes a Cucumber-style outer loop; **implemented policy** is Vitest-only until maintaining parallel step definitions pays off. A proportionate next step would be optional `@cucumber/cucumber` steps that call the **same HTTP surface** as `http.acceptance.test.ts`, not a second divergent stack.
+
+**Browser / DOM:** interactive wiring in `apps/web/src/main.ts` is covered indirectly by HTTP acceptance (wire format) and by unit tests on `wireDisplay.ts`. There is no Playwright or happy-dom suite yet; add one only when DOM integration bugs outweigh maintenance cost.
+
+**Coverage:** optional signal-only — no enforced percentage thresholds (see repo evidence-based engineering principles):
+
+```bash
+npm run test:coverage   # HTML report under coverage/ (gitignored)
+```
+
+**Process:** follow Red–Green–Refactor and separate structural from behavioral commits when touching tests (see repo `.cursor/rules/process-03-development.mdc`).
 
 ## Verification
 
-From this directory:
-
 ```bash
 npm install   # once
-npm test      # Vitest — contract + acceptance + HTTP tests (`tests/`)
+npm test      # contract + acceptance + HTTP + oracle + wireDisplay
 ```

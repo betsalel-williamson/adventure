@@ -12,6 +12,22 @@ export default defineConfig({
     }
   },
   test: {
-    include: ["tests/**/*.test.ts"]
+    include: ["tests/**/*.test.ts"],
+    /** HTTP + SSE tests use 5s read windows; allow headroom for slow CI. */
+    testTimeout: 15_000,
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "html"],
+      reportsDirectory: "./coverage",
+      exclude: [
+        "tests/**",
+        "**/*.test.ts",
+        "apps/web/**",
+        "fixtures/**",
+        "coverage/**",
+        "**/vite.config.ts",
+        "**/vitest.config.ts"
+      ]
+    }
   }
 });
