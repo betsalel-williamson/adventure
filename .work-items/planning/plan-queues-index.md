@@ -22,6 +22,7 @@ Ideas / PRD text **not yet** turned into a Cursor plan file.
 Next up — agreed priority and dependencies clear, not actively coding yet.
 
 - **AAB** — follow phased delivery in [`.cursor/plans/aab_langgraph_pivot_eb03f964.plan.md`](../../.cursor/plans/aab_langgraph_pivot_eb03f964.plan.md) after world+XState scaffold exists (first todo: `world-xstate-schema`).
+- **Adventure v2 docs+scaffold** — execute [`.cursor/plans/adventure_v2_docs_scaffold_a6da04d7.plan.md`](../../.cursor/plans/adventure_v2_docs_scaffold_a6da04d7.plan.md) with docs-first milestones and separate `adventure-v2/` project root.
 
 ---
 
@@ -81,6 +82,7 @@ Sorted by last modified (**newest first**). Title from plan frontmatter `name:`.
 
 | Modified | File | Title (`name`) |
 |---------|------|----------------|
+| 2026-05-08 | `adventure_v2_docs_scaffold_a6da04d7.plan.md` | Adventure V2 Docs Scaffold |
 | 2026-05-08 | `aab_langgraph_pivot_eb03f964.plan.md` | AAB LangGraph Pivot |
 | 2026-04-14 | `xstate_nl-glue_actors_7545a629.plan.md` | XState nl-glue actors |
 | 2026-04-12 | `review-fixes-task-map_274669c7.plan.md` | review-fixes-task-map |
