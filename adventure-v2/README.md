@@ -13,7 +13,9 @@ Planned v2 runtime for benchmark-oriented adventure orchestration.
 
 **Fortran oracle (CI + opt-in local):** GitHub Actions compiles the repo-root `./adventure` and runs `npm run test:oracle-fortran`, which drives [`fixtures/oracle-fortran-bridge.mjs`](fixtures/oracle-fortran-bridge.mjs) against that binary. Locally: `make adventure` from the repo root, then the same npm script from `adventure-v2/`. **Default `npm test` does not** run `tests/oracleFortran.ci.test.ts` (see [`vitest.config.ts`](vitest.config.ts) exclude list).
 
-**Not yet:** further deployment hardening (auth, rate limits, non-default CORS, TLS termination).
+**Not yet:** further deployment hardening (auth, rate limits, TLS termination).
+
+**Slice 12 (configurable CORS):** set comma-separated **`ADV_V2_CORS_ORIGINS`** on the server process to restrict browser `Origin` values that receive `Access-Control-Allow-Origin` (reflected origin per request). When unset or blank, behavior matches earlier slices: **`Access-Control-Allow-Origin: *`** on JSON, SSE, and `OPTIONS` responses. Covered in `tests/http.acceptance.test.ts`.
 
 **Slice 8 (R3 reconcile visibility):** `ReconcileOutcome` adds optional `correlationId`, `driftSummary`, and `evidence` (oracle outcome + capped output excerpt). Oracle turn payloads include optional `outcome` (`accepted` \| `rejected` \| `transport_error`); subprocess harness failures map to `transport_error` so reconcile uses `driftClass: "unknown"` vs validation-style `parser` rejection.
 
@@ -53,7 +55,7 @@ adventure-v2/
 - `API`: provider-backed model access through typed server-side integrations.
 - `MLX`: local Apple Silicon execution path for on-device model experiments.
 
-## HTTP API (slices 2–3, extended slice 11)
+## HTTP API (slices 2–3, extended slices 11–12)
 
 | Method | Path | Purpose |
 |--------|------|--------|
@@ -66,7 +68,7 @@ adventure-v2/
 
 `POST` bodies that exceed **256 KiB** total bytes return **`413`** `{ "error": "payload_too_large", "message": … }` before JSON parsing.
 
-`OPTIONS` is supported for CORS preflight (`Access-Control-Allow-Origin: *` on responses).
+`OPTIONS` is supported for CORS preflight. Default **`Access-Control-Allow-Origin: *`**. With **`ADV_V2_CORS_ORIGINS`** set (comma-separated exact origins), only matching request `Origin` values get a reflected `Access-Control-Allow-Origin`; disallowed origins omit that header on JSON, SSE, and `OPTIONS` responses.
 
 ## Local dev
 
@@ -92,6 +94,12 @@ Optional process oracle for the HTTP server (`cwd` should be `adventure-v2` so r
 
 ```bash
 ADV_V2_PROCESS_ORACLE_SCRIPT=fixtures/oracle-stub.mjs npm run dev:server
+```
+
+Restrict browser origins when the API and web app use different origins (comma-separated; spaces around commas are trimmed):
+
+```bash
+ADV_V2_CORS_ORIGINS=http://127.0.0.1:5173,http://localhost:5173 npm run dev:server
 ```
 
 ## Bootstrap plan (historical)

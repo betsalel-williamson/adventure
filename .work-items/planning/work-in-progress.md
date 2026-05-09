@@ -1,12 +1,12 @@
 # Work in progress (short pointer)
 
-**Update when focus shifts.** Last touched: **2026-05-09** (Slice 11 planning snapshot)
+**Update when focus shifts.** Last touched: **2026-05-09** (Slice 12 planning snapshot)
 
 ## Where we are right now
 
 [**Current development loop snapshot**](plan-queues-index.md#current-development-loop-snapshot) in [`plan-queues-index.md`](plan-queues-index.md) — **source of truth** for loop state, plan/slice, blocking, and “next after this.”
 
-**As of last edit:** Adventure v2 **`BetweenPlans`** — **Slice 11** (operational readiness: `/health`, JSON body cap) **shipped**; slices 1–11 **complete** in-tree per [`plan-queues-index.md`](plan-queues-index.md). AAB **`Implementing`** per active queue.
+**As of last edit:** Adventure v2 **`BetweenPlans`** — **Slice 12** (configurable CORS via **`ADV_V2_CORS_ORIGINS`**) **shipped**; slices 1–12 **complete** in-tree per [`plan-queues-index.md`](plan-queues-index.md). AAB **`Implementing`** per active queue.
 
 ## Primary focus
 

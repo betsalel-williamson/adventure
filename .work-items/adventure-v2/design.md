@@ -50,6 +50,8 @@ The **implemented** HTTP surface uses unversioned paths under `/runs` (see [`adv
 
 **Request limits:** JSON bodies on `POST` routes are capped (default **256 KiB**; see [`adventure-v2/README.md`](../../adventure-v2/README.md) and `HTTP_MAX_JSON_BODY_BYTES` in the server). Oversize requests return **`413`** before schema validation.
 
+**CORS:** Optional **`ADV_V2_CORS_ORIGINS`** env var (comma-separated allowed `Origin` strings). When unset or blank, responses use **`Access-Control-Allow-Origin: *`**. When set, only requests whose `Origin` matches an entry receive **`Access-Control-Allow-Origin`** (reflected); others omit it on JSON, SSE, and `OPTIONS` responses (see server `corsHeadersForRequest`).
+
 **Not on the current wire:** dedicated session bootstrap, client-settings, or explicit stop routes as separate HTTP resources—the README “Not yet” and testing strategy describe optional follow-ons.
 
 Final payloads are defined in `adventure-v2/packages/contracts`.

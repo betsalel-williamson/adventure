@@ -21,6 +21,13 @@ import type { WireStreamItem } from "./wireStream.js";
 /** Maximum bytes read for JSON request bodies (`POST` routes using `readJsonBody`). */
 export const HTTP_MAX_JSON_BODY_BYTES = 256 * 1024;
 
+/**
+ * Comma-separated list of allowed browser `Origin` values. When unset or blank,
+ * responses use `Access-Control-Allow-Origin: *`. When set, only matching
+ * origins receive a reflected `Access-Control-Allow-Origin`; others omit it.
+ */
+export const ADV_V2_CORS_ORIGINS_ENV = "ADV_V2_CORS_ORIGINS";
+
 class JsonBodyTooLargeError extends Error {
   constructor() {
     super("JSON body exceeds maximum size");
@@ -28,11 +35,31 @@ class JsonBodyTooLargeError extends Error {
   }
 }
 
-const corsHeaders = (): Record<string, string> => ({
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type"
-});
+const parseCorsAllowlist = (): readonly string[] | null => {
+  const raw = process.env[ADV_V2_CORS_ORIGINS_ENV];
+  if (raw === undefined || raw.trim() === "") {
+    return null;
+  }
+  const parts = raw.split(",").map((s) => s.trim()).filter((s) => s.length > 0);
+  return parts.length === 0 ? null : parts;
+};
+
+/** CORS headers for a request; reads `ADV_V2_CORS_ORIGINS` per request for tests and runtime env changes. */
+export const corsHeadersForRequest = (req: IncomingMessage): Record<string, string> => {
+  const base: Record<string, string> = {
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type"
+  };
+  const allowlist = parseCorsAllowlist();
+  if (allowlist === null) {
+    return { ...base, "Access-Control-Allow-Origin": "*" };
+  }
+  const origin = req.headers.origin;
+  if (typeof origin === "string" && allowlist.includes(origin)) {
+    return { ...base, "Access-Control-Allow-Origin": origin };
+  }
+  return base;
+};
 
 const readJsonBody = async (req: IncomingMessage): Promise<unknown> => {
   const chunks: Buffer[] = [];
@@ -57,6 +84,7 @@ const readJsonBody = async (req: IncomingMessage): Promise<unknown> => {
 };
 
 const sendJson = (
+  req: IncomingMessage,
   res: ServerResponse,
   status: number,
   body: unknown,
@@ -66,7 +94,7 @@ const sendJson = (
   res.writeHead(status, {
     "Content-Type": "application/json; charset=utf-8",
     "Content-Length": Buffer.byteLength(payload),
-    ...corsHeaders(),
+    ...corsHeadersForRequest(req),
     ...extraHeaders
   });
   res.end(payload);
@@ -149,7 +177,7 @@ const handleHttp = async (
   const pathname = url.pathname;
 
   if (method === "OPTIONS") {
-    res.writeHead(204, corsHeaders());
+    res.writeHead(204, corsHeadersForRequest(req));
     res.end();
     return;
   }
@@ -158,7 +186,7 @@ const handleHttp = async (
 
   try {
     if (route.kind === "get-health") {
-      sendJson(res, 200, { status: "ok", service: "adventure-v2" });
+      sendJson(req, res, 200, { status: "ok", service: "adventure-v2" });
       return;
     }
 
@@ -170,7 +198,7 @@ const handleHttp = async (
         runId: started.runId,
         config: started.config
       });
-      sendJson(res, 201, response);
+      sendJson(req, res, 201, response);
       return;
     }
 
@@ -180,7 +208,7 @@ const handleHttp = async (
       coordinator.processTurn(route.runId, body.input, {
         forceReject: body.forceReject
       });
-      res.writeHead(204, corsHeaders());
+      res.writeHead(204, corsHeadersForRequest(req));
       res.end();
       return;
     }
@@ -190,7 +218,7 @@ const handleHttp = async (
         "Content-Type": "text/event-stream; charset=utf-8",
         "Cache-Control": "no-cache, no-transform",
         Connection: "keep-alive",
-        ...corsHeaders()
+        ...corsHeadersForRequest(req)
       });
       res.flushHeaders?.();
 
@@ -211,10 +239,10 @@ const handleHttp = async (
     if (route.kind === "get-checkpoints") {
       try {
         const checkpoints = coordinator.checkpointsForRun(route.runId);
-        sendJson(res, 200, listCheckpointsResponseSchema.parse(checkpoints));
+        sendJson(req, res, 200, listCheckpointsResponseSchema.parse(checkpoints));
       } catch (err) {
         if (isUnknownRunError(err)) {
-          sendJson(res, 404, { error: "not_found", message: (err as Error).message });
+          sendJson(req, res, 404, { error: "not_found", message: (err as Error).message });
           return;
         }
         throw err;
@@ -228,22 +256,22 @@ const handleHttp = async (
       try {
         body = postReplayRequestSchema.parse(raw);
       } catch {
-        sendJson(res, 400, { error: "bad_request", message: "Invalid replay request body" });
+        sendJson(req, res, 400, { error: "bad_request", message: "Invalid replay request body" });
         return;
       }
       try {
         const restore = coordinator.replay(body.checkpointId);
         if (restore.runId !== route.runId) {
-          sendJson(res, 404, {
+          sendJson(req, res, 404, {
             error: "not_found",
             message: "Checkpoint does not belong to this run"
           });
           return;
         }
-        sendJson(res, 200, postReplayResponseSchema.parse(restore));
+        sendJson(req, res, 200, postReplayResponseSchema.parse(restore));
       } catch (err) {
         if (isUnknownCheckpointError(err) || isUnknownRunError(err)) {
-          sendJson(res, 404, { error: "not_found", message: (err as Error).message });
+          sendJson(req, res, 404, { error: "not_found", message: (err as Error).message });
           return;
         }
         throw err;
@@ -251,17 +279,17 @@ const handleHttp = async (
       return;
     }
 
-    sendJson(res, 404, { error: "not_found" });
+    sendJson(req, res, 404, { error: "not_found" });
   } catch (err) {
     if (err instanceof JsonBodyTooLargeError) {
-      sendJson(res, 413, {
+      sendJson(req, res, 413, {
         error: "payload_too_large",
         message: err.message
       });
       return;
     }
     const message = err instanceof Error ? err.message : String(err);
-    sendJson(res, 400, { error: "bad_request", message });
+    sendJson(req, res, 400, { error: "bad_request", message });
   }
 };
 

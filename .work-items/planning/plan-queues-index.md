@@ -16,11 +16,11 @@ Convention: paths below are repo-relative (`adventure/` root).
 | Field | Value |
 |--------|--------|
 | **Loop state** | `BetweenPlans` |
-| **Plan / slice** | **Slice 11** (operational readiness: `/health`, JSON body cap + review) **shipped**; prior **slice 10** (R5 HTTP wire); slices **9** (HTTP Gherkin + CI Cucumber), **8** (R3 reconcile visibility); slice **7** (Fortran oracle CI): [`.github/workflows/adventure-v2.yml`](../../.github/workflows/adventure-v2.yml). |
+| **Plan / slice** | **Slice 12** (configurable CORS: **`ADV_V2_CORS_ORIGINS`**, [`slice-12-multidisciplinary-review.md`](../adventure-v2/slice-12-multidisciplinary-review.md)) **shipped**; prior **slice 11** (operational readiness); slices **10** (R5 HTTP wire), **9** (HTTP Gherkin + CI Cucumber), **8** (R3 reconcile visibility); slice **7** (Fortran oracle CI): [`.github/workflows/adventure-v2.yml`](../../.github/workflows/adventure-v2.yml). |
 | **Blocking** | _(none)_ |
-| **Next after this** | README **Not yet** (further hardening: auth, rate limits, non-default CORS, TLS; Playwright for `apps/web` when justified). |
+| **Next after this** | README **Not yet** (further hardening: auth, rate limits, TLS termination; Playwright for `apps/web` when justified). |
 
-**Process:** Implement **Adventure v2** one increment at a time. **Slice 1** ([minimal milestones](../../.cursor/plans/adventure-v2-minimal-milestones_cba1cb3e.plan.md) M1–M8) through **slice 11** are **complete** in-tree; slice 7 wires **Fortran subprocess oracle** validation into CI; slice 8 deepens **R3** fields on the wire; slice 9 adds **Cucumber HTTP** scenarios in CI; slice 10 adds **R5** HTTP wire + Gherkin ([`slice-10-multidisciplinary-review.md`](../adventure-v2/slice-10-multidisciplinary-review.md)); slice 11 adds **`GET /health`**, **POST body size limit**, and design/README alignment ([`slice-11-multidisciplinary-review.md`](../adventure-v2/slice-11-multidisciplinary-review.md)).
+**Process:** Implement **Adventure v2** one increment at a time. **Slice 1** ([minimal milestones](../../.cursor/plans/adventure-v2-minimal-milestones_cba1cb3e.plan.md) M1–M8) through **slice 12** are **complete** in-tree; slice 7 wires **Fortran subprocess oracle** validation into CI; slice 8 deepens **R3** fields on the wire; slice 9 adds **Cucumber HTTP** scenarios in CI; slice 10 adds **R5** HTTP wire + Gherkin ([`slice-10-multidisciplinary-review.md`](../adventure-v2/slice-10-multidisciplinary-review.md)); slice 11 adds **`GET /health`**, **POST body size limit**, and design/README alignment ([`slice-11-multidisciplinary-review.md`](../adventure-v2/slice-11-multidisciplinary-review.md)); slice 12 adds **env-driven CORS allowlist** ([`slice-12-multidisciplinary-review.md`](../adventure-v2/slice-12-multidisciplinary-review.md)).
 
 *Other staffed work:* AAB LangGraph Pivot — **`Implementing`** (see [**Concurrently active**](#concurrently-active-queue)).
 
@@ -65,7 +65,7 @@ Slices that are **green** and awaiting **human review + version-control commit**
 **Loop state:** `Ready` — next up once promoted; dependencies clear.
 
 - **AAB** — follow phased delivery in [`.cursor/plans/aab_langgraph_pivot_eb03f964.plan.md`](../../.cursor/plans/aab_langgraph_pivot_eb03f964.plan.md) after world+XState scaffold exists (first todo: `world-xstate-schema`).
-- **Adventure v2 (post–slice 11)** — follow README **Not yet** and planning snapshot **Next after this**.
+- **Adventure v2 (post–slice 12)** — follow README **Not yet** and planning snapshot **Next after this**.
 
 ---
 
@@ -90,7 +90,8 @@ Shipped / merged / superseded to your satisfaction (**verify** before treating a
 - **Adventure v2 slice 8** (retrospective) — R3 reconcile visibility: [`packages/contracts/src/reconcile/outcome.ts`](../../adventure-v2/packages/contracts/src/reconcile/outcome.ts), [`packages/contracts/src/events/oracleObservation.ts`](../../adventure-v2/packages/contracts/src/events/oracleObservation.ts), [`classifyReconcile.ts`](../../adventure-v2/packages/cognition/src/reconcile/classifyReconcile.ts), [`processOracleBridge.ts`](../../adventure-v2/apps/server/src/oracle/processOracleBridge.ts), [`wireDisplay.ts`](../../adventure-v2/apps/web/src/wireDisplay.ts); **superseded for focus** by slice 9 then slice 10
 - **Adventure v2 slice 9** (retrospective) — HTTP Gherkin (`npm run test:cucumber`), [`tests/features/http/`](../../adventure-v2/tests/features/http/), CI step **Cucumber HTTP scenarios** in [adventure-v2 workflow](../../.github/workflows/adventure-v2.yml); multidisciplinary notes [slice-9-multidisciplinary-review.md](../adventure-v2/slice-9-multidisciplinary-review.md); **superseded for focus** by slice 10 (R5 on wire)
 - **Adventure v2 slice 10** (retrospective) — R5 invalid-action recovery on HTTP+SSE: [`http.acceptance.test.ts`](../../adventure-v2/tests/http.acceptance.test.ts), [`r5_invalid_action_recovery.feature`](../../adventure-v2/tests/features/http/r5_invalid_action_recovery.feature), [`slice-10-multidisciplinary-review.md`](../adventure-v2/slice-10-multidisciplinary-review.md); **superseded for focus** by slice 11 (operational readiness)
-- **Adventure v2 slice 11** (retrospective) — `GET /health`, 256 KiB JSON `POST` body cap (`413` / `payload_too_large`), README + design sync: [`createServer.ts`](../../adventure-v2/apps/server/src/http/createServer.ts), [`http.acceptance.test.ts`](../../adventure-v2/tests/http.acceptance.test.ts), [`design.md`](../adventure-v2/design.md) §3.1, [`slice-11-multidisciplinary-review.md`](../adventure-v2/slice-11-multidisciplinary-review.md); **next focus** per README **Not yet**
+- **Adventure v2 slice 11** (retrospective) — `GET /health`, 256 KiB JSON `POST` body cap (`413` / `payload_too_large`), README + design sync: [`createServer.ts`](../../adventure-v2/apps/server/src/http/createServer.ts), [`http.acceptance.test.ts`](../../adventure-v2/tests/http.acceptance.test.ts), [`design.md`](../adventure-v2/design.md) §3.1, [`slice-11-multidisciplinary-review.md`](../adventure-v2/slice-11-multidisciplinary-review.md); **superseded for focus** by slice 12 (configurable CORS)
+- **Adventure v2 slice 12** (retrospective) — **`ADV_V2_CORS_ORIGINS`** allowlist + `corsHeadersForRequest`: [`createServer.ts`](../../adventure-v2/apps/server/src/http/createServer.ts), [`http.acceptance.test.ts`](../../adventure-v2/tests/http.acceptance.test.ts), README + [`design.md`](../adventure-v2/design.md) §3.1, [`slice-12-multidisciplinary-review.md`](../adventure-v2/slice-12-multidisciplinary-review.md), archive pointer [`adventure-v2-slice-12-configurable-cors.plan.md`](../adventure-v2/adventure-v2-slice-12-configurable-cors.plan.md); **next focus** per README **Not yet**
 - `.cursor/plans/adventure_v2_docs_scaffold_a6da04d7.plan.md` — Adventure v2 docs scaffold (baseline docs + `adventure-v2/` layout; **follow-on code** tracked under minimal-milestones then slice-2 plans above)
 - `.cursor/plans/web_ui_autoplay_dashboard_151128c8.plan.md` — Web UI autoplay dashboard
 - `.cursor/plans/web_session_cookies_tls_5a486f40.plan.md` — Web session cookies TLS
@@ -177,5 +178,6 @@ Not listed above (broken symlink — not a readable plan file):
 ## Other plan-like files
 
 - `.work-items/adventure-v2/adventure-v2-slice-11-operational-readiness.plan.md` — Adventure v2 **slice 11** (operational readiness); canonical in main repo (copy/symlink under `.cursor/plans` optional for Cursor UI).
+- `.work-items/adventure-v2/adventure-v2-slice-12-configurable-cors.plan.md` — Adventure v2 **slice 12** (configurable CORS); canonical in main repo (copy/symlink under `.cursor/plans` optional for Cursor UI).
 - `.work-items/adventure-v2/adventure-v2-slice-6-r4-cognition-trace.plan.md` — Adventure v2 **slice 6** (R4 cognition trace); canonical in main repo (copy/symlink under `.cursor/plans` optional for Cursor UI).
 - `.work-items/adventure-nl/adventure-nl_specs_tdd_4d7c2af8.plan.md` — copy/version aligned with specs TDD; keep consistent with Finished entry above.

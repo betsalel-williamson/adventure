@@ -1,5 +1,7 @@
 export { RunCoordinator } from "./run/runCoordinator.js";
 export {
+  ADV_V2_CORS_ORIGINS_ENV,
+  corsHeadersForRequest,
   createAdventureHttpServer,
   HTTP_MAX_JSON_BODY_BYTES,
   listenAdventureServer

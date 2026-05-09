@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   listCheckpointsResponseSchema,
   postReplayRequestSchema,
@@ -6,6 +6,7 @@ import {
   type SseWireEvent
 } from "../packages/contracts/src/index.js";
 import {
+  ADV_V2_CORS_ORIGINS_ENV,
   HTTP_MAX_JSON_BODY_BYTES,
   RunCoordinator,
   createProcessOracleBridge,
@@ -19,6 +20,109 @@ import { oracleStubPath } from "./fixturePaths.js";
 import { createRunConfig } from "./steps/runSteps.js";
 
 describe("HTTP API + SSE", () => {
+  describe("CORS allowlist (ADV_V2_CORS_ORIGINS)", () => {
+    let previousOrigins: string | undefined;
+
+    beforeEach(() => {
+      previousOrigins = process.env[ADV_V2_CORS_ORIGINS_ENV];
+    });
+
+    afterEach(() => {
+      if (previousOrigins === undefined) {
+        delete process.env[ADV_V2_CORS_ORIGINS_ENV];
+      } else {
+        process.env[ADV_V2_CORS_ORIGINS_ENV] = previousOrigins;
+      }
+    });
+
+    it("uses Access-Control-Allow-Origin * when env is unset", async () => {
+      delete process.env[ADV_V2_CORS_ORIGINS_ENV];
+      const coordinator = new RunCoordinator();
+      const { server, baseUrl } = await listenAdventureServer(coordinator, 0);
+      try {
+        const res = await fetch(`${baseUrl}/health`);
+        expect(res.headers.get("access-control-allow-origin")).toBe("*");
+      } finally {
+        await closeServer(server);
+      }
+    });
+
+    it("reflects allowed Origin when allowlist is set", async () => {
+      process.env[ADV_V2_CORS_ORIGINS_ENV] = "https://app.example";
+      const coordinator = new RunCoordinator();
+      const { server, baseUrl } = await listenAdventureServer(coordinator, 0);
+      try {
+        const res = await fetch(`${baseUrl}/health`, {
+          headers: { Origin: "https://app.example" }
+        });
+        expect(res.headers.get("access-control-allow-origin")).toBe("https://app.example");
+      } finally {
+        await closeServer(server);
+      }
+    });
+
+    it("omits Access-Control-Allow-Origin when Origin is not in the allowlist", async () => {
+      process.env[ADV_V2_CORS_ORIGINS_ENV] = "https://app.example";
+      const coordinator = new RunCoordinator();
+      const { server, baseUrl } = await listenAdventureServer(coordinator, 0);
+      try {
+        const res = await fetch(`${baseUrl}/health`, {
+          headers: { Origin: "https://evil.example" }
+        });
+        expect(res.headers.get("access-control-allow-origin")).toBeNull();
+      } finally {
+        await closeServer(server);
+      }
+    });
+
+    it("accepts multiple origins from a comma-separated allowlist", async () => {
+      process.env[ADV_V2_CORS_ORIGINS_ENV] = "https://a.example, https://b.example ";
+      const coordinator = new RunCoordinator();
+      const { server, baseUrl } = await listenAdventureServer(coordinator, 0);
+      try {
+        const a = await fetch(`${baseUrl}/health`, {
+          headers: { Origin: "https://a.example" }
+        });
+        expect(a.headers.get("access-control-allow-origin")).toBe("https://a.example");
+        const b = await fetch(`${baseUrl}/health`, {
+          headers: { Origin: "https://b.example" }
+        });
+        expect(b.headers.get("access-control-allow-origin")).toBe("https://b.example");
+      } finally {
+        await closeServer(server);
+      }
+    });
+
+    it("OPTIONS preflight uses the same CORS policy as GET", async () => {
+      process.env[ADV_V2_CORS_ORIGINS_ENV] = "https://app.example";
+      const coordinator = new RunCoordinator();
+      const { server, baseUrl } = await listenAdventureServer(coordinator, 0);
+      try {
+        const ok = await fetch(`${baseUrl}/runs`, {
+          method: "OPTIONS",
+          headers: {
+            Origin: "https://app.example",
+            "Access-Control-Request-Method": "POST"
+          }
+        });
+        expect(ok.status).toBe(204);
+        expect(ok.headers.get("access-control-allow-origin")).toBe("https://app.example");
+
+        const denied = await fetch(`${baseUrl}/runs`, {
+          method: "OPTIONS",
+          headers: {
+            Origin: "https://other.example",
+            "Access-Control-Request-Method": "POST"
+          }
+        });
+        expect(denied.status).toBe(204);
+        expect(denied.headers.get("access-control-allow-origin")).toBeNull();
+      } finally {
+        await closeServer(server);
+      }
+    });
+  });
+
   it("GET /health returns liveness JSON without touching run state", async () => {
     const coordinator = new RunCoordinator();
     const { server, baseUrl } = await listenAdventureServer(coordinator, 0);

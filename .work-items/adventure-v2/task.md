@@ -8,6 +8,8 @@ Produce implementation-ready v2 documentation and scaffold definition for a new 
 
 Code and tests now live under [`adventure-v2/`](../../adventure-v2/). **Authoritative loop state** (which slice is active, finished, or next) is in the planning index [**Current development loop snapshot**](../planning/plan-queues-index.md#current-development-loop-snapshot). Product and engineering detail for the current HTTP surface, tests, and backlog: [`adventure-v2/README.md`](../../adventure-v2/README.md).
 
+**Slice 12 (configurable CORS):** optional comma-separated **`ADV_V2_CORS_ORIGINS`** env var on the server; unset preserves **`Access-Control-Allow-Origin: *`**. Covered in [`tests/http.acceptance.test.ts`](../../adventure-v2/tests/http.acceptance.test.ts) and documented in README slice bullets + **`design.md`** §3.1. Close-out: [`slice-12-multidisciplinary-review.md`](slice-12-multidisciplinary-review.md).
+
 ## Requirements traceability
 
 - **R1** Model swap benchmark execution across `SLM`, `LLM`, `API`, and `MLX` categories.
