@@ -116,6 +116,8 @@ consumed a `ReconcileOutcome` (or the situation is otherwise unclassified).
 - **`test`**: Complex-context probing; aligns with `nextPolicy = "test"`.
 - **`chaos`**: Chaotic-context stabilization; aligns with `nextPolicy = "chaos"`.
 
+For how these phases relate to **in-game situations** (rooms, inventory, parser lines) and how that compares to **today’s reconcile-driven wiring**, see [game-phase-semantics.md](./game-phase-semantics.md).
+
 #### Responsibilities
 
 - Consumes reconcile outputs and policy hints.

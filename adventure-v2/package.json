@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "codegen:brain-mermaid": "tsx packages/cognition/scripts/export-brain-mermaid.ts",
     "test": "vitest run",
     "test:cucumber": "node --import tsx ./node_modules/@cucumber/cucumber/bin/cucumber.js --import tests/cucumber/setup.ts tests/features/http",
     "test:oracle-fortran": "ADV_V2_CI_FORTRAN=1 vitest run --config vitest.oracle-ci.config.ts",
@@ -25,6 +26,7 @@
   "dependencies": {
     "@langchain/core": "^1.1.45",
     "@langchain/langgraph": "^1.3.0",
+    "mermaid": "^11.14.0",
     "xstate": "^5.31.0"
   }
 }

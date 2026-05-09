@@ -38,9 +38,7 @@ export const formatTurnTranscriptLine = (env: TurnEnvelope): string => {
       const output = env.payload.output;
       const outcome =
         typeof env.payload.outcome === "string" ? env.payload.outcome : "?";
-      return `${head} · outcome=${outcome} · rejected=${String(rejected)} · output=${JSON.stringify(
-        typeof output === "string" ? output : JSON.stringify(output)
-      )}`;
+      return `${head} · outcome=${outcome} · rejected=${String(rejected)} · output=${JSON.stringify(output)}`;
     }
     case "reconcile": {
       const r = reconcileOutcomeSchema.safeParse(env.payload);
@@ -109,9 +107,41 @@ export const formatVirtualTerminalWireChunk = (wire: SseWireEvent): string | nul
   return formatVirtualTerminalTurnChunk(wire.envelope);
 };
 
+/** Shown in `#cognition-trace` until the first SSE `trace` event arrives. */
+export const COGNITION_TRACE_EMPTY_PLACEHOLDER = "(no cognition trace yet)";
+
+/** Rough cap for accumulated cognition text to avoid unbounded DOM growth. */
+export const COGNITION_TRACE_CAP_CHARS = 96_000;
+
+const COGNITION_TRACE_BLOCK_SEPARATOR = "\n\n────────\n\n";
+
+/**
+ * Append a formatted trace block to the cognition panel buffer.
+ * Replaces the empty placeholder on first write; truncates from the start when over max length.
+ */
+export const appendCognitionTraceEntry = (
+  previous: string,
+  trace: CognitionTraceWire,
+  options?: { maxChars?: number }
+): string => {
+  const maxChars = options?.maxChars ?? COGNITION_TRACE_CAP_CHARS;
+  const block = formatCognitionTracePanel(trace);
+  const isEmpty =
+    previous === COGNITION_TRACE_EMPTY_PLACEHOLDER || previous.trim() === "";
+  const base = isEmpty ? "" : previous;
+  const sep = base ? COGNITION_TRACE_BLOCK_SEPARATOR : "";
+  let next = `${base}${sep}${block}`;
+  if (next.length > maxChars) {
+    const marker = "… (earlier cognition traces truncated)\n\n";
+    const budget = maxChars - marker.length;
+    next = marker + next.slice(-budget);
+  }
+  return next || COGNITION_TRACE_EMPTY_PLACEHOLDER;
+};
+
 export const formatCognitionTracePanel = (trace: CognitionTraceWire): string => {
   const lines = [
-    "Latest cognition trace",
+    "Cognition trace entry",
     `  nodeId:   ${trace.nodeId}`,
     `  label:    ${trace.label}`,
     `  turnId:   ${trace.turnId}`,

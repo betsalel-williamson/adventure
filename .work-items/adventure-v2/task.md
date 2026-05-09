@@ -16,6 +16,10 @@ Code and tests now live under [`adventure-v2/`](../../adventure-v2/). **Authorit
 
 **Slice 15 (virtual terminal lane):** Pure helpers in [`wireDisplay.ts`](../../adventure-v2/apps/web/src/wireDisplay.ts) (`formatVirtualTerminalUserEcho`, `formatVirtualTerminalTurnChunk`, `formatVirtualTerminalWireChunk`); **game terminal** UI + optional raw SSE toggle; README Fortran/MVP-gap subsection. Close-out: [`slice-15-multidisciplinary-review.md`](slice-15-multidisciplinary-review.md).
 
+**Slice 16 (CRT shell + agent diagrams + cognition log):** CRT styling on **game terminal**; **`appendCognitionTraceEntry`** + cap; Mermaid (**`codegen:brain-mermaid`**, **`agentDiagrams.ts`**); stub autoplay **10** moves; docs + close-out [`slice-16-multidisciplinary-review.md`](slice-16-multidisciplinary-review.md).
+
+**UX multidisciplinary review (end-user lens):** prep artifacts, demo matrix, and **incremental work-queue steps U0–U7** — [`ux-multidisciplinary-review-prep.md`](ux-multidisciplinary-review-prep.md) (§5 registers with [plan queue index](../planning/plan-queues-index.md)).
+
 ## Requirements traceability
 
 - **R1** Model swap benchmark execution across `SLM`, `LLM`, `API`, and `MLX` categories.

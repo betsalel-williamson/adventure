@@ -82,7 +82,8 @@ const graphBuilder = new StateGraph(BrainAnnotation)
   .addEdge("plan", "act")
   .addEdge("act", END);
 
-const compiledBrainGraph = graphBuilder.compile();
+/** Exported for `npm run codegen:brain-mermaid` (dev dependency). */
+export const compiledBrainGraph = graphBuilder.compile();
 
 export type TurnBrainInput = {
   runId: string;

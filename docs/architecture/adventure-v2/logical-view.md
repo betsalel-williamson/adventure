@@ -51,6 +51,8 @@ flowchart LR
 - Cognition/control state is inferred and can drift.
 - Reconcile updates inferred state without rewriting oracle history.
 
+How **control phases** connect to **game-grounded belief** (rooms, objects, oracle text) is documented in [`game-phase-semantics.md`](./game-phase-semantics.md).
+
 ## Runtime behavior
 
 This view shows static structure only. The dynamic interactions between these

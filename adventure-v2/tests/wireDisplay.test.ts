@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  appendCognitionTraceEntry,
+  COGNITION_TRACE_EMPTY_PLACEHOLDER,
   formatCognitionTraceLine,
   formatCognitionTracePanel,
   formatReconcilePanel,
+  formatTurnTranscriptLine,
   formatVirtualTerminalTurnChunk,
   formatVirtualTerminalUserEcho,
   formatVirtualTerminalWireChunk,
@@ -73,6 +76,26 @@ describe("wireDisplay", () => {
     expect(parseSseWirePayload("not-json")).toBeNull();
   });
 
+  it("formats oracle_observation transcript line with a single JSON encoding of output", () => {
+    const env = {
+      runId: "run-1",
+      turnId: "run-1:turn:1",
+      sequence: 2,
+      source: "oracle" as const,
+      kind: "oracle_observation" as const,
+      ts: "2026-01-01T00:00:00.000Z",
+      payload: {
+        rejected: false,
+        outcome: "accepted" as const,
+        output: "You are in a hall."
+      }
+    };
+    const line = formatTurnTranscriptLine(env);
+    expect(line).toContain("outcome=accepted");
+    expect(line).toContain('output="You are in a hall."');
+    expect(line.split("output=").length).toBe(2);
+  });
+
   it("formats transcript lines for turn and phase", () => {
     const turnRaw = JSON.stringify({
       event: "turn",
@@ -120,7 +143,7 @@ describe("wireDisplay", () => {
 
     expect(formatCognitionTraceLine(trace)).toContain("[trace:proposal]");
     expect(formatCognitionTraceLine(trace)).toContain('"look"');
-    expect(formatCognitionTracePanel(trace)).toContain("Latest cognition trace");
+    expect(formatCognitionTracePanel(trace)).toContain("Cognition trace entry");
     expect(formatCognitionTracePanel(trace)).toContain("nodeId:   proposal");
 
     const wire = parseSseWirePayload(JSON.stringify({ event: "trace", trace }));
@@ -260,5 +283,51 @@ describe("wireDisplay", () => {
     expect(text!).toContain("nextPolicy:    continue");
     expect(text!).toContain("correlationId: run-1:turn:1");
     expect(text!).toContain('"oracleOutcome":"accepted"');
+  });
+
+  it("appends cognition trace entries so plan prompts are not overwritten by reconcile", () => {
+    const planTrace = {
+      runId: "run-1",
+      turnId: "run-1:turn:1",
+      sequence: 1,
+      nodeId: "plan",
+      label: "Plan",
+      ts: "t1",
+      promptUser: "hello world",
+      payload: {}
+    };
+    const reconcileTrace = {
+      runId: "run-1",
+      turnId: "run-1:turn:1",
+      sequence: 1,
+      nodeId: "reconcile",
+      label: "Reconcile",
+      ts: "t2",
+      payload: { ok: true }
+    };
+    let buf = COGNITION_TRACE_EMPTY_PLACEHOLDER;
+    buf = appendCognitionTraceEntry(buf, planTrace);
+    buf = appendCognitionTraceEntry(buf, reconcileTrace);
+    expect(buf).toContain("promptUser:");
+    expect(buf).toContain("hello world");
+    expect(buf).toContain("nodeId:   reconcile");
+    expect(buf).toContain("────────");
+  });
+
+  it("truncates accumulated cognition trace when over maxChars", () => {
+    const tinyTrace = {
+      runId: "r",
+      turnId: "t",
+      sequence: 1,
+      nodeId: "perceive",
+      label: "P",
+      ts: "t",
+      payload: {}
+    };
+    const longPrefix = "x".repeat(500);
+    const buf = appendCognitionTraceEntry(longPrefix, tinyTrace, { maxChars: 120 });
+    expect(buf.length).toBeLessThanOrEqual(120);
+    expect(buf).toContain("truncated");
+    expect(buf).toContain("perceive");
   });
 });

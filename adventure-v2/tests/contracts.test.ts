@@ -27,6 +27,25 @@ describe("contracts", () => {
     }
   });
 
+  it("parses optional cognitionProfile on run config", () => {
+    const withProfile = runConfigSchema.parse({
+      scenarioId: "scenario-a",
+      modelCategory: "SLM",
+      modelName: "m",
+      seed: 0,
+      cognitionProfile: "plan-a-langgraph-v2"
+    });
+    expect(withProfile.cognitionProfile).toBe("plan-a-langgraph-v2");
+
+    const without = runConfigSchema.parse({
+      scenarioId: "scenario-a",
+      modelCategory: "SLM",
+      modelName: "m",
+      seed: 0
+    });
+    expect(without.cognitionProfile).toBeUndefined();
+  });
+
   it("parses turn envelope", () => {
     const parsed = turnEnvelopeSchema.parse({
       runId: "run-1",
