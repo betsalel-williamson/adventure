@@ -9,9 +9,52 @@ Convention: paths below are repo-relative (`adventure/` root).
 
 ---
 
+## Current development loop snapshot
+
+**Keep this row honest when focus changes** (starting a session or closing one). Goal: glance here and always know whether you’re implementing, gated on a human commit, blocked, or between plans.
+
+| Field | Value |
+|--------|--------|
+| **Loop state** | `AwaitingHILCommit` |
+| **Plan / slice** | [adventure-v2-minimal-milestones](../../.cursor/plans/adventure-v2-minimal-milestones_cba1cb3e.plan.md) — **commit slice 1** done (milestones **M1–M8**: harness, contracts, synthetic `RunCoordinator`, reconcile/control/replay paths, model matrix; **`npm test` in `adventure-v2/` green**) — **pending human review + VC commit** |
+| **Blocking** | none |
+| **Next after this** | Same plan — **slice 2:** HTTP/SSE run APIs + event fanout, oracle bridge seam, optional Cucumber CLI, then `apps/web` shell _(promote back to `Implementing` after commit)_ |
+
+**Process:** Implement **Adventure v2** one increment at a time (TDD slices on that plan doc). Slice 1 = first commit-sized vertical; slice 2+ stay on the same plan until the roadmap is superseded.
+
+*Other staffed work:* AAB LangGraph Pivot — **`Implementing`** (see [**Concurrently active**](#concurrently-active-queue)).
+
+*Template when you reset:* set **Loop state** from the vocabulary; **Plan / slice** = `.cursor/plans/*.plan.md` + milestone or PR; **Blocking** / **Next after this** explicit.
+
+---
+
+### State vocabulary (development loop)
+
+| State | Meaning | Typical queue placement |
+|--------|---------|-------------------------|
+| `Drafting` | No Cursor plan file yet; idea or PRD only | **Draft** |
+| `Ready` | Planned, prioritized, **not** coding this slice yet | **Ready** |
+| `Implementing` | Active Red/Green/Refactor against a plan (or stacked plans if two staffed) | **Concurrently active** |
+| `AwaitingHILCommit` | Slice is **green** (tests passing); agent does **not** commit; waiting on human review + commit | **Awaiting commit / HIL** |
+| `BetweenPlans` | Nothing staffed; consciously picking next Ready item or reordering queues | Snapshot only — queues unchanged until you promote something |
+| `Blocked` | Hard stop named (dependency, decision, upstream); Implementation paused | Note in snapshot **Blocking** column + optionally keep row in Ready with blocker |
+| `Paused` | Deferred on purpose with a resume trigger recorded | Often **Ready** + “PAUSED until …”, or **Revisit** |
+
+**Rough flow:** `Ready` → `Implementing` → (`AwaitingHILCommit`) → committed → optionally **Finished** for whole plan **or** back to **Ready** for next slice on same doc.
+
+---
+
+## Awaiting commit / HIL gate
+
+Slices that are **green** and awaiting **human review + version-control commit**. Remove the row once committed (or bump back to Implementing if review requests changes).
+
+- **Adventure v2** — [adventure-v2-minimal-milestones](../../.cursor/plans/adventure-v2-minimal-milestones_cba1cb3e.plan.md) **slice 1** (M1–M8 minimal in-tree baseline; `cd adventure-v2 && npm test`). After commit: clear this row → set snapshot **Loop state** to **`Implementing`** (slice 2) or **`BetweenPlans`** if pausing v2 work.
+
+---
+
 ## Draft queue
 
-Ideas / PRD text **not yet** turned into a Cursor plan file.
+**Loop state:** `Drafting` — ideas / PRD **not yet** turned into a Cursor plan file.
 
 - _(vacant)_
 
@@ -19,16 +62,16 @@ Ideas / PRD text **not yet** turned into a Cursor plan file.
 
 ## Ready queue
 
-Next up — agreed priority and dependencies clear, not actively coding yet.
+**Loop state:** `Ready` — next up once promoted; dependencies clear.
 
 - **AAB** — follow phased delivery in [`.cursor/plans/aab_langgraph_pivot_eb03f964.plan.md`](../../.cursor/plans/aab_langgraph_pivot_eb03f964.plan.md) after world+XState scaffold exists (first todo: `world-xstate-schema`).
-- **Adventure v2 docs+scaffold** — execute [`.cursor/plans/adventure_v2_docs_scaffold_a6da04d7.plan.md`](../../.cursor/plans/adventure_v2_docs_scaffold_a6da04d7.plan.md) with docs-first milestones and separate `adventure-v2/` project root.
+- **Adventure v2 (implementation roadmap, one slice at a time)** — canonical plan: [`.cursor/plans/adventure-v2-minimal-milestones_cba1cb3e.plan.md`](../../.cursor/plans/adventure-v2-minimal-milestones_cba1cb3e.plan.md). **Slice 1** (M1–M8 baseline) is **complete in working tree** and listed under [**Awaiting commit / HIL gate**](#awaiting-commit--hil-gate); **slice 2+** (same doc): HTTP/SSE, oracle bridge seam, optional Cucumber for `tests/features`, `apps/web` shell.
 
 ---
 
 ## Concurrently active queue
 
-Explicitly staffed **this cycle** — keep short.
+**Loop state:** `Implementing`. Explicitly staffed **this cycle** — keep short; if you stall, move snapshot to `Blocked` or `AwaitingHILCommit` and shrink this list accordingly.
 
 - [`.cursor/plans/aab_langgraph_pivot_eb03f964.plan.md`](../../.cursor/plans/aab_langgraph_pivot_eb03f964.plan.md) — **AAB LangGraph Pivot**
 
@@ -38,6 +81,7 @@ Explicitly staffed **this cycle** — keep short.
 
 Shipped / merged / superseded to your satisfaction (**verify** before treating as archival).
 
+- `.cursor/plans/adventure_v2_docs_scaffold_a6da04d7.plan.md` — Adventure v2 docs scaffold (baseline docs + `adventure-v2/` layout; **follow-on code** tracked under minimal-milestones plan above)
 - `.cursor/plans/web_ui_autoplay_dashboard_151128c8.plan.md` — Web UI autoplay dashboard
 - `.cursor/plans/web_session_cookies_tls_5a486f40.plan.md` — Web session cookies TLS
 - `.cursor/plans/mlx_model_dropdown_761bb9c5.plan.md` — MLX model dropdown
@@ -82,6 +126,7 @@ Sorted by last modified (**newest first**). Title from plan frontmatter `name:`.
 
 | Modified | File | Title (`name`) |
 |---------|------|----------------|
+| 2026-05-09 | `adventure-v2-minimal-milestones_cba1cb3e.plan.md` | adventure-v2-minimal-milestones |
 | 2026-05-08 | `adventure_v2_docs_scaffold_a6da04d7.plan.md` | Adventure V2 Docs Scaffold |
 | 2026-05-08 | `aab_langgraph_pivot_eb03f964.plan.md` | AAB LangGraph Pivot |
 | 2026-04-14 | `xstate_nl-glue_actors_7545a629.plan.md` | XState nl-glue actors |

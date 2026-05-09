@@ -10,4 +10,9 @@
 /adventure-nl/.cache/
 /adventure-nl/.prompt-projects/
 /adventure-nl/.venv/
+/adventure-v2/node_modules/
+/adventure-v2/**/node_modules/
+/adventure-v2/**/dist/
+/adventure-v2/coverage/
+/package-lock.json
 sample-code/

@@ -4,8 +4,8 @@ Planned v2 runtime for benchmark-oriented adventure orchestration.
 
 ## Scope in this phase
 
-- Documentation and scaffold definition only.
-- No executable runtime code yet.
+- Documentation plus a **minimal in-repo vertical slice**: contracts (`packages/contracts`), synthetic run coordinator (`apps/server`), control + cognition stubs, Vitest acceptance tests that mirror R1–R5 Gherkin feature files.
+- **Not yet:** HTTP/SSE APIs, real oracle process bridge, Cucumber CLI wiring, or web UI (see Bootstrap plan steps 4 onward).
 
 ## Planned structure
 
@@ -50,3 +50,12 @@ adventure-v2/
 - Use Cucumber-style BDD as the acceptance layer and TDD as the implementation loop.
 - Keep feature files focused on observable benchmark behaviors (replay, drift, loop transitions).
 - Map each feature to deterministic fixtures and typed step helpers.
+
+## Verification
+
+From this directory:
+
+```bash
+npm install   # once
+npm test      # Vitest — contract + acceptance tests (`tests/`)
+```
