@@ -44,3 +44,15 @@ Minimum schema groups:
 - Drift classes must be finite and enumerable for benchmark statistics.
 - Session settings are scoped to one session principal and must not mutate other sessions.
 - Client-stored preferences are hints only; server-side settings payload remains the authority used by runtime APIs.
+
+### Replay vs oracle respawn
+
+These constraints apply when the run uses the **external Fortran `adventure` oracle** (subprocess bridge). The default **synthetic** in-process oracle used for zero-config CI is not subject to the same RNG respawn issue unless configured otherwise.
+
+`CheckpointRef` and replay artifacts remain authoritative for **restoring server-side cognition/control state** and **recorded** envelopes. They do **not**, by themselves, guarantee faithful **re-execution** of the Colossal Cave engine’s random behavior:
+
+- The Fortran oracle uses **runtime randomness**. Restarting the **binary** (new process) re-seeds that behavior.
+- **Oracle-forward replay** after spawning a fresh oracle is therefore **best-effort**: transcripts may diverge from an earlier run for the same logical command sequence without implying reconcile bugs.
+- **Strict reproducibility** of oracle output generally assumes replay **within one long-lived oracle instance**, or future mechanisms such as **captured seeds** or an oracle harness that preserves RNG state across turns—out of scope unless explicitly added to contracts and bridges.
+
+See **Replay vs a fresh oracle** in [`process-view.md`](./process-view.md).

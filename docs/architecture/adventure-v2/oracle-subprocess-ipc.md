@@ -49,6 +49,15 @@ All failures are surfaced as **`rejected: true`** so downstream control/recovery
 | JSON missing boolean `rejected` or string `output` | `true` | `[oracle-process] malformed response:` … |
 | spawn error (e.g. ENOENT) | `true` | `[oracle-process] spawn failed:` … |
 
+## Intentional engine exit vs failure
+
+Non-zero exit, truncated stdout, or missing JSON lines are not always “crash” semantics:
+
+- The Fortran program may exit early from an **instructions/menu path** that ends the process (operator-level class comparable to Ctrl+C), or when stdin closes (EOF). Those outcomes still surface through the **failure mapping** above (`rejected: true`) for requirement **R5** alignment today.
+- The [`oracle-fortran-bridge.mjs`](../../../adventure-v2/fixtures/oracle-fortran-bridge.mjs) adapter applies **transitional** heuristics (for example treating some non-zero exits as success when the transcript already looks playable) so CI benchmarks remain usable when `gfortran` returns non-zero after EOF.
+
+**Run Coordinator direction:** persistent oracle absence after such exits should eventually be classified as a **terminal run outcome**, not an indefinite **`test` / `chaos`** loop. A future contract refinement might distinguish **oracle halted** from **rejected** without changing the stdin/stdout shape immediately—see [`contracts-and-actors.md`](./contracts-and-actors.md) and **Oracle process lifecycle** in [`process-view.md`](./process-view.md).
+
 ## Activation
 
 1. **Tests / custom servers:** inject `createProcessOracleBridge({ command, args, timeoutMs?, cwd?, env? })` into `RunCoordinator`.

@@ -16,7 +16,7 @@ and ownership rules).
 | Checkpoint Registry | `apps/server` (`src/replay/`) | Persists `CheckpointRef` and serves replay restore. |
 | Cognition Graph | `packages/cognition` | LangGraph nodes: `Perceive → Route → Plan → Act → Reconcile`. Produces `ActionProposal` and `ReconcileOutcome`. |
 | Control Machine | `packages/control` | XState phase machine governing `act`, `think`, `test`, `chaos`, and `disorder` transitions and recovery policy. |
-| External Oracle | Fortran `adventure` process | Authoritative world truth; out of repo control surface. |
+| External Oracle | Fortran `adventure` process | Authoritative world truth; out of repo control surface. May exit independently of the coordinator (instruction/menu halt, operator interrupt, or EOF-driven exit); see **Oracle process lifecycle**. |
 
 Boundary rule: the External Oracle is the only authoritative source of world
 truth. All other actors operate on inferred state that may drift and must be
@@ -189,6 +189,8 @@ sequenceDiagram
   Coord-->>Web: replay-ready event over SSE (API contract)
 ```
 
+**Replay vs a fresh oracle:** If restoring from a checkpoint **spawns a new** Fortran process, the engine’s random state is re-initialized. Observed oracle output may **diverge** from the recorded transcript for the same logical inputs—this is expected (RNG), not necessarily drift or a reconcile bug. Strict reproduction of the original oracle stream generally requires replay **within one long-lived oracle instance** or an explicitly seeded harness (see [`data-view.md`](./data-view.md)).
+
 ### Run bootstrap (implemented HTTP)
 
 This matches [`adventure-v2/apps/server/src/http/createServer.ts`](../../../adventure-v2/apps/server/src/http/createServer.ts): create a run, open SSE, issue turns. CORS preflight uses `OPTIONS` as needed.
@@ -266,6 +268,14 @@ contract definitions and guardrails.
   policy hint that reduces the action surface for Cognition.
 - Recovery actions are recorded by the Run Coordinator for replay and benchmark
   attribution; the Checkpoint Registry stores the matching `CheckpointRef`.
+- **Oracle process exit** (halt, interrupt, persistent subprocess failure) is not the same as invalid proposals; see **Oracle process lifecycle** below.
+
+## Oracle process lifecycle
+
+This is separate from **in-game restart** (control stays inside the Fortran program).
+
+- **Instruction-phase or menu halt**: The engine may expose a path that **terminates the Fortran process** (same operator-level class as Ctrl+C). The Oracle Bridge may observe non-zero exit, truncated stdout, or empty output without a clean JSON observation line. Today this often maps into the same “oracle failure / rejected” paths as other subprocess errors; longer term the Run Coordinator should treat **persistent oracle absence** as a **terminal run outcome**, not an endless `test` / `chaos` recovery loop. **Planned:** explicit HTTP stop/cancel aligned with engine-initiated exit so the coordinator does not orphan run state (see [`security-and-ops.md`](./security-and-ops.md)).
+- **Subprocess contract detail:** [`oracle-subprocess-ipc.md`](./oracle-subprocess-ipc.md).
 
 ## Transaction semantics
 

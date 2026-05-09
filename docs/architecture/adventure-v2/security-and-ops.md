@@ -40,6 +40,7 @@
 - Use bounded retry policy per phase (`act`, `think`, `test`, `chaos`, `disorder`) with escalation.
 - Persist replay-critical data before emitting terminal run outcomes.
 - Expose explicit run stop/cancel semantics to avoid orphaned sessions.
+- Align **operator stop/cancel** with **oracle process exit**: whether the Fortran engine exits on its own (instruction/menu halt, EOF) or the operator ends the run, the coordinator should converge on the same **terminal run** semantics—release oracle handles, stop advancing sequence as if still playable, and avoid leaving sessions stuck retrying a dead subprocess (see [`process-view.md`](./process-view.md) **Oracle process lifecycle**).
 - Make session lifecycle semantics explicit (for example, process-memory sessions may reset on server restart unless persistent session storage is added).
 - Enforce session transaction semantics:
   - each run mutation is atomic (commit complete turn state or roll back),

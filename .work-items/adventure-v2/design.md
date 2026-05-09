@@ -2,7 +2,7 @@
 
 ## 1. Objective
 
-Design a new monorepo project (`adventure-v2`) that preserves the console adventure experience while adding explicit XState/LangGraph observability, deterministic replay, and drift-aware reconcile behavior against an external authoritative engine.
+Design a new monorepo project (`adventure-v2`) that preserves the console adventure experience while adding explicit XState/LangGraph observability, reproducible checkpoint replay within the oracle lifecycle constraints in §2.1, and drift-aware reconcile behavior against an external authoritative engine.
 
 ## 2. Technical design
 
@@ -24,6 +24,14 @@ This design aligns with and supersedes relevant parts of:
 - `docs/architecture/overview.md`
 - `docs/architecture/adventure-engine.md`
 - `docs/architecture/adventure-nl-cognition-and-workspace.md`
+
+### 2.1 External oracle lifecycle (considerations)
+
+Distinguish three ideas:
+
+- **In-game restart**: Control stays inside the Fortran program (for example re-init after game over). This is engine-internal flow, not v2 transport semantics.
+- **Instruction-phase (or menu) process halt**: A path in the engine’s startup or instructions UX can **end the Fortran host process**—the same class of outcome as an operator interrupting the binary (for example Ctrl+C). The subprocess bridge may see early exit, partial or empty stdout, or non-zero exit codes that are **not** simply “bad JSON” or timeout. Today’s bridge often surfaces such exits like other oracle failures (`rejected`); longer term, a **terminal run outcome** (oracle ended / unavailable) may warrant a distinct contract from “retry another proposal” (see [`contracts-and-actors.md`](../../docs/architecture/adventure-v2/contracts-and-actors.md)).
+- **Replay (R2) after oracle or binary restart**: The engine uses randomness. Spawning a **new** Fortran process re-initializes that state. Checkpoint replay restores recorded envelopes and cognition/control continuity, but **cannot promise** byte-identical or turn-identical reproduction of the original oracle transcript against a fresh process unless randomness is explicitly controlled (for example seed capture or single long-lived oracle). Treat oracle-forward replay after respawn as **best-effort**; deterministic replay is bounded by **oracle process lifetime**.
 
 ## 3. Key changes
 

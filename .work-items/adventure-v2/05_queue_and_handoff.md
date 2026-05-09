@@ -62,4 +62,6 @@ Use when opening a new slice or PR:
 
 - Drift attribution can be ambiguous without strict event IDs across layers.
 - Replay fidelity can degrade if checkpoint payload omits control-phase state.
+- Contracts today collapse several oracle subprocess outcomes into **`rejected`**; distinguishing **`oracle_halted`** (or equivalent) from recoverable rejection would clarify terminal runs versus retry loops.
+- Benchmark claims of **bit-perfect replay** across oracle/binary restart are weaker than replay inside one long-lived oracle: engine RNG re-seeds on process spawn (see [`data-view.md`](../../docs/architecture/adventure-v2/data-view.md) **Replay vs oracle respawn**).
 - Scenario explosion risk for model/provider matrix without disciplined outlines.

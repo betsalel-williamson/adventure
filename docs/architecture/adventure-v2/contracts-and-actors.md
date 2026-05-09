@@ -32,6 +32,10 @@ replay, session lifecycle) are documented as actor sequence diagrams in
 
 An optional **subprocess oracle** implementing the bridge observation contract is specified in [oracle-subprocess-ipc.md](./oracle-subprocess-ipc.md).
 
+### External oracle lifecycle (pointer)
+
+Many subprocess outcomes—including **process exit** after an instruction/menu halt, operator interrupt, or EOF—surface today like other oracle failures (`rejected` per [oracle-subprocess-ipc.md](./oracle-subprocess-ipc.md)). The wire does not yet distinguish **oracle halted** from recoverable rejection; see **Oracle process lifecycle** in [process-view.md](./process-view.md). **Replay** against a **respawned Fortran oracle** does not guarantee the same transcript as the original run because of engine randomness; see **Replay vs a fresh oracle** in [process-view.md](./process-view.md) and **Replay vs oracle respawn** in [data-view.md](./data-view.md).
+
 ### Checkpoint contract (`CheckpointRef`)
 
 - `checkpointId`: string
