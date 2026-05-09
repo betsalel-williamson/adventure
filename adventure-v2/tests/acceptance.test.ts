@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { createRunConfig, givenStartedRun } from "./steps/runSteps.js";
+import type { OracleBridge } from "../apps/server/src/index.js";
 import type { ModelCategory } from "../packages/contracts/src/index.js";
 
 const feature = (name: string): string =>
@@ -41,6 +42,25 @@ describe("R2 deterministic replay", () => {
 });
 
 describe("R3 drift-aware reconcile", () => {
+  it("normalizes contradictory oracle flags so envelope rejected matches transport_error", () => {
+    const bridge: OracleBridge = {
+      observe: () => ({
+        rejected: false,
+        output: "harness-broken",
+        outcome: "transport_error"
+      })
+    };
+    const world = givenStartedRun("SLM", bridge);
+    world.coordinator.processTurn(world.runId, "look");
+    const events = world.coordinator.eventsForRun(world.runId);
+    const obs = events.find((e) => e.kind === "oracle_observation");
+    expect(obs).toBeDefined();
+    expect(obs!.payload).toMatchObject({
+      rejected: true,
+      outcome: "transport_error"
+    });
+  });
+
   it("surfaces parser drift metadata on reject", () => {
     const world = givenStartedRun();
     const turn = world.coordinator.processTurn(world.runId, "xyzzy", { forceReject: true });
@@ -48,6 +68,9 @@ describe("R3 drift-aware reconcile", () => {
     expect(turn.reconcile.driftDetected).toBe(true);
     expect(turn.reconcile.driftClass).toBe("parser");
     expect(turn.reconcile.nextPolicy).toBe("test");
+    expect(turn.reconcile.correlationId).toBe(`${world.runId}:turn:1`);
+    expect(turn.reconcile.driftSummary).toBe("Oracle rejected the proposed action.");
+    expect(turn.reconcile.evidence?.oracleOutcome).toBe("rejected");
   });
 });
 

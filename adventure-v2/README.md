@@ -15,7 +15,9 @@ Planned v2 runtime for benchmark-oriented adventure orchestration.
 
 **Not yet:** production deployment hardening.
 
-**Scheduled follow-ons (incremental PRs):** richer SSE / reconcile payloads for R3 visibility; optional `@cucumber/cucumber` steps calling the same HTTP surface as `http.acceptance.test.ts`—see Testing strategy below.
+**Slice 8 (R3 reconcile visibility):** `ReconcileOutcome` adds optional `correlationId`, `driftSummary`, and `evidence` (oracle outcome + capped output excerpt). Oracle turn payloads include optional `outcome` (`accepted` \| `rejected` \| `transport_error`); subprocess harness failures map to `transport_error` so reconcile uses `driftClass: "unknown"` vs validation-style `parser` rejection.
+
+**Scheduled follow-ons (incremental PRs):** optional `@cucumber/cucumber` steps calling the same HTTP surface as `http.acceptance.test.ts`—see Testing strategy below.
 
 ## Planned structure
 

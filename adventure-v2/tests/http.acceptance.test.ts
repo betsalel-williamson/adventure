@@ -53,6 +53,46 @@ const readSseUntilCount = async (
 };
 
 describe("HTTP API + SSE", () => {
+  it("includes R3 reconcile visibility fields on the SSE turn envelope", async () => {
+    const coordinator = new RunCoordinator();
+    const { server, baseUrl } = await listenAdventureServer(coordinator, 0);
+    try {
+      const start = await fetch(`${baseUrl}/runs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ config: createRunConfig("SLM") })
+      });
+      expect(start.status).toBe(201);
+      const { runId } = (await start.json()) as { runId: string };
+
+      const sseRes = await fetch(`${baseUrl}/runs/${runId}/events`);
+      const readPromise = readSseUntilCount(sseRes, 7);
+
+      await fetch(`${baseUrl}/runs/${runId}/turns`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ input: "look" })
+      });
+
+      const wire = await readPromise;
+      const reconcileEv = wire.find(
+        (w): w is Extract<SseWireEvent, { event: "turn" }> =>
+          w.event === "turn" && w.envelope.kind === "reconcile"
+      );
+      expect(reconcileEv).toBeDefined();
+      const payload = reconcileEv!.envelope.payload as {
+        correlationId?: string;
+        driftSummary?: string;
+        evidence?: { oracleOutcome?: string };
+      };
+      expect(payload.correlationId).toBe(`${runId}:turn:1`);
+      expect(payload.evidence?.oracleOutcome).toBe("accepted");
+      expect(payload.driftSummary).toBeUndefined();
+    } finally {
+      await closeServer(server);
+    }
+  });
+
   it("streams turn and phase events in order for one turn after POST /turns", async () => {
     const coordinator = new RunCoordinator();
     const { server, baseUrl } = await listenAdventureServer(coordinator, 0);
@@ -108,7 +148,7 @@ describe("HTTP API + SSE", () => {
 
   it("uses injected oracle output on the wire without changing route shape", async () => {
     const customOracle: OracleBridge = {
-      observe: () => ({ rejected: false, output: "INJECTED-ORACLE-OUTPUT" })
+      observe: () => ({ rejected: false, output: "INJECTED-ORACLE-OUTPUT", outcome: "accepted" })
     };
     const coordinator = new RunCoordinator(customOracle);
     const { server, baseUrl } = await listenAdventureServer(coordinator, 0);

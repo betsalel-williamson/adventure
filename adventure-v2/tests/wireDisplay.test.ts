@@ -142,12 +142,16 @@ describe("wireDisplay", () => {
         beliefPatch: {},
         confidenceBefore: 0.8,
         confidenceAfter: 0.85,
-        nextPolicy: "continue"
+        nextPolicy: "continue",
+        correlationId: "run-1:turn:1",
+        evidence: { oracleOutcome: "accepted", outputExcerpt: "OK." }
       }
     };
     const text = formatReconcilePanel(env);
     expect(text).not.toBeNull();
     expect(text!).toContain("driftDetected: false");
     expect(text!).toContain("nextPolicy:    continue");
+    expect(text!).toContain("correlationId: run-1:turn:1");
+    expect(text!).toContain('"oracleOutcome":"accepted"');
   });
 });

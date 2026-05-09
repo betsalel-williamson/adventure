@@ -3,6 +3,7 @@ import {
   cognitionTraceWireSchema,
   checkpointRefSchema,
   listCheckpointsResponseSchema,
+  oracleObservationPayloadSchema,
   postReplayRequestSchema,
   postReplayResponseSchema,
   reconcileOutcomeSchema,
@@ -47,9 +48,23 @@ describe("contracts", () => {
       beliefPatch: { parserRejected: true },
       confidenceBefore: 0.8,
       confidenceAfter: 0.5,
-      nextPolicy: "test"
+      nextPolicy: "test",
+      correlationId: "run-1:turn:1",
+      driftSummary: "Oracle rejected the proposed action.",
+      evidence: { oracleOutcome: "rejected", outputExcerpt: "I do not understand that." }
     });
     expect(parsed.driftClass).toBe("parser");
+    expect(parsed.correlationId).toBe("run-1:turn:1");
+    expect(parsed.evidence?.oracleOutcome).toBe("rejected");
+  });
+
+  it("parses oracle observation payload with outcome", () => {
+    const parsed = oracleObservationPayloadSchema.parse({
+      rejected: false,
+      output: "OK.",
+      outcome: "accepted"
+    });
+    expect(parsed.outcome).toBe("accepted");
   });
 
   it("parses checkpoint ref", () => {

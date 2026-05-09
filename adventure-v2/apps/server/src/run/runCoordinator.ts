@@ -10,7 +10,7 @@ import { createControlMachine } from "../../../../packages/control/src/index.js"
 import type { ControlPhase, PhaseTransitionEvent } from "../../../../packages/control/src/index.js";
 import { CheckpointRegistry } from "../replay/checkpointRegistry.js";
 import type { OracleBridge } from "../oracle/oracleBridge.js";
-import { createSyntheticOracleBridge } from "../oracle/oracleBridge.js";
+import { createSyntheticOracleBridge, normalizeOracleObservation } from "../oracle/oracleBridge.js";
 import type { WireStreamItem } from "../http/wireStream.js";
 
 type RunState = {
@@ -130,13 +130,15 @@ export class RunCoordinator {
     };
     this.emitStream(runId, { type: "trace", trace: proposalTrace });
 
-    const obs = this.oracle.observe({
-      runId,
-      turnId,
-      sequence,
-      action: input,
-      forceReject: options.forceReject
-    });
+    const obs = normalizeOracleObservation(
+      this.oracle.observe({
+        runId,
+        turnId,
+        sequence,
+        action: input,
+        forceReject: options.forceReject
+      })
+    );
     const observation: TurnEnvelope = {
       runId,
       turnId,
@@ -144,7 +146,12 @@ export class RunCoordinator {
       source: "oracle",
       kind: "oracle_observation",
       ts: now(),
-      payload: { rejected: obs.rejected, output: obs.output }
+      payload: {
+        rejected: obs.rejected,
+        output: obs.output,
+        outcome: obs.outcome,
+        ...(obs.stderrExcerpt !== undefined ? { stderrExcerpt: obs.stderrExcerpt } : {})
+      }
     };
     run.events.push(observation);
     this.emitStream(runId, { type: "turn", envelope: observation });
@@ -157,7 +164,7 @@ export class RunCoordinator {
       runId,
       turnId,
       sequence,
-      oracleRejected: obs.rejected
+      observation: obs
     });
     const reconcileEvent: TurnEnvelope = {
       runId,

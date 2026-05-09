@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import type { OracleObservationOutcome } from "../../../../packages/contracts/src/index.js";
 import type {
   OracleBridge,
   OracleObservationInput,
@@ -15,6 +16,14 @@ export type ProcessOracleBridgeOptions = {
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 
+const parseOutcome = (rec: Record<string, unknown>, rejected: boolean): OracleObservationOutcome => {
+  const raw = rec.outcome;
+  if (raw === "accepted" || raw === "rejected" || raw === "transport_error") {
+    return raw;
+  }
+  return rejected ? "rejected" : "accepted";
+};
+
 const parseResultLine = (line: string): OracleObservationResult | null => {
   const trimmed = line.trim();
   if (!trimmed) {
@@ -29,7 +38,15 @@ const parseResultLine = (line: string): OracleObservationResult | null => {
     if (typeof rec.rejected !== "boolean" || typeof rec.output !== "string") {
       return null;
     }
-    return { rejected: rec.rejected, output: rec.output };
+    const outcome = parseOutcome(rec, rec.rejected);
+    const stderrExcerpt =
+      typeof rec.stderrExcerpt === "string" ? rec.stderrExcerpt.slice(0, 120) : undefined;
+    return {
+      rejected: rec.rejected,
+      output: rec.output,
+      outcome,
+      ...(stderrExcerpt !== undefined && stderrExcerpt.length > 0 ? { stderrExcerpt } : {})
+    };
   } catch {
     return null;
   }
@@ -72,7 +89,8 @@ export const createProcessOracleBridge = (options: ProcessOracleBridgeOptions): 
         const msg = err instanceof Error ? err.message : String(err);
         return {
           rejected: true,
-          output: `[oracle-process] spawn failed: ${msg}`
+          output: `[oracle-process] spawn failed: ${msg}`,
+          outcome: "transport_error"
         };
       }
 
@@ -81,12 +99,14 @@ export const createProcessOracleBridge = (options: ProcessOracleBridgeOptions): 
         if (errno.code === "ETIMEDOUT") {
           return {
             rejected: true,
-            output: `[oracle-process] timeout after ${timeoutMs}ms`
+            output: `[oracle-process] timeout after ${timeoutMs}ms`,
+            outcome: "transport_error"
           };
         }
         return {
           rejected: true,
-          output: `[oracle-process] spawn failed: ${errno.message}`
+          output: `[oracle-process] spawn failed: ${errno.message}`,
+          outcome: "transport_error"
         };
       }
 
@@ -96,14 +116,17 @@ export const createProcessOracleBridge = (options: ProcessOracleBridgeOptions): 
       if (result.status !== 0) {
         return {
           rejected: true,
-          output: `[oracle-process] exit ${result.status ?? "unknown"}: ${oneLineSnippet(result.stderr ?? "")}`
+          output: `[oracle-process] exit ${result.status ?? "unknown"}: ${oneLineSnippet(result.stderr ?? "")}`,
+          outcome: "transport_error",
+          stderrExcerpt: oneLineSnippet(result.stderr ?? "", 120)
         };
       }
 
       if (firstNonEmptyLine === undefined) {
         return {
           rejected: true,
-          output: "[oracle-process] empty response"
+          output: "[oracle-process] empty response",
+          outcome: "transport_error"
         };
       }
 
@@ -111,7 +134,8 @@ export const createProcessOracleBridge = (options: ProcessOracleBridgeOptions): 
       if (!parsed) {
         return {
           rejected: true,
-          output: `[oracle-process] malformed response: ${oneLineSnippet(firstNonEmptyLine, 120)}`
+          output: `[oracle-process] malformed response: ${oneLineSnippet(firstNonEmptyLine, 120)}`,
+          outcome: "transport_error"
         };
       }
 

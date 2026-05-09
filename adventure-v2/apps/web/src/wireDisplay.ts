@@ -36,7 +36,9 @@ export const formatTurnTranscriptLine = (env: TurnEnvelope): string => {
     case "oracle_observation": {
       const rejected = env.payload.rejected;
       const output = env.payload.output;
-      return `${head} · rejected=${String(rejected)} · output=${JSON.stringify(
+      const outcome =
+        typeof env.payload.outcome === "string" ? env.payload.outcome : "?";
+      return `${head} · outcome=${outcome} · rejected=${String(rejected)} · output=${JSON.stringify(
         typeof output === "string" ? output : JSON.stringify(output)
       )}`;
     }
@@ -46,7 +48,11 @@ export const formatTurnTranscriptLine = (env: TurnEnvelope): string => {
         return `${head} · (reconcile payload did not match ReconcileOutcome schema)`;
       }
       const o = r.data;
-      return `${head} · drift=${o.driftDetected} · class=${o.driftClass} · policy=${o.nextPolicy} · conf ${o.confidenceBefore.toFixed(2)}→${o.confidenceAfter.toFixed(2)}`;
+      const summary =
+        o.driftSummary !== undefined
+          ? ` · ${o.driftSummary.trim().replace(/\s+/g, " ")}`
+          : "";
+      return `${head} · drift=${o.driftDetected} · class=${o.driftClass} · policy=${o.nextPolicy} · conf ${o.confidenceBefore.toFixed(2)}→${o.confidenceAfter.toFixed(2)}${summary}`;
     }
     case "checkpoint": {
       const c = checkpointRefSchema.safeParse(env.payload);
@@ -90,12 +96,22 @@ export const formatReconcilePanel = (env: TurnEnvelope): string | null => {
     return "Latest reconcile: (invalid payload)\n" + JSON.stringify(env.payload, null, 2);
   }
   const o = r.data;
-  return [
+  const lines = [
     "Latest reconcile (ReconcileOutcome)",
     `  driftDetected: ${o.driftDetected}`,
     `  driftClass:    ${o.driftClass}`,
     `  nextPolicy:    ${o.nextPolicy}`,
     `  confidence:    ${o.confidenceBefore} → ${o.confidenceAfter}`,
     `  beliefPatch:   ${JSON.stringify(o.beliefPatch)}`
-  ].join("\n");
+  ];
+  if (o.correlationId !== undefined) {
+    lines.push(`  correlationId: ${o.correlationId}`);
+  }
+  if (o.driftSummary !== undefined) {
+    lines.push(`  driftSummary:  ${o.driftSummary.trim().replace(/\s+/g, " ")}`);
+  }
+  if (o.evidence !== undefined) {
+    lines.push(`  evidence:      ${JSON.stringify(o.evidence)}`);
+  }
+  return lines.join("\n");
 };

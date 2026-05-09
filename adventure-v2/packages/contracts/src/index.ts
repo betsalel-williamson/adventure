@@ -4,6 +4,12 @@ export type { ModelCategory, RunConfig } from "./api/run.js";
 export { turnEnvelopeSchema, turnKindSchema, sourceSchema } from "./events/turn.js";
 export type { TurnEnvelope, TurnKind, TurnSource } from "./events/turn.js";
 
+export {
+  oracleObservationOutcomeSchema,
+  oracleObservationPayloadSchema
+} from "./events/oracleObservation.js";
+export type { OracleObservationOutcome, OracleObservationPayload } from "./events/oracleObservation.js";
+
 export { reconcileOutcomeSchema, driftClassSchema, nextPolicySchema } from "./reconcile/outcome.js";
 export type { ReconcileOutcome } from "./reconcile/outcome.js";
 

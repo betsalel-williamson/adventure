@@ -41,6 +41,7 @@ Minimum schema groups:
 - Every turn has a monotonic sequence number.
 - Replay references immutable checkpoint IDs.
 - Reconcile output must include prior and next confidence for auditability.
+- For R3 audit trails on SSE, `ReconcileOutcome` may include optional **`correlationId`** (typically matches `turnId`), **`driftSummary`**, and **`evidence`** (`oracleOutcome` plus a capped transcript excerpt). Oracle observations may include **`outcome`** (`accepted` \| `rejected` \| `transport_error`) so downstream reconcile can separate harness failures from engine validation rejection.
 - Drift classes must be finite and enumerable for benchmark statistics.
 - Session settings are scoped to one session principal and must not mutate other sessions.
 - Client-stored preferences are hints only; server-side settings payload remains the authority used by runtime APIs.

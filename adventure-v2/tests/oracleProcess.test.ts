@@ -19,6 +19,7 @@ describe("process OracleBridge", () => {
     expect(obs).toBeDefined();
     expect(obs!.payload).toMatchObject({
       rejected: false,
+      outcome: "accepted",
       output: "PROCESS-ORACLE-STUB-LINE"
     });
     expect(turn.reconcile.driftDetected).toBe(false);
@@ -36,9 +37,12 @@ describe("process OracleBridge", () => {
     const obs = events.find((e) => e.kind === "oracle_observation");
     expect(obs!.payload).toMatchObject({
       rejected: true,
+      outcome: "transport_error",
       output: expect.stringMatching(/^\[oracle-process\] malformed response:/)
     });
     expect(turn.reconcile.driftDetected).toBe(true);
+    expect(turn.reconcile.driftClass).toBe("unknown");
+    expect(turn.reconcile.evidence?.oracleOutcome).toBe("transport_error");
   });
 
   it("returns rejected observation on timeout", () => {
@@ -54,9 +58,11 @@ describe("process OracleBridge", () => {
     const obs = events.find((e) => e.kind === "oracle_observation");
     expect(obs!.payload).toMatchObject({
       rejected: true,
+      outcome: "transport_error",
       output: `[oracle-process] timeout after 50ms`
     });
     expect(turn.reconcile.driftDetected).toBe(true);
+    expect(turn.reconcile.driftClass).toBe("unknown");
   });
 
   it("passes forceReject through stdin for stub", () => {
@@ -68,6 +74,7 @@ describe("process OracleBridge", () => {
     const obs = events.find((e) => e.kind === "oracle_observation");
     expect(obs!.payload).toMatchObject({
       rejected: true,
+      outcome: "rejected",
       output: "stub-line: forced reject"
     });
   });

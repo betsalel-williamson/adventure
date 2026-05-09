@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Define how an **external oracle** process implements the same contract as the in-process [`OracleBridge`](../../../adventure-v2/apps/server/src/oracle/oracleBridge.ts) seam used by `RunCoordinator`: one observation per child invocation, mapping to `OracleObservationResult` (`rejected`, `output`).
+Define how an **external oracle** process implements the same contract as the in-process [`OracleBridge`](../../../adventure-v2/apps/server/src/oracle/oracleBridge.ts) seam used by `RunCoordinator`: one observation per child invocation, mapping to `OracleObservationResult` (`rejected`, `output`, plus optional `outcome` / `stderrExcerpt`).
 
 See also: [contracts-and-actors.md](./contracts-and-actors.md) (oracle observation flow).
 
@@ -28,11 +28,15 @@ Fields mirror `OracleObservationInput` on the bridge.
 ```json
 {
   "rejected": <boolean>,
-  "output": "<string>"
+  "output": "<string>",
+  "outcome": <optional "accepted" | "rejected" | "transport_error">,
+  "stderrExcerpt": <optional string>
 }
 ```
 
-- **stderr:** diagnostic only; on failure paths the server may surface a short stderr prefix in the synthetic `output` string.
+When **`outcome`** is omitted, the server infers **`accepted`** vs **`rejected`** from **`rejected`**. Harness-side failures (timeout, spawn error, empty stdout, malformed JSON, non-zero exit) are always classified as **`transport_error`** on the wire regardless of child JSON.
+
+- **stderr:** diagnostic only; on failure paths the server may surface a short stderr prefix in the synthetic **`output`** string. **`stderrExcerpt` on the wire** may come from (1) an optional field on the child’s JSON line (capped by the server), or (2) a server-generated clip when the process exits non-zero (see [`processOracleBridge`](../../../adventure-v2/apps/server/src/oracle/processOracleBridge.ts)).
 - **exit code:** `0` is expected when the child wrote a valid response line. Non-zero exit is treated as **oracle failure** (see below).
 - **timeout:** bounded wait (default **10 seconds** unless overridden per adapter). Expired waits are treated as oracle failure.
 
