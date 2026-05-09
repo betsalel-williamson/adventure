@@ -1,8 +1,9 @@
 # Colossal Cave Adventure — Fortran 77 + adventure-nl (Node.js).
 #
 # Fortran requires GNU Fortran (gfortran); this code uses extensions such as GETARG,
-# IARGC, and RAN. Run modes that execute the game assume cwd is the repo root so
-# OPEN(1,FILE='ADVENTURE.DAT') finds adventure.dat.
+# IARGC, and RAN. Run modes assume cwd is the repo root. adventure.f opens
+# ADVENTURE.DAT; git tracks adventure.dat only — `make adventure` creates a symlink
+# when the filesystem is case-sensitive (skipped when names already denote the same file).
 #
 # Quick reference:
 #   make run / run-nl / run-autoplay / run-autoplay-web — see “Execution modes” below.
@@ -49,11 +50,13 @@ NPM_RUN := $(NPM) --prefix $(NL_DIR) run
 
 all: $(TARGET)
 
-$(TARGET): $(SRC)
+$(TARGET): $(SRC) adventure.dat
+	@if ! [ adventure.dat -ef ADVENTURE.DAT ] 2>/dev/null; then ln -sf adventure.dat ADVENTURE.DAT; fi
 	$(FC) $(FFLAGS) -o $@ $<
 
 clean:
 	rm -f $(TARGET)
+	@if [ -L ADVENTURE.DAT ]; then rm -f ADVENTURE.DAT; fi
 	rm -rf $(NL_DIR)/dist $(NL_DIR)/node_modules
 
 # =============================================================================
