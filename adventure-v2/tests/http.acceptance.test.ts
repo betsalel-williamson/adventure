@@ -198,6 +198,55 @@ describe("HTTP API + SSE", () => {
     }
   });
 
+  it("streams two sequential POST /turns with distinct turn sequences on SSE", async () => {
+    const coordinator = new RunCoordinator();
+    const { server, baseUrl } = await listenAdventureServer(coordinator, 0);
+    try {
+      const start = await fetch(`${baseUrl}/runs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ config: createRunConfig("SLM") })
+      });
+      expect(start.status).toBe(201);
+      const { runId } = (await start.json()) as { runId: string };
+
+      const sseRes = await fetch(`${baseUrl}/runs/${runId}/events`);
+      expect(sseRes.ok).toBe(true);
+
+      const eventsPerTurn = 10;
+      const readPromise = readSseUntilCount(sseRes, eventsPerTurn * 2, 15_000);
+
+      const turn1 = await fetch(`${baseUrl}/runs/${runId}/turns`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ input: "look" })
+      });
+      expect(turn1.status).toBe(204);
+
+      const turn2 = await fetch(`${baseUrl}/runs/${runId}/turns`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ input: "north" })
+      });
+      expect(turn2.status).toBe(204);
+
+      const wire = await readPromise;
+
+      const proposals = wire.filter(
+        (w): w is Extract<SseWireEvent, { event: "turn" }> =>
+          w.event === "turn" && w.envelope.kind === "proposal"
+      );
+      expect(proposals).toHaveLength(2);
+      expect(proposals[0]!.envelope.sequence).toBe(1);
+      expect(proposals[1]!.envelope.sequence).toBe(2);
+
+      const proposalActions = proposals.map((p) => (p.envelope.payload as { action?: string }).action);
+      expect(proposalActions).toEqual(["look", "north"]);
+    } finally {
+      await closeServer(server);
+    }
+  });
+
   it("streams turn and phase events in order for one turn after POST /turns", async () => {
     const coordinator = new RunCoordinator();
     const { server, baseUrl } = await listenAdventureServer(coordinator, 0);
@@ -245,6 +294,8 @@ describe("HTTP API + SSE", () => {
       expect(planTrace).toBeDefined();
       expect(planTrace!.trace.promptDigest).toMatch(/^[a-f0-9]{16}$/);
       expect(planTrace!.trace.runId).toBe(runId);
+      expect(planTrace!.trace.promptSystem).toContain("Adventure v2 agent");
+      expect(planTrace!.trace.promptUser).toContain("look");
     } finally {
       await closeServer(server);
     }

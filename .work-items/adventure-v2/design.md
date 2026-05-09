@@ -74,7 +74,7 @@ Core shared models:
 - **Web app**: keep immersive terminal visual; show phase machine state, graph node activity, and reconcile diffs.
 - **Server app**: orchestrate runs and emit ordered events; enforce deterministic sequencing boundaries.
 - **Contracts package**: single source of truth for schemas and wire types (including extended **`CognitionTraceWire`** for LangGraph/prompt observability—see [`packages/contracts/src/http/wire.ts`](../../adventure-v2/packages/contracts/src/http/wire.ts)).
-- **Cognition package**: LangGraph **`StateGraph`** pre-oracle (`perceive` → `plan` → `act`), stub prompts + digests on **`plan`** traces; **`classifyReconcile`** unchanged; post-oracle **`reconcile`** trace emitted on SSE by the server (not implemented as a LangGraph node in slice 13).
+- **Cognition package**: LangGraph **`StateGraph`** pre-oracle (`perceive` → `plan` → `act`), stub prompts + digests on **`plan`** traces; optional full **`promptSystem`** / **`promptUser`** on **`CognitionTraceWire`** (capped per **`COGNITION_PROMPT_TEXT_MAX_CHARS`**); **`classifyReconcile`** unchanged; post-oracle **`reconcile`** trace emitted on SSE by the server (not implemented as a LangGraph node in slice 13).
 - **Control package**: **`xstate`** (`createMachine` / `createActor`) for phases (`act`, `think`, `test`, `chaos`, `disorder`) and **`invalidRouting`** for invalid-action escalation.
 
 ### 3.4 Testing framework strategy (Cucumber-style TDD)

@@ -100,6 +100,18 @@ export const formatCognitionTracePanel = (trace: CognitionTraceWire): string => 
   if (trace.promptRole !== undefined) {
     lines.push(`  promptRole: ${trace.promptRole}`);
   }
+  if (trace.promptSystem !== undefined) {
+    lines.push(`  promptSystem:`);
+    for (const line of trace.promptSystem.split(/\r?\n/)) {
+      lines.push(`    ${line}`);
+    }
+  }
+  if (trace.promptUser !== undefined) {
+    lines.push(`  promptUser:`);
+    for (const line of trace.promptUser.split(/\r?\n/)) {
+      lines.push(`    ${line}`);
+    }
+  }
   lines.push(`  payload:  ${JSON.stringify(trace.payload)}`);
   return lines.join("\n");
 };

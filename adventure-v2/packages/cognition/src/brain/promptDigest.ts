@@ -1,4 +1,11 @@
 import { createHash } from "node:crypto";
+import { COGNITION_PROMPT_TEXT_MAX_CHARS } from "../../../contracts/src/http/wire.js";
+
+/** Truncate prompt text before placing on SSE wire (matches {@link COGNITION_PROMPT_TEXT_MAX_CHARS}). */
+export const capPromptTextForWire = (
+  text: string,
+  maxChars: number = COGNITION_PROMPT_TEXT_MAX_CHARS
+): string => (text.length <= maxChars ? text : `${text.slice(0, maxChars)}…`);
 
 /** Deterministic short digest for trace payloads (SHA-256 hex, first 16 chars). */
 export const digestUtf8 = (text: string): string =>

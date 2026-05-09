@@ -80,10 +80,52 @@
   <body>
     <h1>adventure-v2 (dev shell)</h1>
     <p class="intro">
-      Start run · sample turn · SSE transcript (parsed wire events). Then checkpoints + replay restore. Same <code>runId</code> for
-      stream and REST.
+      Interactive shell: SSE transcript + submit turns via REST. Same <code>runId</code> for stream and REST. Optional replay demo and
+      stub autoplay (deterministic commands, no LLM).
     </p>
     <div id="run-meta">run: —</div>
+
+    <div class="panel" style="margin-bottom: 1rem">
+      <h2>command</h2>
+      <p style="margin: 0 0 0.5rem 0; color: #8b949e; font-size: 0.85rem">
+        <input
+          id="command"
+          type="text"
+          placeholder="e.g. look"
+          style="
+            width: min(100%, 28rem);
+            padding: 0.35rem 0.5rem;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            color: #c9d1d9;
+            font-family: inherit;
+            font-size: 0.9rem;
+          "
+        />
+        <button
+          id="send"
+          type="button"
+          style="
+            margin-left: 0.35rem;
+            padding: 0.35rem 0.65rem;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.85rem;
+          "
+        >
+          Send
+        </button>
+        <button id="replay-demo" type="button" style="margin-left: 0.35rem; padding: 0.35rem 0.65rem; cursor: pointer; font-family: inherit; font-size: 0.85rem">
+          Replay demo (first checkpoint)
+        </button>
+        <button id="autoplay" type="button" style="margin-left: 0.35rem; padding: 0.35rem 0.65rem; cursor: pointer; font-family: inherit; font-size: 0.85rem">
+          Stub autoplay
+        </button>
+        <button id="stop-autoplay" type="button" disabled style="margin-left: 0.35rem; padding: 0.35rem 0.65rem; cursor: pointer; font-family: inherit; font-size: 0.85rem">
+          Stop autoplay
+        </button>
+      </p>
+    </div>
 
     <div class="panels">
       <div class="panel">

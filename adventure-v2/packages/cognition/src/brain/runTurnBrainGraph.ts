@@ -1,7 +1,7 @@
 import { Annotation, END, START, StateGraph } from "@langchain/langgraph";
 import type { CognitionTraceWire } from "../../../contracts/src/http/wire.js";
 import { buildPlanPromptBundle } from "../prompts/adventureAgentPrompts.js";
-import { digestUtf8, firstLineExcerpt } from "./promptDigest.js";
+import { capPromptTextForWire, digestUtf8, firstLineExcerpt } from "./promptDigest.js";
 
 const BrainAnnotation = Annotation.Root({
   runId: Annotation<string>(),
@@ -47,6 +47,8 @@ const planNode = (state: typeof BrainAnnotation.State): Partial<typeof BrainAnno
     promptDigest: digestUtf8(combined),
     promptSummary: firstLineExcerpt(bundle.system),
     promptRole: "system",
+    promptSystem: capPromptTextForWire(bundle.system),
+    promptUser: capPromptTextForWire(bundle.user),
     payload: {
       planPromptUserDigest: digestUtf8(bundle.user),
       planPromptUserSummary: firstLineExcerpt(bundle.user)

@@ -125,6 +125,27 @@ describe("wireDisplay", () => {
     expect(formatWireEventForTranscript(wire!)).toContain("[trace:proposal]");
   });
 
+  it("formats plan trace panel with multiline promptSystem and promptUser", () => {
+    const trace = {
+      runId: "run-1",
+      turnId: "run-1:turn:1",
+      sequence: 1,
+      nodeId: "plan",
+      label: "Plan",
+      ts: "t",
+      promptSystem: "Line A\nLine B",
+      promptUser: "User block\nsecond line",
+      payload: {}
+    };
+    const panel = formatCognitionTracePanel(trace);
+    expect(panel).toContain("promptSystem:");
+    expect(panel).toContain("    Line A");
+    expect(panel).toContain("    Line B");
+    expect(panel).toContain("promptUser:");
+    expect(panel).toContain("    User block");
+    expect(panel).toContain("    second line");
+  });
+
   it("formats reconcile panel from reconcile envelope", () => {
     const env = {
       runId: "run-1",

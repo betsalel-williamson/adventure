@@ -180,10 +180,14 @@ describe("contracts", () => {
       promptDigest: "a".repeat(16),
       promptSummary: "You are the Adventure",
       promptRole: "system",
+      promptSystem: "You are the agent.\nRules…",
+      promptUser: "Turn input:\nlook",
       payload: {}
     });
     expect(trace.promptRole).toBe("system");
     expect(trace.stepIndex).toBe(1);
+    expect(trace.promptSystem).toContain("You are the agent");
+    expect(trace.promptUser).toContain("look");
   });
 
   it("matches golden LangGraph trace node order for one turn", async () => {

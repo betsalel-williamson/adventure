@@ -12,6 +12,8 @@ Code and tests now live under [`adventure-v2/`](../../adventure-v2/). **Authorit
 
 **Slice 13 (LangGraph + XState + trace observability):** pre-oracle **LangGraph** turn path, **`xstate`** control machine, extended **`CognitionTraceWire`**, async **`processTurn`**, **10** SSE events per turn. Close-out: [`slice-13-multidisciplinary-review.md`](slice-13-multidisciplinary-review.md); plan archive: [`adventure-v2-slice-13-langgraph-xstate.plan.md`](adventure-v2-slice-13-langgraph-xstate.plan.md).
 
+**Slice 14 (MVP shell — interactive UI, full plan prompts, stub autoplay):** [`apps/web`](../../adventure-v2/apps/web) command input + multi-turn **`POST /turns`**; **`promptSystem`** / **`promptUser`** on **`plan`** trace wire with truncation; browser **stub autoplay** loop (`stubAutoplayPlanner`) and replay-demo button (no auto-replay on load). HTTP coverage for two sequential turns; Vitest for `shellState`, `stubAutoplayPlanner`, `capPromptTextForWire`, **wireDisplay** panels. Close-out: [`slice-14-multidisciplinary-review.md`](slice-14-multidisciplinary-review.md).
+
 ## Requirements traceability
 
 - **R1** Model swap benchmark execution across `SLM`, `LLM`, `API`, and `MLX` categories.

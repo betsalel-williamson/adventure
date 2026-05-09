@@ -21,6 +21,7 @@ export {
 export type { CheckpointRef, ReplayRestorePayload } from "./checkpoints/checkpoint.js";
 
 export {
+  COGNITION_PROMPT_TEXT_MAX_CHARS,
   cognitionTraceWireSchema,
   controlPhaseWireSchema,
   createRunRequestSchema,

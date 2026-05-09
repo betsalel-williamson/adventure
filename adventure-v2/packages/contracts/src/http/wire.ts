@@ -64,6 +64,9 @@ export const ssePhaseEventSchema = z.object({
 
 export const cognitionTracePromptRoleSchema = z.enum(["system", "user", "assistant"]);
 
+/** Max UTF-16 code units per full prompt field on the trace wire (server truncates before emit). */
+export const COGNITION_PROMPT_TEXT_MAX_CHARS = 16_384 as const;
+
 export const cognitionTraceWireSchema = z.object({
   runId: z.string().min(1),
   turnId: z.string().min(1),
@@ -81,6 +84,10 @@ export const cognitionTraceWireSchema = z.object({
   /** Short excerpt (first line or capped) for panels. */
   promptSummary: z.string().optional(),
   promptRole: cognitionTracePromptRoleSchema.optional(),
+  /** Full system prompt for plan step (truncated to {@link COGNITION_PROMPT_TEXT_MAX_CHARS} when emitted). */
+  promptSystem: z.string().max(COGNITION_PROMPT_TEXT_MAX_CHARS).optional(),
+  /** Full user prompt for plan step (truncated when emitted). */
+  promptUser: z.string().max(COGNITION_PROMPT_TEXT_MAX_CHARS).optional(),
   payload: z.record(z.unknown())
 });
 
