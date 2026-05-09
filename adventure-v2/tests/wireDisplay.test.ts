@@ -3,6 +3,9 @@ import {
   formatCognitionTraceLine,
   formatCognitionTracePanel,
   formatReconcilePanel,
+  formatVirtualTerminalTurnChunk,
+  formatVirtualTerminalUserEcho,
+  formatVirtualTerminalWireChunk,
   formatWireEventForTranscript,
   parseSseWirePayload
 } from "../apps/web/src/wireDisplay.js";
@@ -144,6 +147,89 @@ describe("wireDisplay", () => {
     expect(panel).toContain("promptUser:");
     expect(panel).toContain("    User block");
     expect(panel).toContain("    second line");
+  });
+
+  it("formats virtual terminal user echo", () => {
+    expect(formatVirtualTerminalUserEcho("look")).toBe("> look");
+    expect(formatVirtualTerminalUserEcho("  north  ")).toBe("> north");
+    expect(formatVirtualTerminalUserEcho("")).toBe("");
+  });
+
+  it("formats virtual terminal chunks from proposal and oracle envelopes", () => {
+    const proposal = {
+      runId: "run-1",
+      turnId: "run-1:turn:1",
+      sequence: 1,
+      source: "cognition" as const,
+      kind: "proposal" as const,
+      ts: "t",
+      payload: { action: "north" }
+    };
+    expect(formatVirtualTerminalTurnChunk(proposal)).toBe("[agent] north");
+
+    const oracle = {
+      runId: "run-1",
+      turnId: "run-1:turn:1",
+      sequence: 1,
+      source: "oracle" as const,
+      kind: "oracle_observation" as const,
+      ts: "t",
+      payload: {
+        rejected: false,
+        outcome: "accepted",
+        output: "You see a hall.\nThere is a lamp."
+      }
+    };
+    expect(formatVirtualTerminalTurnChunk(oracle)).toBe("You see a hall.\nThere is a lamp.");
+
+    const oracleObj = {
+      ...oracle,
+      payload: { ...oracle.payload, output: { foo: 1 } }
+    };
+    expect(formatVirtualTerminalTurnChunk(oracleObj)).toBe('{"foo":1}');
+  });
+
+  it("virtual terminal wire chunk ignores non-turn events and non-terminal kinds", () => {
+    const proposalRaw = JSON.stringify({
+      event: "turn",
+      envelope: {
+        runId: "run-1",
+        turnId: "run-1:turn:1",
+        sequence: 1,
+        source: "cognition",
+        kind: "proposal",
+        ts: "t",
+        payload: { action: "take lamp" }
+      }
+    });
+    const proposalWire = parseSseWirePayload(proposalRaw)!;
+    expect(formatVirtualTerminalWireChunk(proposalWire)).toBe("[agent] take lamp");
+
+    const phaseRaw = JSON.stringify({
+      event: "phase",
+      transition: {
+        from: "act",
+        to: "think",
+        reason: "policy",
+        sequence: 1,
+        ts: "t"
+      }
+    });
+    expect(formatVirtualTerminalWireChunk(parseSseWirePayload(phaseRaw)!)).toBeNull();
+
+    const reconcileRaw = JSON.stringify({
+      event: "turn",
+      envelope: {
+        runId: "run-1",
+        turnId: "run-1:turn:1",
+        sequence: 1,
+        source: "cognition",
+        kind: "reconcile",
+        ts: "t",
+        payload: {}
+      }
+    });
+    expect(formatVirtualTerminalWireChunk(parseSseWirePayload(reconcileRaw)!)).toBeNull();
   });
 
   it("formats reconcile panel from reconcile envelope", () => {

@@ -6,7 +6,7 @@ Planned v2 runtime for benchmark-oriented adventure orchestration.
 
 - **Contracts** (`packages/contracts`): turn/reconcile/checkpoint schemas plus **HTTP/SSE wire types** (`CreateRunRequest`, `SseWireEvent`, …).
 - **Server** (`apps/server`): `RunCoordinator` with **LangGraph.js** pre-oracle cognition (`perceive` → `plan` → `act`), **`xstate`** loop policy, a **swappable oracle bridge** (synthetic default, optional **process** adapter per [oracle subprocess IPC](../docs/architecture/adventure-v2/oracle-subprocess-ipc.md)), **SSE fanout** of turn, phase, and cognition trace events, and a small **HTTP API** (`POST /runs`, `POST /runs/:id/turns`, `GET /runs/:id/events`).
-- **Web shell** (`apps/web`): Vite page that starts a run, opens SSE (`EventSource`), and provides an **interactive command** input (multi-turn **`POST /turns`**), optional **replay demo** (first checkpoint), and **stub autoplay** (deterministic command cycle, no LLM). Panels: transcript, phase, reconcile, checkpoints, cognition trace.
+- **Web shell** (`apps/web`): Vite page that starts a run, opens SSE (`EventSource`), and provides an **interactive command** input (multi-turn **`POST /turns`**), optional **replay demo** (first checkpoint), and **stub autoplay** (deterministic command cycle, no LLM). Panels: **game terminal** (human-readable echo + agent + oracle text), optional raw SSE log, phase, reconcile, checkpoints, cognition trace.
 - **Tests**: Vitest contract, in-process acceptance (`tests/acceptance.test.ts`), and **HTTP acceptance** (`tests/http.acceptance.test.ts`) against a real listener on an ephemeral port.
 
 **Optional (local benchmarks):** set `ADV_V2_PROCESS_ORACLE_SCRIPT` when running `npm run dev:server` to a `.js`/`.mjs` oracle implementing the subprocess JSON line protocol in [oracle subprocess IPC](../docs/architecture/adventure-v2/oracle-subprocess-ipc.md) (typically `fixtures/oracle-stub.mjs`). **Vitest stays on the synthetic oracle** unless a test constructs `createProcessOracleBridge` explicitly.
@@ -15,11 +15,28 @@ Planned v2 runtime for benchmark-oriented adventure orchestration.
 
 **Not yet:** further deployment hardening (auth, rate limits, TLS termination).
 
+### v1-like terminal MVP (slice 15)
+
+The web shell includes a **game terminal** lane (human-readable): echoed commands (`>`), `[agent]` proposals, and plain oracle/Fortran output. The raw **SSE transcript** remains available for debugging (toggle **Show raw SSE log**).
+
+**Fortran binary vs synthetic oracle:**
+
+| Goal | Command |
+|------|---------|
+| Default dev (synthetic oracle, no Fortran) | `npm run dev:server` |
+| Real `./adventure` subprocess via bridge | From repo root: `make adventure`, then from `adventure-v2/`: `ADV_V2_PROCESS_ORACLE_SCRIPT=fixtures/oracle-fortran-bridge.mjs npm run dev:server` |
+
+CI exercises the Fortran bridge via `npm run test:oracle-fortran` after `make adventure`.
+
+**Remaining gaps vs a full “prod” MVP:** real **ModelAdapter** / SLM calls in **`plan`** (still stub prompts + digests), optional **XState snapshot** on the wire (today: phase transitions only), **LangGraph checkpointer** unification with **`CheckpointRegistry`**, and optional browser E2E (Playwright).
+
 **Slice 12 (configurable CORS):** set comma-separated **`ADV_V2_CORS_ORIGINS`** on the server process to restrict browser `Origin` values that receive `Access-Control-Allow-Origin` (reflected origin per request). When unset or blank, behavior matches earlier slices: **`Access-Control-Allow-Origin: *`** on JSON, SSE, and `OPTIONS` responses. Covered in `tests/http.acceptance.test.ts`.
 
 **Slice 13 (LangGraph + XState + trace observability):** Each turn runs through `@langchain/langgraph` (`packages/cognition/src/brain/runTurnBrainGraph.ts`) emitting **four** trace rows before/around reconcile (`perceive`, `plan`, `act`, plus post-oracle `reconcile`). Stub prompts live in `packages/cognition/src/prompts/`; **`plan`** traces include **`promptDigest`** / **`promptSummary`** for observability. **`packages/control`** uses **`xstate`** (`createMachine` + `createActor`) with an internal **`invalidRouting`** transient state for invalid-action escalation. **`POST /runs/:id/turns`** awaits async cognition (`processTurn`). One full turn yields **10** SSE wire events (4× `turn`, 4× `trace`, 2× `phase`); HTTP acceptance and Cucumber steps expect **10** events per turn. **`CognitionTraceWire`** adds optional **`graphNodeId`**, **`stepIndex`**, **`promptDigest`**, **`promptSummary`**, **`promptRole`**. Close-out: [`slice-13-multidisciplinary-review.md`](../.work-items/adventure-v2/slice-13-multidisciplinary-review.md).
 
 **Slice 14 (interactive shell + full plan prompts + stub autoplay):** Web UI command field and multi-turn play; **`plan`** traces may include full **`promptSystem`** / **`promptUser`** (capped by **`COGNITION_PROMPT_TEXT_MAX_CHARS`** in `packages/contracts/src/http/wire.ts`, enforced in `packages/cognition/src/brain/promptDigest.ts`). Stub autoplay in the browser loops **`POST /turns`** via `apps/web/src/stubAutoplayPlanner.ts` (no new HTTP routes). HTTP acceptance includes **two sequential turns** on one run. Close-out: [`slice-14-multidisciplinary-review.md`](../.work-items/adventure-v2/slice-14-multidisciplinary-review.md).
+
+**Slice 15 (virtual terminal lane):** Pure formatters in `apps/web/src/wireDisplay.ts` build a readable terminal transcript (`>` echo, `[agent]` line, oracle output); **`index.html`** / **`main.ts`** add **`#game-terminal`** and a **Show raw SSE log** checkbox. Close-out: [`slice-15-multidisciplinary-review.md`](../.work-items/adventure-v2/slice-15-multidisciplinary-review.md).
 
 **Slice 8 (R3 reconcile visibility):** `ReconcileOutcome` adds optional `correlationId`, `driftSummary`, and `evidence` (oracle outcome + capped output excerpt). Oracle turn payloads include optional `outcome` (`accepted` \| `rejected` \| `transport_error`); subprocess harness failures map to `transport_error` so reconcile uses `driftClass: "unknown"` vs validation-style `parser` rejection.
 

@@ -14,6 +14,8 @@ Code and tests now live under [`adventure-v2/`](../../adventure-v2/). **Authorit
 
 **Slice 14 (MVP shell — interactive UI, full plan prompts, stub autoplay):** [`apps/web`](../../adventure-v2/apps/web) command input + multi-turn **`POST /turns`**; **`promptSystem`** / **`promptUser`** on **`plan`** trace wire with truncation; browser **stub autoplay** loop (`stubAutoplayPlanner`) and replay-demo button (no auto-replay on load). HTTP coverage for two sequential turns; Vitest for `shellState`, `stubAutoplayPlanner`, `capPromptTextForWire`, **wireDisplay** panels. Close-out: [`slice-14-multidisciplinary-review.md`](slice-14-multidisciplinary-review.md).
 
+**Slice 15 (virtual terminal lane):** Pure helpers in [`wireDisplay.ts`](../../adventure-v2/apps/web/src/wireDisplay.ts) (`formatVirtualTerminalUserEcho`, `formatVirtualTerminalTurnChunk`, `formatVirtualTerminalWireChunk`); **game terminal** UI + optional raw SSE toggle; README Fortran/MVP-gap subsection. Close-out: [`slice-15-multidisciplinary-review.md`](slice-15-multidisciplinary-review.md).
+
 ## Requirements traceability
 
 - **R1** Model swap benchmark execution across `SLM`, `LLM`, `API`, and `MLX` categories.

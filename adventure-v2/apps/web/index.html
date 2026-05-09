@@ -49,12 +49,30 @@
         font-size: 0.85rem;
         margin-bottom: 0.75rem;
       }
+      #game-terminal {
+        white-space: pre-wrap;
+        min-height: 8rem;
+        max-height: 18rem;
+        overflow: auto;
+        font-size: 0.88rem;
+      }
       #transcript {
         white-space: pre-wrap;
         min-height: 10rem;
         max-height: 22rem;
         overflow: auto;
         font-size: 0.82rem;
+      }
+      .raw-sse-heading {
+        font-size: 0.85rem;
+        margin: 0.75rem 0 0.35rem 0;
+        color: #58a6ff;
+        font-weight: 600;
+      }
+      .raw-sse-toggle {
+        margin: 0.5rem 0 0 0;
+        font-size: 0.85rem;
+        color: #8b949e;
       }
       #phase-timeline {
         white-space: pre-wrap;
@@ -80,8 +98,8 @@
   <body>
     <h1>adventure-v2 (dev shell)</h1>
     <p class="intro">
-      Interactive shell: SSE transcript + submit turns via REST. Same <code>runId</code> for stream and REST. Optional replay demo and
-      stub autoplay (deterministic commands, no LLM).
+      Interactive shell: <strong>game terminal</strong> (echo, agent action, oracle/Fortran output) plus optional raw SSE log. Submit turns via REST;
+      same <code>runId</code> for stream and REST. Optional replay demo and stub autoplay (deterministic commands, no LLM).
     </p>
     <div id="run-meta">run: —</div>
 
@@ -129,8 +147,15 @@
 
     <div class="panels">
       <div class="panel">
-        <h2>transcript (SSE)</h2>
-        <pre id="transcript">(waiting for events …)</pre>
+        <h2>game terminal</h2>
+        <pre id="game-terminal">(waiting for connection …)</pre>
+        <p class="raw-sse-toggle">
+          <label><input type="checkbox" id="show-raw-sse" checked /> Show raw SSE log</label>
+        </p>
+        <div id="raw-sse-block">
+          <p class="raw-sse-heading">raw SSE (debug)</p>
+          <pre id="transcript">(waiting for events …)</pre>
+        </div>
       </div>
       <div class="panel">
         <h2>control phase</h2>

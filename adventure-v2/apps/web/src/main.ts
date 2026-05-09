@@ -3,6 +3,8 @@
 import {
   formatCognitionTracePanel,
   formatReconcilePanel,
+  formatVirtualTerminalUserEcho,
+  formatVirtualTerminalWireChunk,
   formatWireEventForTranscript,
   parseSseWirePayload
 } from "./wireDisplay.js";
@@ -11,7 +13,10 @@ import { stubPlanNextMove, type StubAutoplayContext } from "./stubAutoplayPlanne
 
 const apiBase: string = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8787";
 
+const gameTerminalEl = document.querySelector<HTMLElement>("#game-terminal");
 const transcriptEl = document.querySelector<HTMLElement>("#transcript");
+const showRawSseEl = document.querySelector<HTMLInputElement>("#show-raw-sse");
+const rawSseBlockEl = document.querySelector<HTMLElement>("#raw-sse-block");
 const phaseCurrentEl = document.querySelector<HTMLElement>("#phase-current");
 const phaseTimelineEl = document.querySelector<HTMLElement>("#phase-timeline");
 const reconcileEl = document.querySelector<HTMLElement>("#reconcile");
@@ -25,6 +30,7 @@ const autoplayBtnEl = document.querySelector<HTMLButtonElement>("#autoplay");
 const stopAutoplayBtnEl = document.querySelector<HTMLButtonElement>("#stop-autoplay");
 
 let transcriptText = "";
+let gameTerminalText = "";
 let runId: string | null = null;
 let source: EventSource | null = null;
 /** Last oracle observation text for stub autoplay context */
@@ -37,6 +43,17 @@ const setTranscript = (text: string): void => {
   if (transcriptEl) {
     transcriptEl.textContent = text;
   }
+};
+
+const setGameTerminal = (text: string): void => {
+  gameTerminalText = text;
+  if (gameTerminalEl) {
+    gameTerminalEl.textContent = text;
+  }
+};
+
+const appendGameTerminalLine = (line: string): void => {
+  setGameTerminal(appendTranscriptLine(gameTerminalText, line));
 };
 
 const log = (line: string): void => {
@@ -93,6 +110,10 @@ const handleWireData = (raw: string, eventType: string): void => {
     return;
   }
   log(formatWireEventForTranscript(wire));
+  const vtChunk = formatVirtualTerminalWireChunk(wire);
+  if (vtChunk) {
+    appendGameTerminalLine(vtChunk);
+  }
   if (wire.event === "phase") {
     appendPhaseTimeline(formatWireEventForTranscript(wire));
     setPhaseCurrent(wire.transition.to);
@@ -131,6 +152,10 @@ const submitTurn = async (input: string): Promise<boolean> => {
     if (!turnRes.ok) {
       log(`POST /turns failed: ${turnRes.status}`);
       return false;
+    }
+    const echo = formatVirtualTerminalUserEcho(trimmed);
+    if (echo) {
+      appendGameTerminalLine(echo);
     }
     log(`(rest) POST /turns → 204 input=${JSON.stringify(trimmed)}`);
     await refreshCheckpointsPanel();
@@ -230,6 +255,7 @@ const bootstrap = async (): Promise<void> => {
 
   if (!start.ok) {
     setTranscript(`POST /runs failed: ${start.status}`);
+    setGameTerminal(`POST /runs failed: ${start.status}`);
     return;
   }
 
@@ -243,6 +269,13 @@ const bootstrap = async (): Promise<void> => {
     runMetaEl.textContent = `runId: ${runId} · model: ${config.modelCategory ?? "?"} / ${config.modelName ?? "?"}`;
   }
   setTranscript(`(rest) POST /runs → 201 runId=${runId}\n(Stream open — type a command and press Send.)`);
+  setGameTerminal("(Stream open — type a command and press Send.)");
+
+  showRawSseEl?.addEventListener("change", () => {
+    if (rawSseBlockEl) {
+      rawSseBlockEl.style.display = showRawSseEl?.checked ? "" : "none";
+    }
+  });
 
   source = new EventSource(`${apiBase}/runs/${runId}/events`);
 

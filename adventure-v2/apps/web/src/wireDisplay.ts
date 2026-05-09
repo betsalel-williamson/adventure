@@ -77,6 +77,38 @@ export const formatWireEventForTranscript = (wire: SseWireEvent): string => {
   return formatPhaseTransitionLine(wire.transition);
 };
 
+/** Echo line after the player submits a turn (matches classic adventure `>` prompt). */
+export const formatVirtualTerminalUserEcho = (input: string): string => {
+  const t = input.trim();
+  return t ? `> ${t}` : "";
+};
+
+/**
+ * Human-readable chunk for the game terminal lane (proposal + oracle output only).
+ * Other turn kinds are omitted so traces/phases stay in the raw SSE panel.
+ */
+export const formatVirtualTerminalTurnChunk = (env: TurnEnvelope): string | null => {
+  if (env.kind === "proposal") {
+    const action =
+      typeof env.payload.action === "string" ? env.payload.action : String(env.payload.action ?? "?");
+    return `[agent] ${action}`;
+  }
+  if (env.kind === "oracle_observation") {
+    const output = env.payload.output;
+    const text =
+      typeof output === "string" ? output : JSON.stringify(output ?? "");
+    return text.replace(/\s+$/, "");
+  }
+  return null;
+};
+
+export const formatVirtualTerminalWireChunk = (wire: SseWireEvent): string | null => {
+  if (wire.event !== "turn") {
+    return null;
+  }
+  return formatVirtualTerminalTurnChunk(wire.envelope);
+};
+
 export const formatCognitionTracePanel = (trace: CognitionTraceWire): string => {
   const lines = [
     "Latest cognition trace",
