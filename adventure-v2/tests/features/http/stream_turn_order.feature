@@ -11,9 +11,9 @@ Feature: HTTP event stream shows one complete turn in order
     When I start a run configured for model category "SLM"
     And I open the run event stream before submitting input
     And I submit player input "look" for that run
-    Then I receive seven wire events with ordered turn kinds proposal, oracle_observation, reconcile, checkpoint
+    Then I receive ten wire events with ordered turn kinds proposal, oracle_observation, reconcile, checkpoint
     And phase transitions end as disorder then act
-    And the cognition trace includes a proposal step for input "look"
+    And the cognition trace lists LangGraph nodes perceive, plan, act, reconcile for input "look"
 
   Scenario: Reconcile visibility on the stream matches acceptance expectations
     When I start a run configured for model category "SLM"

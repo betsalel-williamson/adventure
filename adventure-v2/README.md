@@ -5,7 +5,7 @@ Planned v2 runtime for benchmark-oriented adventure orchestration.
 ## Scope in this phase
 
 - **Contracts** (`packages/contracts`): turn/reconcile/checkpoint schemas plus **HTTP/SSE wire types** (`CreateRunRequest`, `SseWireEvent`, …).
-- **Server** (`apps/server`): `RunCoordinator` with a **swappable oracle bridge** (synthetic default, optional **process** adapter per [oracle subprocess IPC](../docs/architecture/adventure-v2/oracle-subprocess-ipc.md)), **SSE fanout** of turn, phase, and cognition trace events, and a small **HTTP API** (`POST /runs`, `POST /runs/:id/turns`, `GET /runs/:id/events`).
+- **Server** (`apps/server`): `RunCoordinator` with **LangGraph.js** pre-oracle cognition (`perceive` → `plan` → `act`), **`xstate`** loop policy, a **swappable oracle bridge** (synthetic default, optional **process** adapter per [oracle subprocess IPC](../docs/architecture/adventure-v2/oracle-subprocess-ipc.md)), **SSE fanout** of turn, phase, and cognition trace events, and a small **HTTP API** (`POST /runs`, `POST /runs/:id/turns`, `GET /runs/:id/events`).
 - **Web shell** (`apps/web`): minimal Vite page that starts a run, issues a sample turn, and reads the SSE stream (`EventSource`) into transcript, phase, reconcile, checkpoint, and cognition trace panels.
 - **Tests**: Vitest contract, in-process acceptance (`tests/acceptance.test.ts`), and **HTTP acceptance** (`tests/http.acceptance.test.ts`) against a real listener on an ephemeral port.
 
@@ -16,6 +16,8 @@ Planned v2 runtime for benchmark-oriented adventure orchestration.
 **Not yet:** further deployment hardening (auth, rate limits, TLS termination).
 
 **Slice 12 (configurable CORS):** set comma-separated **`ADV_V2_CORS_ORIGINS`** on the server process to restrict browser `Origin` values that receive `Access-Control-Allow-Origin` (reflected origin per request). When unset or blank, behavior matches earlier slices: **`Access-Control-Allow-Origin: *`** on JSON, SSE, and `OPTIONS` responses. Covered in `tests/http.acceptance.test.ts`.
+
+**Slice 13 (LangGraph + XState + trace observability):** Each turn runs through `@langchain/langgraph` (`packages/cognition/src/brain/runTurnBrainGraph.ts`) emitting **four** trace rows before/around reconcile (`perceive`, `plan`, `act`, plus post-oracle `reconcile`). Stub prompts live in `packages/cognition/src/prompts/`; **`plan`** traces include **`promptDigest`** / **`promptSummary`** for observability. **`packages/control`** uses **`xstate`** (`createMachine` + `createActor`) with an internal **`invalidRouting`** transient state for invalid-action escalation. **`POST /runs/:id/turns`** awaits async cognition (`processTurn`). One full turn yields **10** SSE wire events (4× `turn`, 4× `trace`, 2× `phase`); HTTP acceptance and Cucumber steps expect **10** events per turn. **`CognitionTraceWire`** adds optional **`graphNodeId`**, **`stepIndex`**, **`promptDigest`**, **`promptSummary`**, **`promptRole`**. Close-out: [`slice-13-multidisciplinary-review.md`](../.work-items/adventure-v2/slice-13-multidisciplinary-review.md).
 
 **Slice 8 (R3 reconcile visibility):** `ReconcileOutcome` adds optional `correlationId`, `driftSummary`, and `evidence` (oracle outcome + capped output excerpt). Oracle turn payloads include optional `outcome` (`accepted` \| `rejected` \| `transport_error`); subprocess harness failures map to `transport_error` so reconcile uses `driftClass: "unknown"` vs validation-style `parser` rejection.
 
@@ -118,6 +120,7 @@ ADV_V2_CORS_ORIGINS=http://127.0.0.1:5173,http://localhost:5173 npm run dev:serv
 
 | Layer | Files | Role |
 |--------|--------|------|
+| Control / cognition | `tests/controlMachine.test.ts`, `contracts.test.ts` (golden trace order) | XState escalation path; LangGraph node order + reconcile trace. |
 | Contracts | `tests/contracts.test.ts` | Schema and wire-shape regressions against `packages/contracts`. |
 | In-process acceptance | `tests/acceptance.test.ts`, `tests/steps/runSteps.ts` | R1–R5 behaviors via `RunCoordinator` without HTTP. |
 | HTTP + SSE | `tests/http.acceptance.test.ts`, `tests/helpers/httpWire.ts` | Same contracts over a real listener on an ephemeral port; matches what the web shell uses. |

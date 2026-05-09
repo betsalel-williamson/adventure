@@ -24,14 +24,14 @@ When("I open the run event stream before submitting input", async function (this
   assert.ok(this.runId, "run must be started first");
   const sseRes = await fetch(`${this.baseUrl}/runs/${this.runId}/events`);
   assert.ok(sseRes.ok, `expected SSE connection, got ${sseRes.status}`);
-  this.readPromise = readSseUntilCount(sseRes, 7);
+  this.readPromise = readSseUntilCount(sseRes, 10);
 });
 
 When("I open the run event stream for three rejected proposals", async function (this: HttpWorld) {
   assert.ok(this.runId, "run must be started first");
   const sseRes = await fetch(`${this.baseUrl}/runs/${this.runId}/events`);
   assert.ok(sseRes.ok, `expected SSE connection, got ${sseRes.status}`);
-  const eventsPerTurn = 7;
+  const eventsPerTurn = 10;
   const turns = 3;
   this.readPromise = readSseUntilCount(sseRes, eventsPerTurn * turns, 15_000);
 });
@@ -63,11 +63,11 @@ When("I submit player input {string} for that run", async function (this: HttpWo
 });
 
 Then(
-  "I receive seven wire events with ordered turn kinds proposal, oracle_observation, reconcile, checkpoint",
+  "I receive ten wire events with ordered turn kinds proposal, oracle_observation, reconcile, checkpoint",
   async function (this: HttpWorld) {
     const wire = this.wire;
     assert.ok(wire, "wire events required");
-    assert.strictEqual(wire.length, 7);
+    assert.strictEqual(wire.length, 10);
     const turnKinds = wire
       .filter((w): w is Extract<SseWireEvent, { event: "turn" }> => w.event === "turn")
       .map((w) => w.envelope.kind);
@@ -94,21 +94,24 @@ Then("phase transitions on the stream include test and chaos", async function (t
   assert.ok(phaseTos.includes("chaos"), `expected chaos phase, got ${phaseTos.join(",")}`);
 });
 
-Then("the cognition trace includes a proposal step for input {string}", async function (this: HttpWorld, input: string) {
-  const wire = this.wire;
-  assert.ok(wire && this.runId);
-  const trace = wire.find(
-    (w): w is Extract<SseWireEvent, { event: "trace" }> => w.event === "trace"
-  );
-  assert.ok(trace, "expected trace event");
-  const t = trace.trace;
-  assert.strictEqual(t.runId, this.runId);
-  assert.strictEqual(t.turnId, `${this.runId}:turn:1`);
-  assert.strictEqual(t.sequence, 1);
-  assert.strictEqual(t.nodeId, "proposal");
-  assert.strictEqual(t.label, "Proposal drafted");
-  assert.deepStrictEqual(t.payload, { action: input });
-});
+Then(
+  "the cognition trace lists LangGraph nodes perceive, plan, act, reconcile for input {string}",
+  async function (this: HttpWorld, input: string) {
+    const wire = this.wire;
+    assert.ok(wire && this.runId);
+    const traces = wire.filter(
+      (w): w is Extract<SseWireEvent, { event: "trace" }> => w.event === "trace"
+    );
+    assert.strictEqual(traces.length, 4);
+    assert.deepStrictEqual(
+      traces.map((w) => w.trace.nodeId),
+      ["perceive", "plan", "act", "reconcile"]
+    );
+    const act = traces.find((w) => w.trace.nodeId === "act");
+    assert.ok(act);
+    assert.deepStrictEqual(act.trace.payload, { action: input });
+  }
+);
 
 Then("the reconcile envelope correlates to the first turn of this run", async function (this: HttpWorld) {
   assert.ok(this.wire && this.runId);

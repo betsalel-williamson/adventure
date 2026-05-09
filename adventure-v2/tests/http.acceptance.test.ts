@@ -171,7 +171,7 @@ describe("HTTP API + SSE", () => {
       const { runId } = (await start.json()) as { runId: string };
 
       const sseRes = await fetch(`${baseUrl}/runs/${runId}/events`);
-      const readPromise = readSseUntilCount(sseRes, 7);
+      const readPromise = readSseUntilCount(sseRes, 10);
 
       await fetch(`${baseUrl}/runs/${runId}/turns`, {
         method: "POST",
@@ -213,7 +213,7 @@ describe("HTTP API + SSE", () => {
       const sseRes = await fetch(`${baseUrl}/runs/${runId}/events`);
       expect(sseRes.ok).toBe(true);
 
-      const readPromise = readSseUntilCount(sseRes, 7);
+      const readPromise = readSseUntilCount(sseRes, 10);
 
       const turn = await fetch(`${baseUrl}/runs/${runId}/turns`, {
         method: "POST",
@@ -234,18 +234,17 @@ describe("HTTP API + SSE", () => {
         .map((w) => w.transition.to);
       expect(phases).toEqual(["disorder", "act"]);
 
-      const trace = wire.find(
-        (w): w is Extract<SseWireEvent, { event: "trace" }> => w.event === "trace"
+      const traceNodes = wire
+        .filter((w): w is Extract<SseWireEvent, { event: "trace" }> => w.event === "trace")
+        .map((w) => w.trace.nodeId);
+      expect(traceNodes).toEqual(["perceive", "plan", "act", "reconcile"]);
+      const planTrace = wire.find(
+        (w): w is Extract<SseWireEvent, { event: "trace" }> =>
+          w.event === "trace" && w.trace.nodeId === "plan"
       );
-      expect(trace).toBeDefined();
-      expect(trace!.trace).toMatchObject({
-        runId,
-        turnId: `${runId}:turn:1`,
-        sequence: 1,
-        nodeId: "proposal",
-        label: "Proposal drafted",
-        payload: { action: "look" }
-      });
+      expect(planTrace).toBeDefined();
+      expect(planTrace!.trace.promptDigest).toMatch(/^[a-f0-9]{16}$/);
+      expect(planTrace!.trace.runId).toBe(runId);
     } finally {
       await closeServer(server);
     }
@@ -342,7 +341,7 @@ describe("HTTP API + SSE", () => {
       const sseRes = await fetch(`${baseUrl}/runs/${runId}/events`);
       expect(sseRes.ok).toBe(true);
 
-      const eventsPerTurn = 7;
+      const eventsPerTurn = 10;
       const turns = 3;
       const readPromise = readSseUntilCount(sseRes, eventsPerTurn * turns, 15_000);
 

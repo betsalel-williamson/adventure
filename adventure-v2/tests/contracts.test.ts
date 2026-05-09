@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { buildReconcileTrace } from "../packages/cognition/src/brain/reconcileTrace.js";
+import { runTurnBrainGraph } from "../packages/cognition/src/brain/runTurnBrainGraph.js";
 import {
   cognitionTraceWireSchema,
   checkpointRefSchema,
@@ -163,6 +165,52 @@ describe("contracts", () => {
     if (traceEv.event === "trace") {
       expect(traceEv.trace.label).toBe("Proposal drafted");
     }
+  });
+
+  it("parses cognition trace with LangGraph observability fields", () => {
+    const trace = cognitionTraceWireSchema.parse({
+      runId: "run-1",
+      turnId: "t-1",
+      sequence: 1,
+      nodeId: "plan",
+      graphNodeId: "plan",
+      stepIndex: 1,
+      label: "Plan",
+      ts: new Date().toISOString(),
+      promptDigest: "a".repeat(16),
+      promptSummary: "You are the Adventure",
+      promptRole: "system",
+      payload: {}
+    });
+    expect(trace.promptRole).toBe("system");
+    expect(trace.stepIndex).toBe(1);
+  });
+
+  it("matches golden LangGraph trace node order for one turn", async () => {
+    const brain = await runTurnBrainGraph({
+      runId: "run-1",
+      turnId: "run-1:turn:1",
+      sequence: 1,
+      rawInput: "look"
+    });
+    const reconcileTrace = buildReconcileTrace({
+      runId: "run-1",
+      turnId: "run-1:turn:1",
+      sequence: 1,
+      reconcile: {
+        runId: "run-1",
+        turnId: "run-1:turn:1",
+        sequence: 1,
+        driftDetected: false,
+        driftClass: "none",
+        beliefPatch: {},
+        confidenceBefore: 0.8,
+        confidenceAfter: 0.85,
+        nextPolicy: "continue"
+      }
+    });
+    const golden = [...brain.traces.map((t) => t.nodeId), reconcileTrace.nodeId];
+    expect(golden).toEqual(["perceive", "plan", "act", "reconcile"]);
   });
 });
 

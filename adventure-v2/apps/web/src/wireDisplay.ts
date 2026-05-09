@@ -77,15 +77,32 @@ export const formatWireEventForTranscript = (wire: SseWireEvent): string => {
   return formatPhaseTransitionLine(wire.transition);
 };
 
-export const formatCognitionTracePanel = (trace: CognitionTraceWire): string =>
-  [
+export const formatCognitionTracePanel = (trace: CognitionTraceWire): string => {
+  const lines = [
     "Latest cognition trace",
     `  nodeId:   ${trace.nodeId}`,
     `  label:    ${trace.label}`,
     `  turnId:   ${trace.turnId}`,
-    `  sequence: ${trace.sequence}`,
-    `  payload:  ${JSON.stringify(trace.payload)}`
-  ].join("\n");
+    `  sequence: ${trace.sequence}`
+  ];
+  if (trace.stepIndex !== undefined) {
+    lines.push(`  stepIndex: ${trace.stepIndex}`);
+  }
+  if (trace.graphNodeId !== undefined) {
+    lines.push(`  graphNodeId: ${trace.graphNodeId}`);
+  }
+  if (trace.promptDigest !== undefined) {
+    lines.push(`  promptDigest: ${trace.promptDigest}`);
+  }
+  if (trace.promptSummary !== undefined) {
+    lines.push(`  promptSummary: ${trace.promptSummary}`);
+  }
+  if (trace.promptRole !== undefined) {
+    lines.push(`  promptRole: ${trace.promptRole}`);
+  }
+  lines.push(`  payload:  ${JSON.stringify(trace.payload)}`);
+  return lines.join("\n");
+};
 
 export const formatReconcilePanel = (env: TurnEnvelope): string | null => {
   if (env.kind !== "reconcile") {

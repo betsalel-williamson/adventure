@@ -73,9 +73,9 @@ Core shared models:
 
 - **Web app**: keep immersive terminal visual; show phase machine state, graph node activity, and reconcile diffs.
 - **Server app**: orchestrate runs and emit ordered events; enforce deterministic sequencing boundaries.
-- **Contracts package**: single source of truth for schemas and wire types.
-- **Cognition package**: host LangGraph node logic and checkpoint integration.
-- **Control package**: host XState machine and loop transition criteria.
+- **Contracts package**: single source of truth for schemas and wire types (including extended **`CognitionTraceWire`** for LangGraph/prompt observability—see [`packages/contracts/src/http/wire.ts`](../../adventure-v2/packages/contracts/src/http/wire.ts)).
+- **Cognition package**: LangGraph **`StateGraph`** pre-oracle (`perceive` → `plan` → `act`), stub prompts + digests on **`plan`** traces; **`classifyReconcile`** unchanged; post-oracle **`reconcile`** trace emitted on SSE by the server (not implemented as a LangGraph node in slice 13).
+- **Control package**: **`xstate`** (`createMachine` / `createActor`) for phases (`act`, `think`, `test`, `chaos`, `disorder`) and **`invalidRouting`** for invalid-action escalation.
 
 ### 3.4 Testing framework strategy (Cucumber-style TDD)
 
@@ -107,7 +107,8 @@ This section distinguishes the **original design-only phase** from **ongoing wor
 
 Remaining gaps and non-goals as of that README:
 
-- Production deployment hardening and full LangGraph/XState package depth (cognition/control stubs evolve incrementally).
+- Production deployment hardening; **LangGraph checkpointer** integration with **`CheckpointRef`** / replay (slice 13 wires the graph for observability; persistence remains the existing **`CheckpointRegistry`**).
+- Real **ModelAdapter** / LLM calls inside **`plan`** (stub prompts + digests only in CI).
 - Replacing the Fortran engine with a native TypeScript world engine for production-equivalent runs.
 - ADK integration in v2 baseline.
 - Production-grade energy profiling instrumentation (can be added later).

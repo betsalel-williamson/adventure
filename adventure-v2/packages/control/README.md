@@ -1,13 +1,10 @@
-# adventure-v2 control package (planned)
+# adventure-v2 control package
 
 ## Responsibility
 
-- Implement the XState control machine for loop policy and operational telemetry.
-- Coordinate phase routing across `act`, `think`, `test`, `chaos`, and `disorder`.
-- Surface transition events for UI and benchmark analytics.
+- **`xstate`** ([`src/machine/controlMachine.ts`](src/machine/controlMachine.ts)): loop policy and operational telemetry over **`act`**, **`think`**, **`test`**, **`chaos`**, **`disorder`**, plus **`invalidRouting`** for invalid-action escalation.
+- Transition events match **`PhaseTransitionWire`** on SSE (`packages/contracts`).
 
-## Initial scaffold targets
+## Layout
 
-- `src/machine/` control machine definitions.
-- `src/policy/` transition heuristics and escalation criteria.
-- `src/telemetry/` normalized transition event emitters.
+- `src/machine/` — `createMachine` / `createActor` wiring consumed by **`RunCoordinator`**.

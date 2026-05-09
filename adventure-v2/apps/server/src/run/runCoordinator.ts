@@ -5,7 +5,7 @@ import type {
   RunConfig,
   TurnEnvelope
 } from "../../../../packages/contracts/src/index.js";
-import { classifyReconcile } from "../../../../packages/cognition/src/index.js";
+import { buildReconcileTrace, classifyReconcile, runTurnBrainGraph } from "../../../../packages/cognition/src/index.js";
 import { createControlMachine } from "../../../../packages/control/src/index.js";
 import type { ControlPhase, PhaseTransitionEvent } from "../../../../packages/control/src/index.js";
 import { CheckpointRegistry } from "../replay/checkpointRegistry.js";
@@ -101,11 +101,18 @@ export class RunCoordinator {
     return { runId: run.runId, config: run.config };
   }
 
-  processTurn(runId: string, input: string, options: TurnOptions = {}): TurnResult {
+  async processTurn(runId: string, input: string, options: TurnOptions = {}): Promise<TurnResult> {
     const run = this.requireRun(runId);
     const control = this.requireControl(runId);
     const sequence = run.nextSequence;
     const turnId = turnIdFor(runId, sequence);
+
+    const brain = await runTurnBrainGraph({
+      runId,
+      turnId,
+      sequence,
+      rawInput: input
+    });
 
     const proposal: TurnEnvelope = {
       runId,
@@ -114,28 +121,21 @@ export class RunCoordinator {
       source: "cognition",
       kind: "proposal",
       ts: now(),
-      payload: { action: input }
+      payload: { action: brain.action }
     };
     run.events.push(proposal);
     this.emitStream(runId, { type: "turn", envelope: proposal });
 
-    const proposalTrace: CognitionTraceWire = {
-      runId,
-      turnId,
-      sequence,
-      nodeId: "proposal",
-      label: "Proposal drafted",
-      ts: now(),
-      payload: { action: input }
-    };
-    this.emitStream(runId, { type: "trace", trace: proposalTrace });
+    for (const trace of brain.traces) {
+      this.emitStream(runId, { type: "trace", trace });
+    }
 
     const obs = normalizeOracleObservation(
       this.oracle.observe({
         runId,
         turnId,
         sequence,
-        action: input,
+        action: brain.action,
         forceReject: options.forceReject
       })
     );
@@ -177,6 +177,14 @@ export class RunCoordinator {
     };
     run.events.push(reconcileEvent);
     this.emitStream(runId, { type: "turn", envelope: reconcileEvent });
+
+    const reconcileTrace: CognitionTraceWire = buildReconcileTrace({
+      runId,
+      turnId,
+      sequence,
+      reconcile
+    });
+    this.emitStream(runId, { type: "trace", trace: reconcileTrace });
 
     const policyTransition = obs.rejected
       ? control.onInvalidAction(sequence)
@@ -263,4 +271,3 @@ export class RunCoordinator {
     return machine;
   }
 }
-

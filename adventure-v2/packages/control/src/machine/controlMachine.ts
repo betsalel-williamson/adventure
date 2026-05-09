@@ -1,3 +1,5 @@
+import { assign, createActor, createMachine } from "xstate";
+
 export type ControlPhase = "act" | "think" | "test" | "chaos" | "disorder";
 export type NextPolicy = "continue" | "test" | "chaos";
 
@@ -18,36 +20,101 @@ export type ControlMachine = {
 
 const now = (): string => new Date().toISOString();
 
-export const createControlMachine = (invalidThreshold = 2): ControlMachine => {
-  let phase: ControlPhase = "act";
-  let invalidCount = 0;
+type ControlEvent =
+  | { type: "ORACLE_DISPATCHED"; sequence: number }
+  | { type: "RECONCILE"; nextPolicy: NextPolicy; sequence: number }
+  | { type: "INVALID"; sequence: number };
 
-  const transition = (to: ControlPhase, reason: string, sequence: number): PhaseTransitionEvent => {
-    const event: PhaseTransitionEvent = { from: phase, to, reason, sequence, ts: now() };
-    phase = to;
-    return event;
-  };
+export const createControlMachineLogic = (invalidThreshold: number) =>
+  createMachine({
+    types: {} as {
+      context: { invalidCount: number; invalidThreshold: number };
+      events: ControlEvent;
+    },
+    context: { invalidCount: 0, invalidThreshold },
+    initial: "act",
+    states: {
+      act: {
+        on: { ORACLE_DISPATCHED: "disorder" }
+      },
+      think: {
+        on: { ORACLE_DISPATCHED: "disorder" }
+      },
+      test: {
+        on: { ORACLE_DISPATCHED: "disorder" }
+      },
+      chaos: {
+        on: { ORACLE_DISPATCHED: "disorder" }
+      },
+      disorder: {
+        on: {
+          RECONCILE: [
+            {
+              guard: ({ event }) => event.nextPolicy === "continue",
+              target: "act",
+              actions: assign({ invalidCount: 0 })
+            },
+            {
+              guard: ({ event }) => event.nextPolicy === "test",
+              target: "test"
+            },
+            {
+              guard: ({ event }) => event.nextPolicy === "chaos",
+              target: "chaos"
+            }
+          ],
+          INVALID: {
+            actions: assign({
+              invalidCount: ({ context }) => context.invalidCount + 1
+            }),
+            target: "invalidRouting"
+          }
+        }
+      },
+      invalidRouting: {
+        always: [
+          {
+            guard: ({ context }) => context.invalidCount > context.invalidThreshold,
+            target: "chaos"
+          },
+          { target: "test" }
+        ]
+      }
+    }
+  });
+
+export const createControlMachine = (invalidThreshold = 2): ControlMachine => {
+  const actor = createActor(createControlMachineLogic(invalidThreshold));
+  actor.start();
 
   return {
-    currentPhase: () => phase,
-    onOracleObservationDispatched: (sequence) => transition("disorder", "oracle-dispatched", sequence),
+    currentPhase: () => actor.getSnapshot().value as ControlPhase,
+    onOracleObservationDispatched: (sequence) => {
+      const from = actor.getSnapshot().value as ControlPhase;
+      actor.send({ type: "ORACLE_DISPATCHED", sequence });
+      const to = actor.getSnapshot().value as ControlPhase;
+      return { from, to, reason: "oracle-dispatched", sequence, ts: now() };
+    },
     onReconcileOutcome: (sequence, nextPolicy) => {
-      if (nextPolicy === "test") {
-        return transition("test", "reconcile-nextPolicy-test", sequence);
-      }
-      if (nextPolicy === "chaos") {
-        return transition("chaos", "reconcile-nextPolicy-chaos", sequence);
-      }
-      invalidCount = 0;
-      return transition("act", "reconcile-nextPolicy-continue", sequence);
+      const from = actor.getSnapshot().value as ControlPhase;
+      actor.send({ type: "RECONCILE", nextPolicy, sequence });
+      const to = actor.getSnapshot().value as ControlPhase;
+      const reason =
+        nextPolicy === "continue"
+          ? "reconcile-nextPolicy-continue"
+          : nextPolicy === "test"
+            ? "reconcile-nextPolicy-test"
+            : "reconcile-nextPolicy-chaos";
+      return { from, to, reason, sequence, ts: now() };
     },
     onInvalidAction: (sequence) => {
-      invalidCount += 1;
-      if (invalidCount > invalidThreshold) {
-        return transition("chaos", "invalid-threshold-exceeded", sequence);
-      }
-      return transition("test", "invalid-action", sequence);
+      const from = actor.getSnapshot().value as ControlPhase;
+      actor.send({ type: "INVALID", sequence });
+      const to = actor.getSnapshot().value as ControlPhase;
+      const ctx = actor.getSnapshot().context;
+      const reason =
+        ctx.invalidCount > ctx.invalidThreshold ? "invalid-threshold-exceeded" : "invalid-action";
+      return { from, to, reason, sequence, ts: now() };
     }
   };
 };
-

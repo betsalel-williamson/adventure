@@ -205,7 +205,7 @@ const handleHttp = async (
     if (route.kind === "post-turn") {
       const raw = await readJsonBody(req);
       const body = postTurnRequestSchema.parse(raw);
-      coordinator.processTurn(route.runId, body.input, {
+      await coordinator.processTurn(route.runId, body.input, {
         forceReject: body.forceReject
       });
       res.writeHead(204, corsHeadersForRequest(req));

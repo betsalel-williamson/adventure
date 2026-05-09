@@ -10,6 +10,8 @@ Code and tests now live under [`adventure-v2/`](../../adventure-v2/). **Authorit
 
 **Slice 12 (configurable CORS):** optional comma-separated **`ADV_V2_CORS_ORIGINS`** env var on the server; unset preserves **`Access-Control-Allow-Origin: *`**. Covered in [`tests/http.acceptance.test.ts`](../../adventure-v2/tests/http.acceptance.test.ts) and documented in README slice bullets + **`design.md`** §3.1. Close-out: [`slice-12-multidisciplinary-review.md`](slice-12-multidisciplinary-review.md).
 
+**Slice 13 (LangGraph + XState + trace observability):** pre-oracle **LangGraph** turn path, **`xstate`** control machine, extended **`CognitionTraceWire`**, async **`processTurn`**, **10** SSE events per turn. Close-out: [`slice-13-multidisciplinary-review.md`](slice-13-multidisciplinary-review.md); plan archive: [`adventure-v2-slice-13-langgraph-xstate.plan.md`](adventure-v2-slice-13-langgraph-xstate.plan.md).
+
 ## Requirements traceability
 
 - **R1** Model swap benchmark execution across `SLM`, `LLM`, `API`, and `MLX` categories.

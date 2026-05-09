@@ -11,7 +11,7 @@ const shouldRunFortranOracle =
   process.env.ADV_V2_CI_FORTRAN === "1" && existsSync(adventureBin);
 
 describe.runIf(shouldRunFortranOracle)("Fortran oracle CI bridge", () => {
-  it("maps Fortran transcript to oracle observation on the turn envelope", () => {
+  it("maps Fortran transcript to oracle observation on the turn envelope", async () => {
     const bridge = createProcessOracleBridge({
       command: process.execPath,
       args: [oracleFortranBridgePath],
@@ -19,7 +19,7 @@ describe.runIf(shouldRunFortranOracle)("Fortran oracle CI bridge", () => {
       timeoutMs: 15_000
     });
     const world = givenStartedRun("SLM", bridge);
-    const turn = world.coordinator.processTurn(world.runId, "east");
+    const turn = await world.coordinator.processTurn(world.runId, "east");
 
     const events = world.coordinator.eventsForRun(world.runId);
     const obs = events.find((e) => e.kind === "oracle_observation");

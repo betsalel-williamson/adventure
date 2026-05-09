@@ -10,9 +10,9 @@ const processOracle = () =>
   });
 
 describe("process OracleBridge", () => {
-  it("maps stub stdout to oracle observation on the turn envelope", () => {
+  it("maps stub stdout to oracle observation on the turn envelope", async () => {
     const world = givenStartedRun("SLM", processOracle());
-    const turn = world.coordinator.processTurn(world.runId, "__PROCESS_ORACLE_LINE__");
+    const turn = await world.coordinator.processTurn(world.runId, "__PROCESS_ORACLE_LINE__");
 
     const events = world.coordinator.eventsForRun(world.runId);
     const obs = events.find((e) => e.kind === "oracle_observation");
@@ -25,13 +25,13 @@ describe("process OracleBridge", () => {
     expect(turn.reconcile.driftDetected).toBe(false);
   });
 
-  it("returns rejected observation when child prints invalid JSON on success exit", () => {
+  it("returns rejected observation when child prints invalid JSON on success exit", async () => {
     const bridge = createProcessOracleBridge({
       command: process.execPath,
       args: ["-e", `console.log("not-json")`]
     });
     const world = givenStartedRun("SLM", bridge);
-    const turn = world.coordinator.processTurn(world.runId, "look");
+    const turn = await world.coordinator.processTurn(world.runId, "look");
 
     const events = world.coordinator.eventsForRun(world.runId);
     const obs = events.find((e) => e.kind === "oracle_observation");
@@ -45,14 +45,14 @@ describe("process OracleBridge", () => {
     expect(turn.reconcile.evidence?.oracleOutcome).toBe("transport_error");
   });
 
-  it("returns rejected observation on timeout", () => {
+  it("returns rejected observation on timeout", async () => {
     const bridge = createProcessOracleBridge({
       command: process.execPath,
       args: ["-e", "setInterval(() => {}, 1000);"],
       timeoutMs: 50
     });
     const world = givenStartedRun("API", bridge);
-    const turn = world.coordinator.processTurn(world.runId, "look");
+    const turn = await world.coordinator.processTurn(world.runId, "look");
 
     const events = world.coordinator.eventsForRun(world.runId);
     const obs = events.find((e) => e.kind === "oracle_observation");
@@ -65,9 +65,9 @@ describe("process OracleBridge", () => {
     expect(turn.reconcile.driftClass).toBe("unknown");
   });
 
-  it("passes forceReject through stdin for stub", () => {
+  it("passes forceReject through stdin for stub", async () => {
     const world = givenStartedRun("LLM", processOracle());
-    const turn = world.coordinator.processTurn(world.runId, "x", { forceReject: true });
+    const turn = await world.coordinator.processTurn(world.runId, "x", { forceReject: true });
     expect(turn.reconcile.driftDetected).toBe(true);
 
     const events = world.coordinator.eventsForRun(world.runId);

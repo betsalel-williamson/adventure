@@ -62,13 +62,25 @@ export const ssePhaseEventSchema = z.object({
   transition: phaseTransitionWireSchema
 });
 
+export const cognitionTracePromptRoleSchema = z.enum(["system", "user", "assistant"]);
+
 export const cognitionTraceWireSchema = z.object({
   runId: z.string().min(1),
   turnId: z.string().min(1),
   sequence: z.number().int().nonnegative(),
+  /** Display id (often matches LangGraph node name). */
   nodeId: z.string().min(1),
+  /** Optional canonical graph node id when it differs from `nodeId`. */
+  graphNodeId: z.string().min(1).optional(),
+  /** Monotonic step index within the turn (0-based). */
+  stepIndex: z.number().int().nonnegative().optional(),
   label: z.string().min(1),
   ts: z.string().min(1),
+  /** Hex digest of prompt material for observability (stub LLM / CI). */
+  promptDigest: z.string().optional(),
+  /** Short excerpt (first line or capped) for panels. */
+  promptSummary: z.string().optional(),
+  promptRole: cognitionTracePromptRoleSchema.optional(),
   payload: z.record(z.unknown())
 });
 

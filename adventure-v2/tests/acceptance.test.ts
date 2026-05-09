@@ -30,9 +30,9 @@ describe("R1 model swap benchmark execution", () => {
 });
 
 describe("R2 deterministic replay", () => {
-  it("restores replay payload from checkpoint", () => {
+  it("restores replay payload from checkpoint", async () => {
     const world = givenStartedRun();
-    const turn = world.coordinator.processTurn(world.runId, "look");
+    const turn = await world.coordinator.processTurn(world.runId, "look");
     const replayReady = world.coordinator.replay(turn.checkpoint.checkpointId);
 
     expect(replayReady.checkpointId).toBe(turn.checkpoint.checkpointId);
@@ -42,7 +42,7 @@ describe("R2 deterministic replay", () => {
 });
 
 describe("R3 drift-aware reconcile", () => {
-  it("normalizes contradictory oracle flags so envelope rejected matches transport_error", () => {
+  it("normalizes contradictory oracle flags so envelope rejected matches transport_error", async () => {
     const bridge: OracleBridge = {
       observe: () => ({
         rejected: false,
@@ -51,7 +51,7 @@ describe("R3 drift-aware reconcile", () => {
       })
     };
     const world = givenStartedRun("SLM", bridge);
-    world.coordinator.processTurn(world.runId, "look");
+    await world.coordinator.processTurn(world.runId, "look");
     const events = world.coordinator.eventsForRun(world.runId);
     const obs = events.find((e) => e.kind === "oracle_observation");
     expect(obs).toBeDefined();
@@ -61,9 +61,9 @@ describe("R3 drift-aware reconcile", () => {
     });
   });
 
-  it("surfaces parser drift metadata on reject", () => {
+  it("surfaces parser drift metadata on reject", async () => {
     const world = givenStartedRun();
-    const turn = world.coordinator.processTurn(world.runId, "xyzzy", { forceReject: true });
+    const turn = await world.coordinator.processTurn(world.runId, "xyzzy", { forceReject: true });
 
     expect(turn.reconcile.driftDetected).toBe(true);
     expect(turn.reconcile.driftClass).toBe("parser");
@@ -75,9 +75,9 @@ describe("R3 drift-aware reconcile", () => {
 });
 
 describe("R4 observability stream behavior", () => {
-  it("emits ordered turn artifacts and phase transitions", () => {
+  it("emits ordered turn artifacts and phase transitions", async () => {
     const world = givenStartedRun();
-    world.coordinator.processTurn(world.runId, "look");
+    await world.coordinator.processTurn(world.runId, "look");
 
     const events = world.coordinator.eventsForRun(world.runId);
     const kinds = events.map((event) => event.kind);
@@ -89,11 +89,11 @@ describe("R4 observability stream behavior", () => {
 });
 
 describe("R5 invalid-action recovery", () => {
-  it("escalates to chaos after repeated invalid actions", () => {
+  it("escalates to chaos after repeated invalid actions", async () => {
     const world = givenStartedRun();
-    world.coordinator.processTurn(world.runId, "bad-action-1", { forceReject: true });
-    world.coordinator.processTurn(world.runId, "bad-action-2", { forceReject: true });
-    world.coordinator.processTurn(world.runId, "bad-action-3", { forceReject: true });
+    await world.coordinator.processTurn(world.runId, "bad-action-1", { forceReject: true });
+    await world.coordinator.processTurn(world.runId, "bad-action-2", { forceReject: true });
+    await world.coordinator.processTurn(world.runId, "bad-action-3", { forceReject: true });
 
     const transitions = world.coordinator.transitionsForRun(world.runId);
     const toPhases = transitions.map((transition) => transition.to);
