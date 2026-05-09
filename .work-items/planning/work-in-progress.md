@@ -1,12 +1,12 @@
 # Work in progress (short pointer)
 
-**Update when focus shifts.** Last touched: **2026-05-09**
+**Update when focus shifts.** Last touched: **2026-05-09** (Slice 10 planning snapshot)
 
 ## Where we are right now
 
 [**Current development loop snapshot**](plan-queues-index.md#current-development-loop-snapshot) in [`plan-queues-index.md`](plan-queues-index.md) — **source of truth** for loop state, plan/slice, blocking, and “next after this.”
 
-**As of last edit:** Adventure v2 **`BetweenPlans`** — slices 1–6 **complete** in-tree; slice 7 (Fortran oracle CI) per the snapshot; follow-ons in [`adventure-v2/README.md`](../../adventure-v2/README.md). AAB **`Implementing`** per active queue.
+**As of last edit:** Adventure v2 **`BetweenPlans`** — **Slice 10** (R5 on HTTP wire) **shipped**; slices 1–10 **complete** in-tree per [`plan-queues-index.md`](plan-queues-index.md). AAB **`Implementing`** per active queue.
 
 ## Primary focus
 

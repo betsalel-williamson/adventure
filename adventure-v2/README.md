@@ -19,6 +19,8 @@ Planned v2 runtime for benchmark-oriented adventure orchestration.
 
 **Slice 9 (HTTP Gherkin):** `npm run test:cucumber` runs `@cucumber/cucumber` against `tests/features/http/*.feature` using the same HTTP+SSE helpers as `tests/http.acceptance.test.ts` (`tests/helpers/httpWire.ts`). Vitest remains the primary CI gate; Cucumber is an optional readability layer for wire scenarios.
 
+**Slice 10 (R5 on HTTP wire):** `tests/http.acceptance.test.ts` asserts invalid-action escalation (`test` and `chaos` phases on SSE) after repeated `forceReject` turns; `tests/features/http/r5_invalid_action_recovery.feature` mirrors that path in Gherkin.
+
 ## Planned structure
 
 ```text
@@ -123,14 +125,14 @@ ADV_V2_PROCESS_ORACLE_SCRIPT=fixtures/oracle-stub.mjs npm run dev:server
 npm run test:coverage   # HTML report under coverage/ (gitignored)
 ```
 
-**Process:** follow Red–Green–Refactor and separate structural from behavioral commits when touching tests (see repo `.cursor/rules/process-03-development.mdc`).
+**Process:** follow Red–Green–Refactor and separate structural from behavioral commits when touching tests (see repo `.cursor/rules/process-03-development.mdc`). Before merging changes, run **full regression:** `npm test` then `npm run test:cucumber` (same order as CI); add `npm run test:oracle-fortran` after edits to oracle/subprocess code.
 
 ## Verification
 
 ```bash
 npm install   # once
 npm test      # contract + acceptance + HTTP + oracle stub + wireDisplay
-npm run test:cucumber   # optional; HTTP Gherkin vs same listener as http.acceptance.test.ts
+npm run test:cucumber   # HTTP Gherkin (includes R5 recovery scenario); matches CI after Vitest
 
 # After `make adventure` at repo root (optional locally; CI runs this):
 npm run test:oracle-fortran

@@ -187,6 +187,46 @@ describe("HTTP API + SSE", () => {
     );
   });
 
+  it("R5: repeated rejected turns escalate control phases through test toward chaos on SSE", async () => {
+    const coordinator = new RunCoordinator();
+    const { server, baseUrl } = await listenAdventureServer(coordinator, 0);
+    try {
+      const start = await fetch(`${baseUrl}/runs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ config: createRunConfig("SLM") })
+      });
+      expect(start.status).toBe(201);
+      const { runId } = (await start.json()) as { runId: string };
+
+      const sseRes = await fetch(`${baseUrl}/runs/${runId}/events`);
+      expect(sseRes.ok).toBe(true);
+
+      const eventsPerTurn = 7;
+      const turns = 3;
+      const readPromise = readSseUntilCount(sseRes, eventsPerTurn * turns, 15_000);
+
+      for (const input of ["bad-action-1", "bad-action-2", "bad-action-3"]) {
+        const turn = await fetch(`${baseUrl}/runs/${runId}/turns`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ input, forceReject: true })
+        });
+        expect(turn.status).toBe(204);
+      }
+
+      const wire = await readPromise;
+
+      const phaseTos = wire
+        .filter((w): w is Extract<SseWireEvent, { event: "phase" }> => w.event === "phase")
+        .map((w) => w.transition.to);
+      expect(phaseTos).toContain("test");
+      expect(phaseTos).toContain("chaos");
+    } finally {
+      await closeServer(server);
+    }
+  });
+
   it("GET /runs/:id/checkpoints is empty then lists checkpoint after one turn", async () => {
     const coordinator = new RunCoordinator();
     const { server, baseUrl } = await listenAdventureServer(coordinator, 0);

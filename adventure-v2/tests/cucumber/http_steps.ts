@@ -27,14 +27,38 @@ When("I open the run event stream before submitting input", async function (this
   this.readPromise = readSseUntilCount(sseRes, 7);
 });
 
+When("I open the run event stream for three rejected proposals", async function (this: HttpWorld) {
+  assert.ok(this.runId, "run must be started first");
+  const sseRes = await fetch(`${this.baseUrl}/runs/${this.runId}/events`);
+  assert.ok(sseRes.ok, `expected SSE connection, got ${sseRes.status}`);
+  const eventsPerTurn = 7;
+  const turns = 3;
+  this.readPromise = readSseUntilCount(sseRes, eventsPerTurn * turns, 15_000);
+});
+
+When("I submit three sequential rejected proposals", async function (this: HttpWorld) {
+  assert.ok(this.runId && this.readPromise, "stream must be open before submitting input");
+  const turnsPath = `/runs/${this.runId}/turns`;
+  for (const input of ["bad-action-1", "bad-action-2", "bad-action-3"]) {
+    const postTurnResponse: globalThis.Response = await fetch(`${this.baseUrl}${turnsPath}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ input, forceReject: true })
+    });
+    assert.strictEqual(postTurnResponse.status, 204);
+  }
+  this.wire = await this.readPromise;
+});
+
 When("I submit player input {string} for that run", async function (this: HttpWorld, input: string) {
   assert.ok(this.runId && this.readPromise, "stream must be open before submitting input");
-  const turn = await fetch(`${this.baseUrl}/runs/${this.runId}/turns`, {
+  const turnsPath = `/runs/${this.runId}/turns`;
+  const postTurnResponse: globalThis.Response = await fetch(`${this.baseUrl}${turnsPath}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ input })
   });
-  assert.strictEqual(turn.status, 204);
+  assert.strictEqual(postTurnResponse.status, 204);
   this.wire = await this.readPromise;
 });
 
@@ -58,6 +82,16 @@ Then("phase transitions end as disorder then act", async function (this: HttpWor
     .filter((w): w is Extract<SseWireEvent, { event: "phase" }> => w.event === "phase")
     .map((w) => w.transition.to);
   assert.deepStrictEqual(phases, ["disorder", "act"]);
+});
+
+Then("phase transitions on the stream include test and chaos", async function (this: HttpWorld) {
+  const wire = this.wire;
+  assert.ok(wire, "wire events required");
+  const phaseTos = wire
+    .filter((w): w is Extract<SseWireEvent, { event: "phase" }> => w.event === "phase")
+    .map((w) => w.transition.to);
+  assert.ok(phaseTos.includes("test"), `expected test phase, got ${phaseTos.join(",")}`);
+  assert.ok(phaseTos.includes("chaos"), `expected chaos phase, got ${phaseTos.join(",")}`);
 });
 
 Then("the cognition trace includes a proposal step for input {string}", async function (this: HttpWorld, input: string) {
