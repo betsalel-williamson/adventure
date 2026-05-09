@@ -10,37 +10,111 @@
         margin: 1rem;
         background: #0d1117;
         color: #c9d1d9;
+        line-height: 1.45;
+      }
+      h1 {
+        font-size: 1.25rem;
+        margin-bottom: 0.35rem;
+      }
+      .intro {
+        color: #8b949e;
+        margin-bottom: 1rem;
+        font-size: 0.9rem;
+      }
+      .panels {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        align-items: start;
+      }
+      @media (max-width: 900px) {
+        .panels {
+          grid-template-columns: 1fr;
+        }
+      }
+      .panel {
+        background: #161b22;
+        border: 1px solid #30363d;
+        padding: 0.75rem;
+        min-height: 4rem;
+      }
+      .panel h2 {
+        font-size: 0.85rem;
+        margin: 0 0 0.5rem 0;
+        color: #58a6ff;
+        font-weight: 600;
+      }
+      #run-meta {
+        color: #8b949e;
+        font-size: 0.85rem;
+        margin-bottom: 0.75rem;
       }
       #transcript {
         white-space: pre-wrap;
-        background: #161b22;
-        border: 1px solid #30363d;
-        padding: 0.75rem;
-        min-height: 8rem;
+        min-height: 10rem;
+        max-height: 22rem;
+        overflow: auto;
+        font-size: 0.82rem;
       }
-      #phase {
-        margin-top: 0.75rem;
+      #phase-timeline {
+        white-space: pre-wrap;
+        max-height: 12rem;
+        overflow: auto;
+        font-size: 0.82rem;
+      }
+      #phase-current {
         color: #58a6ff;
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
       }
+      #reconcile,
       #checkpoints {
         white-space: pre-wrap;
-        background: #161b22;
-        border: 1px solid #30363d;
-        padding: 0.75rem;
-        margin-top: 0.75rem;
-        font-size: 0.85rem;
         max-height: 14rem;
         overflow: auto;
+        font-size: 0.82rem;
+      }
+      #actors-placeholder {
+        color: #8b949e;
+        font-size: 0.82rem;
       }
     </style>
   </head>
   <body>
     <h1>adventure-v2 (dev shell)</h1>
-    <p>Start run + sample turn + SSE transcript; after the turn, fetches checkpoints and replay payload.</p>
-    <pre id="transcript"></pre>
-    <p id="phase">control phase: —</p>
-    <h2 style="font-size: 1rem; margin-top: 1rem">checkpoints + replay restore</h2>
-    <pre id="checkpoints">(waiting for turn …)</pre>
+    <p class="intro">
+      Start run · sample turn · SSE transcript (parsed wire events). Then checkpoints + replay restore. Same <code>runId</code> for
+      stream and REST.
+    </p>
+    <div id="run-meta">run: —</div>
+
+    <div class="panels">
+      <div class="panel">
+        <h2>transcript (SSE)</h2>
+        <pre id="transcript">(waiting for events …)</pre>
+      </div>
+      <div class="panel">
+        <h2>control phase</h2>
+        <p id="phase-current">current: —</p>
+        <pre id="phase-timeline">(no phase transitions yet)</pre>
+      </div>
+      <div class="panel">
+        <h2>reconcile summary</h2>
+        <pre id="reconcile">(no reconcile event yet)</pre>
+      </div>
+      <div class="panel">
+        <h2>checkpoints + replay restore</h2>
+        <pre id="checkpoints">(waiting for turn …)</pre>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top: 1rem">
+      <h2>LangGraph / actors</h2>
+      <p id="actors-placeholder">
+        Graph-shaped actor trace is not wired in this slice — see <code>packages/cognition</code> for the pipeline seam.
+      </p>
+    </div>
+
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

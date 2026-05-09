@@ -1,2 +1,13 @@
-cd "$(dirname "$0")/.." || exit 1
+#!/usr/bin/env sh
+set -e
+
+# Resolve repo root without relying on hook path ($0 can be relative when Husky invokes).
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+cd "$REPO_ROOT/adventure-nl" || exit 1
 npx lint-staged
+
+cd "$REPO_ROOT" || exit 1
+if git diff --cached --name-only | grep -q '^adventure-v2/'; then
+  (cd adventure-v2 && npm test)
+fi

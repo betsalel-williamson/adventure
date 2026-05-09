@@ -1,20 +1,38 @@
 /// <reference types="vite/client" />
 
+import {
+  formatReconcilePanel,
+  formatWireEventForTranscript,
+  parseSseWirePayload
+} from "./wireDisplay";
+
 const apiBase: string = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8787";
 
 const transcriptEl = document.querySelector<HTMLElement>("#transcript");
-const phaseEl = document.querySelector<HTMLElement>("#phase");
+const phaseCurrentEl = document.querySelector<HTMLElement>("#phase-current");
+const phaseTimelineEl = document.querySelector<HTMLElement>("#phase-timeline");
+const reconcileEl = document.querySelector<HTMLElement>("#reconcile");
 const checkpointsEl = document.querySelector<HTMLElement>("#checkpoints");
+const runMetaEl = document.querySelector<HTMLElement>("#run-meta");
 
 const log = (line: string): void => {
   if (transcriptEl) {
-    transcriptEl.textContent = `${transcriptEl.textContent ?? ""}${line}\n`;
+    const prev = transcriptEl.textContent ?? "";
+    transcriptEl.textContent = prev ? `${prev}\n${line}` : line;
   }
 };
 
-const setPhase = (to: string): void => {
-  if (phaseEl) {
-    phaseEl.textContent = `control phase: ${to}`;
+const setPhaseCurrent = (to: string): void => {
+  if (phaseCurrentEl) {
+    phaseCurrentEl.textContent = `current: ${to}`;
+  }
+};
+
+const appendPhaseTimeline = (line: string): void => {
+  if (phaseTimelineEl) {
+    const prev = phaseTimelineEl.textContent ?? "";
+    const next = prev.includes("no phase transitions") ? line : `${prev}\n${line}`;
+    phaseTimelineEl.textContent = next;
   }
 };
 
@@ -39,27 +57,43 @@ const run = async (): Promise<void> => {
     return;
   }
 
-  const { runId } = (await start.json()) as { runId: string };
-  log(`runId: ${runId}`);
+  const { runId, config } = (await start.json()) as {
+    runId: string;
+    config: { modelCategory?: string; modelName?: string };
+  };
+
+  if (runMetaEl) {
+    runMetaEl.textContent = `runId: ${runId} · model: ${config.modelCategory ?? "?"} / ${config.modelName ?? "?"}`;
+  }
+  log(`(rest) POST /runs → 201 runId=${runId}`);
 
   const source = new EventSource(`${apiBase}/runs/${runId}/events`);
 
+  const handleWireData = (raw: string, eventType: string): void => {
+    const wire = parseSseWirePayload(raw);
+    if (!wire) {
+      log(`[parse error] event=${eventType} raw=${raw.slice(0, 200)}…`);
+      return;
+    }
+    log(formatWireEventForTranscript(wire));
+    if (wire.event === "phase") {
+      appendPhaseTimeline(formatWireEventForTranscript(wire));
+      setPhaseCurrent(wire.transition.to);
+    }
+    if (wire.event === "turn" && wire.envelope.kind === "reconcile") {
+      const block = formatReconcilePanel(wire.envelope);
+      if (reconcileEl && block) {
+        reconcileEl.textContent = block;
+      }
+    }
+  };
+
   source.addEventListener("turn", (event) => {
-    log(`[turn] ${(event as MessageEvent).data}`);
+    handleWireData((event as MessageEvent).data as string, "turn");
   });
 
   source.addEventListener("phase", (event) => {
-    const raw = (event as MessageEvent).data as string;
-    log(`[phase] ${raw}`);
-    try {
-      const parsed = JSON.parse(raw) as { transition?: { to?: string } };
-      const to = parsed.transition?.to;
-      if (to) {
-        setPhase(to);
-      }
-    } catch {
-      /* ignore */
-    }
+    handleWireData((event as MessageEvent).data as string, "phase");
   });
 
   source.onerror = () => {
@@ -77,6 +111,8 @@ const run = async (): Promise<void> => {
     log(`POST /turns failed: ${turnRes.status}`);
     return;
   }
+
+  log("(rest) POST /turns → 204");
 
   const cpRes = await fetch(`${apiBase}/runs/${runId}/checkpoints`);
   if (!cpRes.ok) {
@@ -107,8 +143,8 @@ const run = async (): Promise<void> => {
     const replayPayload = await replayRes.json();
     log(
       replayRes.ok
-        ? `[replay restore] ${JSON.stringify(replayPayload)}`
-        : `[replay failed] ${replayRes.status} ${JSON.stringify(replayPayload)}`
+        ? `(rest) POST /replay → ${JSON.stringify(replayPayload)}`
+        : `(rest) POST /replay failed ${replayRes.status} ${JSON.stringify(replayPayload)}`
     );
     if (checkpointsEl) {
       checkpointsEl.textContent += `\n\nPOST /replay (first checkpoint):\n${JSON.stringify(replayPayload, null, 2)}`;

@@ -1,0 +1,109 @@
+import { describe, expect, it } from "vitest";
+import {
+  formatReconcilePanel,
+  formatWireEventForTranscript,
+  parseSseWirePayload
+} from "../apps/web/src/wireDisplay.js";
+
+describe("wireDisplay", () => {
+  it("parses a valid SSE turn wire payload", () => {
+    const raw = JSON.stringify({
+      event: "turn",
+      envelope: {
+        runId: "run-1",
+        turnId: "run-1:turn:1",
+        sequence: 1,
+        source: "cognition",
+        kind: "proposal",
+        ts: "2026-01-01T00:00:00.000Z",
+        payload: { action: "look" }
+      }
+    });
+    const w = parseSseWirePayload(raw);
+    expect(w).not.toBeNull();
+    expect(w!.event).toBe("turn");
+    if (w!.event === "turn") {
+      expect(w!.envelope.kind).toBe("proposal");
+    }
+  });
+
+  it("parses a valid phase wire payload", () => {
+    const raw = JSON.stringify({
+      event: "phase",
+      transition: {
+        from: "act",
+        to: "disorder",
+        reason: "oracle",
+        sequence: 1,
+        ts: "2026-01-01T00:00:00.000Z"
+      }
+    });
+    const w = parseSseWirePayload(raw);
+    expect(w).not.toBeNull();
+    expect(w!.event).toBe("phase");
+  });
+
+  it("returns null for invalid JSON", () => {
+    expect(parseSseWirePayload("not-json")).toBeNull();
+  });
+
+  it("formats transcript lines for turn and phase", () => {
+    const turnRaw = JSON.stringify({
+      event: "turn",
+      envelope: {
+        runId: "run-1",
+        turnId: "run-1:turn:1",
+        sequence: 1,
+        source: "cognition",
+        kind: "proposal",
+        ts: "t",
+        payload: { action: "north" }
+      }
+    });
+    const turn = parseSseWirePayload(turnRaw);
+    expect(turn).not.toBeNull();
+    expect(formatWireEventForTranscript(turn!)).toContain("[turn:proposal]");
+    expect(formatWireEventForTranscript(turn!)).toContain('"north"');
+
+    const phaseRaw = JSON.stringify({
+      event: "phase",
+      transition: {
+        from: "disorder",
+        to: "act",
+        reason: "policy",
+        sequence: 1,
+        ts: "t"
+      }
+    });
+    const phase = parseSseWirePayload(phaseRaw);
+    expect(phase).not.toBeNull();
+    expect(formatWireEventForTranscript(phase!)).toContain("[phase]");
+    expect(formatWireEventForTranscript(phase!)).toContain("disorder → act");
+  });
+
+  it("formats reconcile panel from reconcile envelope", () => {
+    const env = {
+      runId: "run-1",
+      turnId: "run-1:turn:1",
+      sequence: 1,
+      source: "cognition" as const,
+      kind: "reconcile" as const,
+      ts: "t",
+      payload: {
+        runId: "run-1",
+        turnId: "run-1:turn:1",
+        sequence: 1,
+        driftDetected: false,
+        driftClass: "none",
+        beliefPatch: {},
+        confidenceBefore: 0.8,
+        confidenceAfter: 0.85,
+        nextPolicy: "continue"
+      }
+    };
+    const text = formatReconcilePanel(env);
+    expect(text).not.toBeNull();
+    expect(text!).toContain("driftDetected: false");
+    expect(text!).toContain("nextPolicy:    continue");
+  });
+});
