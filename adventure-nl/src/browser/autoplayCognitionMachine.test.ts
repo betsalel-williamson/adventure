@@ -3,13 +3,25 @@
  * `planAutoplayInBrowser` is mocked; integration tests can add MSW at the
  * `fetch` port when the orchestrator is fully TypeScript-bound.
  */
-import { createActor } from "xstate";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("xstate", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("xstate")>();
+  return {
+    ...actual,
+    createActor: vi.fn((machine, options) =>
+      actual.createActor(machine, options),
+    ),
+  };
+});
+
+import { createActor } from "xstate";
 import type { AdventureDatabase } from "@adventure-nl/nl-glue";
 import type { AutoplayPlannerResponse } from "@adventure-nl/nl-glue";
 import type { AutoplayUiSnapshot } from "@adventure-nl/nl-glue";
 import {
   browserAutoplayOrchestratorLogic,
+  createBrowserAutoplayCognitionActor,
   type BrowserAutoplayCognitionInput,
   type BrowserAutoplayCognitionMod,
 } from "./autoplayCognitionMachine.js";
@@ -247,5 +259,27 @@ describe("browserAutoplayOrchestratorLogic", () => {
     await vi.waitFor(() => {
       expect(actor.getSnapshot().matches("idle")).toBe(true);
     });
+  });
+});
+
+describe("createBrowserAutoplayCognitionActor", () => {
+  it("passes inspect into xstate createActor when provided", () => {
+    const inspectObserver = vi.fn();
+    const input = baseInput();
+    const actor = createBrowserAutoplayCognitionActor(input, {
+      inspect: inspectObserver,
+    });
+
+    const mockedCreateActor = vi.mocked(createActor);
+    expect(mockedCreateActor).toHaveBeenCalled();
+    const lastCall =
+      mockedCreateActor.mock.calls[mockedCreateActor.mock.calls.length - 1];
+    expect(lastCall?.[0]).toBe(browserAutoplayOrchestratorLogic);
+    expect(lastCall?.[1]).toMatchObject({
+      input,
+      inspect: inspectObserver,
+    });
+
+    actor.stop();
   });
 });

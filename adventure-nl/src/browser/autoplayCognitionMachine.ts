@@ -18,7 +18,14 @@ import {
   planAutoplayInBrowser,
   type BrowserPlannerCredentialsPayload,
 } from "../nl/browserPlanAutoplay.js";
-import { assign, createActor, fromPromise, setup } from "xstate";
+import {
+  assign,
+  createActor,
+  fromPromise,
+  setup,
+  type InspectionEvent,
+  type Observer,
+} from "xstate";
 import type { GlueMcpWorkerHost } from "./glueMcp/glueMcpWorkerHost.js";
 
 const MAX_RECENT_EVENTS = 20;
@@ -594,8 +601,16 @@ export const browserAutoplayOrchestratorLogic = setup({
  */
 export function createBrowserAutoplayCognitionActor(
   input: BrowserAutoplayCognitionInput,
+  options?: {
+    inspect?:
+      | Observer<InspectionEvent>
+      | ((inspectionEvent: InspectionEvent) => void);
+  },
 ) {
-  const actor = createActor(browserAutoplayOrchestratorLogic, { input });
+  const actor = createActor(browserAutoplayOrchestratorLogic, {
+    input,
+    inspect: options?.inspect,
+  });
   actor.start();
   return actor;
 }

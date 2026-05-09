@@ -11,6 +11,26 @@ import { applySnapshot } from "./mapView.js";
 import { parseSseJson } from "./sseJson.js";
 
 /**
+ * Build Stately inspect telemetry for XState `createActor` via same-origin WebSocket relay
+ * (see GET /stately-inspect + WS /api/stately-inspect/ws on the web dashboard).
+ * @param {{ location: Pick<Location, 'protocol' | 'host'> }} ports
+ * @param {{ createWebSocketInspector?: (opts: { url: string }) => { inspect: unknown } }} mod
+ * @returns {unknown | undefined}
+ */
+export function resolveStatelyInspectOption(ports, mod) {
+  try {
+    if (!mod.createWebSocketInspector) return undefined;
+    const wsProto = ports.location.protocol === "https:" ? "wss" : "ws";
+    const wsUrl = `${wsProto}://${ports.location.host}/api/stately-inspect/ws`;
+    const inspector = mod.createWebSocketInspector({ url: wsUrl });
+    return inspector.inspect;
+  } catch (e) {
+    console.warn("adventure-nl: stately inspector init failed", e);
+  }
+  return undefined;
+}
+
+/**
  * @param {{ fetch: typeof fetch; location: Location; localStorage: Storage }} ports
  * @param {ReturnType<import("./dashboardApi.js").createDashboardApi>} api
  * @param {EventSource} es
@@ -194,7 +214,7 @@ export function wireBrowserAutoplayOrchestrator(ports, api, es) {
     }
 
     const input = {
-      loadCognitionModule: () => loadBundle(),
+      loadCognitionModule: () => Promise.resolve(mod),
       getAdventureDatabase: () => api.getAdventureDatabase(),
       postEngineInput: (body) => api.postEngineInput(body),
       getPlannerSnapshot,
@@ -204,7 +224,11 @@ export function wireBrowserAutoplayOrchestrator(ports, api, es) {
       useGlueMcp: Boolean(glueMcpHost),
     };
 
-    cognitionActor = mod.createBrowserAutoplayCognitionActor(input);
+    const inspectOpt = resolveStatelyInspectOption(ports, mod);
+
+    cognitionActor = mod.createBrowserAutoplayCognitionActor(input, {
+      inspect: inspectOpt,
+    });
 
     const panelEls = resolveCognitionOrchestrationElements(document);
     if (unsubscribePanel) unsubscribePanel();

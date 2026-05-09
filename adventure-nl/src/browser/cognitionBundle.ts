@@ -41,3 +41,7 @@ export {
   GLUE_MCP_SERVER_VERSION,
 } from "@adventure-nl/nl-glue";
 export { GlueMcpWorkerHost } from "./glueMcp/glueMcpWorkerHost.js";
+export {
+  createBrowserInspector,
+  createWebSocketInspector,
+} from "@statelyai/inspect";

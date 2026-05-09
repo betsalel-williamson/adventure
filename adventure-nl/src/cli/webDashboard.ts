@@ -117,6 +117,11 @@ import {
   snapshotGenerationMeta,
 } from "./webDashboardGeneration.js";
 import {
+  attachStatelyInspectWebSocket,
+  buildStatelyInspectBridgeHtml,
+  STATELY_INSPECT_BRIDGE_PATH,
+} from "./statelyInspectBridge.js";
+import {
   appendSessionSetCookieHeader,
   formatSessionSetCookie,
   isValidSessionId,
@@ -827,6 +832,15 @@ export function createAutoplayDashboardServer(
       `http://${req.headers.host ?? "localhost"}`,
     );
     const pathname = url.pathname === "" ? "/" : url.pathname;
+
+    if (pathname === STATELY_INSPECT_BRIDGE_PATH && req.method === "GET") {
+      res.writeHead(200, {
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "no-store",
+      });
+      res.end(buildStatelyInspectBridgeHtml());
+      return;
+    }
 
     let sess: DashboardSession | undefined;
     let newSession = false;
@@ -2350,10 +2364,11 @@ export function createAutoplayDashboardServer(
     createReadStream(filePath).pipe(res);
   };
 
-  if (options.httpsOptions) {
-    return https.createServer(options.httpsOptions, requestListener);
-  }
-  return http.createServer(requestListener);
+  const server = options.httpsOptions
+    ? https.createServer(options.httpsOptions, requestListener)
+    : http.createServer(requestListener);
+  attachStatelyInspectWebSocket(server);
+  return server;
 }
 
 async function main(): Promise<void> {

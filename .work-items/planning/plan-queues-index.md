@@ -1,0 +1,121 @@
+# Plan queue index (adventure repo)
+
+Track Cursor implementation plans (`*.plan.md`) and related copies under `.work-items/` by lifecycle queue.
+
+- **Inventory** at the bottom is authoritative for “what exists.”
+- **Queues** are editable; move rows when status changes. **Finished** entries are a **best-effort audit** — confirm before archiving.
+
+Convention: paths below are repo-relative (`adventure/` root).
+
+---
+
+## Draft queue
+
+Ideas / PRD text **not yet** turned into a Cursor plan file.
+
+- _(vacant)_
+
+---
+
+## Ready queue
+
+Next up — agreed priority and dependencies clear, not actively coding yet.
+
+- **AAB** — follow phased delivery in [`.cursor/plans/aab_langgraph_pivot_eb03f964.plan.md`](../../.cursor/plans/aab_langgraph_pivot_eb03f964.plan.md) after world+XState scaffold exists (first todo: `world-xstate-schema`).
+
+---
+
+## Concurrently active queue
+
+Explicitly staffed **this cycle** — keep short.
+
+- [`.cursor/plans/aab_langgraph_pivot_eb03f964.plan.md`](../../.cursor/plans/aab_langgraph_pivot_eb03f964.plan.md) — **AAB LangGraph Pivot**
+
+---
+
+## Finished queue
+
+Shipped / merged / superseded to your satisfaction (**verify** before treating as archival).
+
+- `.cursor/plans/web_ui_autoplay_dashboard_151128c8.plan.md` — Web UI autoplay dashboard
+- `.cursor/plans/web_session_cookies_tls_5a486f40.plan.md` — Web session cookies TLS
+- `.cursor/plans/mlx_model_dropdown_761bb9c5.plan.md` — MLX model dropdown
+- `.cursor/plans/mlx_dashboard_prompts_e180143a.plan.md` — MLX dashboard prompts
+- `.cursor/plans/update_mlx_small_presets_a85844d8.plan.md` — Update MLX small presets
+- `.cursor/plans/gemini_autoplay_mode_0c4d50c4.plan.md` — Gemini self-acting mode
+- `.cursor/plans/multi-llm_abstraction_104aeca3.plan.md` — Multi-LLM abstraction
+- `.cursor/plans/dashboard_modular_testing_276503de.plan.md` — Dashboard modular testing
+- `.cursor/plans/compass_order_bias_fix_5d92450e.plan.md` — Compass order bias fix
+- `.cursor/plans/graph-style_exploration_map_80518f1c.plan.md` — Graph-style exploration map
+- `.cursor/plans/terminal_transcript_mode_45e22b76.plan.md` — Terminal transcript mode
+- `.cursor/plans/adventure-llm_specs_tdd_4d7c2af8.plan.md` — adventure-llm specs TDD
+
+---
+
+## Revisit queue
+
+Duplicates, parking lot, tooling debt, unclear completion, optional follow-ups.
+
+- `.cursor/plans/adventure-llm-architecture-review.plan.md` — adventure-llm architecture review _(duplicate?)_
+- `.cursor/plans/adventure-llm_architecture_review_06f2e1ee.plan.md` — adventure-llm architecture review _(duplicate?)_
+- `.cursor/plans/web-session-cookies-tls.plan.md` — duplicate title vs `web_session_cookies_tls_*.plan.md`; keep one Finished, archive other after diff
+- `.cursor/plans/interpret_example_evaluation_ba52b176.plan.md` — Interpret example evaluation _(verify relevance)_
+- `.cursor/plans/interpret_prompt_evaluation_review_3746324e.plan.md` — Interpret prompt evaluation review
+- `.cursor/plans/mapping_algo_suggestions_d1668ab4.plan.md` — Mapping algo suggestions
+- `.cursor/plans/loot-before-exit_prompts_78a67572.plan.md` — Loot-before-exit prompts
+- `.cursor/plans/z-axis_motion_clarity_355c0b19.plan.md` — Z-axis motion clarity
+- `.cursor/plans/take_keys_spam_analysis_84464a41.plan.md` — Autoplay prompting and exploration
+- `.cursor/plans/autoplay_exploration_context_c931dcfd.plan.md` — Autoplay exploration context
+- `.cursor/plans/frontend_test_harness_4cffac1b.plan.md` — Frontend test harness _(may be partial / ongoing)_
+- `.cursor/plans/review-fixes-task-map_274669c7.plan.md` — review-fixes-task-map _(one-off map)_
+- `.cursor/plans/benchmark_profiles_and_runs_acab8b71.plan.md` — Benchmark profiles and runs _(promote toward AAB when extending metrics)_
+- `.cursor/plans/glue_as_client_mcp_ea429146.plan.md` — Glue as client MCP _(confirm remaining scope vs done)_
+- `.cursor/plans/xstate_nl-glue_actors_7545a629.plan.md` — XState nl-glue actors _(confirm vs current cognition/dashboard work)_
+- **Broken symlink:** `.cursor/plans/adventure-llm-task.plan.md` → `.work-items/adventure-llm/task.md` (target **missing**). Repoint to [`.work-items/adventure-nl/task.md`](../adventure-nl/task.md) or restore the old folder layout.
+
+---
+
+## Master inventory — `.cursor/plans/*.plan.md`
+
+Sorted by last modified (**newest first**). Title from plan frontmatter `name:`.
+
+| Modified | File | Title (`name`) |
+|---------|------|----------------|
+| 2026-05-08 | `aab_langgraph_pivot_eb03f964.plan.md` | AAB LangGraph Pivot |
+| 2026-04-14 | `xstate_nl-glue_actors_7545a629.plan.md` | XState nl-glue actors |
+| 2026-04-12 | `review-fixes-task-map_274669c7.plan.md` | review-fixes-task-map |
+| 2026-04-12 | `glue_as_client_mcp_ea429146.plan.md` | Glue as client MCP |
+| 2026-04-09 | `benchmark_profiles_and_runs_acab8b71.plan.md` | Benchmark profiles and runs |
+| 2026-03-29 | `web_session_cookies_tls_5a486f40.plan.md` | Web session cookies TLS |
+| 2026-03-29 | `web-session-cookies-tls.plan.md` | Web session cookies TLS |
+| 2026-03-28 | `z-axis_motion_clarity_355c0b19.plan.md` | Z-axis motion clarity |
+| 2026-03-28 | `web_ui_autoplay_dashboard_151128c8.plan.md` | Web UI autoplay dashboard |
+| 2026-03-28 | `update_mlx_small_presets_a85844d8.plan.md` | Update MLX small presets |
+| 2026-03-28 | `terminal_transcript_mode_45e22b76.plan.md` | Terminal transcript mode |
+| 2026-03-28 | `take_keys_spam_analysis_84464a41.plan.md` | Autoplay prompting and exploration |
+| 2026-03-28 | `mlx_model_dropdown_761bb9c5.plan.md` | MLX model dropdown |
+| 2026-03-28 | `mapping_algo_suggestions_d1668ab4.plan.md` | Mapping algo suggestions |
+| 2026-03-28 | `loot-before-exit_prompts_78a67572.plan.md` | Loot-before-exit prompts |
+| 2026-03-28 | `interpret_prompt_evaluation_review_3746324e.plan.md` | Interpret prompt evaluation review |
+| 2026-03-28 | `graph-style_exploration_map_80518f1c.plan.md` | Graph-style exploration map |
+| 2026-03-28 | `frontend_test_harness_4cffac1b.plan.md` | Frontend test harness |
+| 2026-03-28 | `dashboard_modular_testing_276503de.plan.md` | Dashboard modular testing |
+| 2026-03-28 | `compass_order_bias_fix_5d92450e.plan.md` | Compass order bias fix |
+| 2026-03-28 | `autoplay_exploration_context_c931dcfd.plan.md` | Autoplay exploration context |
+| 2026-03-27 | `adventure-llm_architecture_review_06f2e1ee.plan.md` | adventure-llm architecture review |
+| 2026-03-27 | `adventure-llm-architecture-review.plan.md` | adventure-llm architecture review |
+| 2026-03-25 | `interpret_example_evaluation_ba52b176.plan.md` | Interpret example evaluation |
+| 2026-03-22 | `multi-llm_abstraction_104aeca3.plan.md` | Multi-LLM abstraction |
+| 2026-03-22 | `mlx_dashboard_prompts_e180143a.plan.md` | MLX dashboard prompts |
+| 2026-03-22 | `gemini_autoplay_mode_0c4d50c4.plan.md` | Gemini self-acting mode |
+| 2026-03-22 | `adventure-llm_specs_tdd_4d7c2af8.plan.md` | adventure-llm specs TDD |
+
+Not listed above (broken symlink — not a readable plan file):
+
+- `adventure-llm-task.plan.md` → `../../.work-items/adventure-llm/task.md` (**target missing**)
+
+---
+
+## Other plan-like files
+
+- `.work-items/adventure-nl/adventure-nl_specs_tdd_4d7c2af8.plan.md` — copy/version aligned with specs TDD; keep consistent with Finished entry above.

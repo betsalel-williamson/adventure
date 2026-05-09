@@ -558,84 +558,102 @@
           <div class="map-hero-column-body">
             <section
               class="panel map-fsm-card"
-              aria-label="Session exploration state machine"
+              aria-label="Graph visualizations"
             >
               <div class="map-fsm-head">
-                <div class="map-fsm-title-row">
-                  <h3 class="map-fsm-title">Session FSM (Mermaid)</h3>
-                  <button
-                    type="button"
-                    id="mermaid-fullscreen-open"
-                    class="mermaid-fullscreen-open-btn"
-                    aria-label="Open Mermaid graph full screen"
-                    title="View diagram full screen"
-                  >
-                    <span
-                      class="material-symbols-outlined dashboard-material-icon"
-                      aria-hidden="true"
-                      >open_in_full</span
-                    >
-                  </button>
-                  <button
-                    type="button"
-                    class="help-icon-btn"
-                    data-help-template="help-tpl-fsm"
-                    data-help-title="Session FSM graph"
-                    aria-label="About the session FSM graph"
-                  >
-                    ?
-                  </button>
-                </div>
+                <nav class="map-visual-tabs" aria-label="Graph visualization tabs">
+                  <button type="button" class="map-visual-tab active" id="tab-btn-mermaid">Game Map (Mermaid)</button>
+                  <button type="button" class="map-visual-tab" id="tab-btn-xstate">Cognition (XState)</button>
+                </nav>
               </div>
-              <div
-                id="map-mermaid"
-                class="map-mermaid"
-                role="img"
-                aria-label="Mermaid graph"
-              ></div>
-              <p
-                id="map-null-keys"
-                class="map-null-keys small"
-                aria-live="polite"
-              ></p>
-              <details class="map-fsm-details">
-                <summary class="prompt-summary">
-                  <span class="prompt-summary-label">Mermaid source</span>
-                  <button
-                    type="button"
-                    id="copy-mermaid"
-                    class="copy-prompt-btn"
-                    aria-label="Copy Mermaid source"
-                    title="Copy"
-                  >
-                    <span
-                      class="material-symbols-outlined dashboard-material-icon"
-                      aria-hidden="true"
-                      >content_copy</span
+
+              <div id="tab-panel-mermaid" class="map-tab-panel active">
+                <div class="map-fsm-head">
+                  <div class="map-fsm-title-row">
+                    <h3 class="map-fsm-title" style="visibility: hidden; width: 0; margin: 0;">Session FSM</h3>
+                    <button
+                      type="button"
+                      id="mermaid-fullscreen-open"
+                      class="mermaid-fullscreen-open-btn"
+                      aria-label="Open Mermaid graph full screen"
+                      title="View diagram full screen"
                     >
-                  </button>
-                </summary>
-                <pre id="map-mermaid-src" class="map-fsm-pre mono"></pre>
-              </details>
-              <details class="map-fsm-details">
-                <summary class="prompt-summary">
-                  <span class="prompt-summary-label">Graphviz DOT</span>
-                  <button
-                    type="button"
-                    id="copy-dot"
-                    class="copy-prompt-btn"
-                    aria-label="Copy Graphviz DOT"
-                    title="Copy"
-                  >
-                    <span
-                      class="material-symbols-outlined dashboard-material-icon"
-                      aria-hidden="true"
-                      >content_copy</span
+                      <span
+                        class="material-symbols-outlined dashboard-material-icon"
+                        aria-hidden="true"
+                        >open_in_full</span
+                      >
+                    </button>
+                    <button
+                      type="button"
+                      class="help-icon-btn"
+                      data-help-template="help-tpl-fsm"
+                      data-help-title="Session FSM graph"
+                      aria-label="About the session FSM graph"
                     >
-                  </button>
-                </summary>
-                <pre id="map-dot-src" class="map-fsm-pre mono"></pre>
-              </details>
+                      ?
+                    </button>
+                  </div>
+                </div>
+                <div
+                  id="map-mermaid"
+                  class="map-mermaid"
+                  role="img"
+                  aria-label="Mermaid graph"
+                ></div>
+                <p
+                  id="map-null-keys"
+                  class="map-null-keys small"
+                  aria-live="polite"
+                ></p>
+                <details class="map-fsm-details">
+                  <summary class="prompt-summary">
+                    <span class="prompt-summary-label">Mermaid source</span>
+                    <button
+                      type="button"
+                      id="copy-mermaid"
+                      class="copy-prompt-btn"
+                      aria-label="Copy Mermaid source"
+                      title="Copy"
+                    >
+                      <span
+                        class="material-symbols-outlined dashboard-material-icon"
+                        aria-hidden="true"
+                        >content_copy</span
+                      >
+                    </button>
+                  </summary>
+                  <pre id="map-mermaid-src" class="map-fsm-pre mono"></pre>
+                </details>
+                <details class="map-fsm-details">
+                  <summary class="prompt-summary">
+                    <span class="prompt-summary-label">Graphviz DOT</span>
+                    <button
+                      type="button"
+                      id="copy-dot"
+                      class="copy-prompt-btn"
+                      aria-label="Copy Graphviz DOT"
+                      title="Copy"
+                    >
+                      <span
+                        class="material-symbols-outlined dashboard-material-icon"
+                        aria-hidden="true"
+                        >content_copy</span
+                      >
+                    </button>
+                  </summary>
+                  <pre id="map-dot-src" class="map-fsm-pre mono"></pre>
+                </details>
+              </div>
+
+              <div id="tab-panel-xstate" class="map-tab-panel">
+                <iframe
+                  id="stately-inspect-iframe"
+                  src="/stately-inspect"
+                  title="Stately inspect (same-origin bridge)"
+                  style="width: 100%; min-height: 480px; height: 100%; border: none"
+                ></iframe>
+              </div>
             </section>
             <section
               class="panel cognition-orchestration-card"

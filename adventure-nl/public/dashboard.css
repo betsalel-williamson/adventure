@@ -2444,3 +2444,36 @@ details[open] > .prompt-summary::before {
     "GRAD" 0,
     "opsz" 20;
 }
+/* --- Visual Tabs --- */
+.map-visual-tabs {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0 0.5rem;
+  border-bottom: 1px solid #353842;
+  margin-bottom: 0.5rem;
+}
+.map-visual-tab {
+  background: transparent;
+  border: none;
+  color: #a8acb8;
+  padding: 0.4rem 0.8rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  border-bottom: 2px solid transparent;
+}
+.map-visual-tab:hover {
+  color: #e8e8ec;
+}
+.map-visual-tab.active {
+  color: #7eb6ff;
+  border-bottom-color: #7eb6ff;
+}
+.map-tab-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.map-tab-panel:not(.active) {
+  display: none !important;
+}

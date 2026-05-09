@@ -14,6 +14,7 @@ import {
   wireCopyPromptButtonsFromElements,
   wireDashboardHelpDialogs,
   wireMapScrollAndResize,
+  wireMapVisualTabs,
   wireMermaidFullscreenDialog,
 } from "./dashboardWidgets.js";
 import {
@@ -641,6 +642,7 @@ wireCopyPromptButtonsFromElements();
 wireMapScrollAndResize();
 wireDashboardHelpDialogs();
 wireMermaidFullscreenDialog();
+wireMapVisualTabs();
 
 async function refreshBenchmarkLeaderboard() {
   const el = elements;

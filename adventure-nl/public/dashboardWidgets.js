@@ -175,3 +175,28 @@ export function wireCopyPromptButtonsFromElements() {
   wireCopyPromptButton(el.copyMermaidBtn, el.mapMermaidSrcEl);
   wireCopyPromptButton(el.copyDotBtn, el.mapDotSrcEl);
 }
+
+export function wireMapVisualTabs() {
+  const el = elements;
+  if (
+    !el?.mapTabBtnMermaid ||
+    !el?.mapTabBtnXstate ||
+    !el?.mapTabPanelMermaid ||
+    !el?.mapTabPanelXstate
+  )
+    return;
+
+  el.mapTabBtnMermaid.addEventListener("click", () => {
+    el.mapTabBtnMermaid.classList.add("active");
+    el.mapTabBtnXstate.classList.remove("active");
+    el.mapTabPanelMermaid.classList.add("active");
+    el.mapTabPanelXstate.classList.remove("active");
+  });
+
+  el.mapTabBtnXstate.addEventListener("click", () => {
+    el.mapTabBtnXstate.classList.add("active");
+    el.mapTabBtnMermaid.classList.remove("active");
+    el.mapTabPanelXstate.classList.add("active");
+    el.mapTabPanelMermaid.classList.remove("active");
+  });
+}
