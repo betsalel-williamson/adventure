@@ -41,11 +41,14 @@ The **implemented** HTTP surface uses unversioned paths under `/runs` (see [`adv
 
 | Method | Path | Purpose |
 |--------|------|--------|
+| `GET` | `/health` | Liveness JSON (`status`, `service`); no run state |
 | `POST` | `/runs` | Start a run (`CreateRunRequest` → `CreateRunResponse`) |
 | `POST` | `/runs/{runId}/turns` | Submit turn input |
 | `GET` | `/runs/{runId}/events` | SSE: turn, phase, trace events (`SseWireEvent`) |
 | `GET` | `/runs/{runId}/checkpoints` | List checkpoint refs |
 | `POST` | `/runs/{runId}/replay` | Replay from checkpoint |
+
+**Request limits:** JSON bodies on `POST` routes are capped (default **256 KiB**; see [`adventure-v2/README.md`](../../adventure-v2/README.md) and `HTTP_MAX_JSON_BODY_BYTES` in the server). Oversize requests return **`413`** before schema validation.
 
 **Not on the current wire:** dedicated session bootstrap, client-settings, or explicit stop routes as separate HTTP resources—the README “Not yet” and testing strategy describe optional follow-ons.
 

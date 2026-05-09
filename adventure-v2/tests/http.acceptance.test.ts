@@ -6,6 +6,7 @@ import {
   type SseWireEvent
 } from "../packages/contracts/src/index.js";
 import {
+  HTTP_MAX_JSON_BODY_BYTES,
   RunCoordinator,
   createProcessOracleBridge,
   createSyntheticOracleBridge,
@@ -18,6 +19,41 @@ import { oracleStubPath } from "./fixturePaths.js";
 import { createRunConfig } from "./steps/runSteps.js";
 
 describe("HTTP API + SSE", () => {
+  it("GET /health returns liveness JSON without touching run state", async () => {
+    const coordinator = new RunCoordinator();
+    const { server, baseUrl } = await listenAdventureServer(coordinator, 0);
+    try {
+      const res = await fetch(`${baseUrl}/health`);
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { status?: string; service?: string };
+      expect(body.status).toBe("ok");
+      expect(body.service).toBe("adventure-v2");
+    } finally {
+      await closeServer(server);
+    }
+  });
+
+  it("POST /runs returns 413 when JSON body exceeds configured byte limit", async () => {
+    const coordinator = new RunCoordinator();
+    const { server, baseUrl } = await listenAdventureServer(coordinator, 0);
+    try {
+      const pad = "x".repeat(HTTP_MAX_JSON_BODY_BYTES + 64);
+      const body = JSON.stringify({ config: createRunConfig("SLM"), _oversized: pad });
+      expect(Buffer.byteLength(body, "utf8")).toBeGreaterThan(HTTP_MAX_JSON_BODY_BYTES);
+
+      const res = await fetch(`${baseUrl}/runs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body
+      });
+      expect(res.status).toBe(413);
+      const json = (await res.json()) as { error?: string };
+      expect(json.error).toBe("payload_too_large");
+    } finally {
+      await closeServer(server);
+    }
+  });
+
   it("includes R3 reconcile visibility fields on the SSE turn envelope", async () => {
     const coordinator = new RunCoordinator();
     const { server, baseUrl } = await listenAdventureServer(coordinator, 0);

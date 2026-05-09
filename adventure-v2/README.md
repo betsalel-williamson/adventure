@@ -13,13 +13,15 @@ Planned v2 runtime for benchmark-oriented adventure orchestration.
 
 **Fortran oracle (CI + opt-in local):** GitHub Actions compiles the repo-root `./adventure` and runs `npm run test:oracle-fortran`, which drives [`fixtures/oracle-fortran-bridge.mjs`](fixtures/oracle-fortran-bridge.mjs) against that binary. Locally: `make adventure` from the repo root, then the same npm script from `adventure-v2/`. **Default `npm test` does not** run `tests/oracleFortran.ci.test.ts` (see [`vitest.config.ts`](vitest.config.ts) exclude list).
 
-**Not yet:** production deployment hardening.
+**Not yet:** further deployment hardening (auth, rate limits, non-default CORS, TLS termination).
 
 **Slice 8 (R3 reconcile visibility):** `ReconcileOutcome` adds optional `correlationId`, `driftSummary`, and `evidence` (oracle outcome + capped output excerpt). Oracle turn payloads include optional `outcome` (`accepted` \| `rejected` \| `transport_error`); subprocess harness failures map to `transport_error` so reconcile uses `driftClass: "unknown"` vs validation-style `parser` rejection.
 
 **Slice 9 (HTTP Gherkin):** `npm run test:cucumber` runs `@cucumber/cucumber` against `tests/features/http/*.feature` using the same HTTP+SSE helpers as `tests/http.acceptance.test.ts` (`tests/helpers/httpWire.ts`). Vitest remains the primary CI gate; Cucumber is an optional readability layer for wire scenarios.
 
 **Slice 10 (R5 on HTTP wire):** `tests/http.acceptance.test.ts` asserts invalid-action escalation (`test` and `chaos` phases on SSE) after repeated `forceReject` turns; `tests/features/http/r5_invalid_action_recovery.feature` mirrors that path in Gherkin.
+
+**Slice 11 (operational readiness):** `GET /health` returns `200` with `{ "status": "ok", "service": "adventure-v2" }` for liveness checks. JSON bodies on `POST` routes are capped at **256 KiB** (`HTTP_MAX_JSON_BODY_BYTES` in `apps/server/src/http/createServer.ts`); oversize requests get **`413`** with `{ "error": "payload_too_large", … }`. Covered in `tests/http.acceptance.test.ts`.
 
 ## Planned structure
 
@@ -51,15 +53,18 @@ adventure-v2/
 - `API`: provider-backed model access through typed server-side integrations.
 - `MLX`: local Apple Silicon execution path for on-device model experiments.
 
-## HTTP API (slices 2–3)
+## HTTP API (slices 2–3, extended slice 11)
 
 | Method | Path | Purpose |
 |--------|------|--------|
+| `GET` | `/health` | `200` `{ "status": "ok", "service": "adventure-v2" }` — liveness (no run state) |
 | `POST` | `/runs` | Body `{ "config": RunConfig }` → `201` `{ runId, config }` |
 | `POST` | `/runs/:runId/turns` | Body `{ "input": string, "forceReject"?: boolean }` → `204` |
 | `GET` | `/runs/:runId/events` | **SSE** stream: `event: turn` / `event: phase` / `event: trace` with JSON payloads matching `SseWireEvent` |
 | `GET` | `/runs/:runId/checkpoints` | `200` JSON array of `CheckpointRef` (empty until at least one turn completes) |
 | `POST` | `/runs/:runId/replay` | Body `{ "checkpointId": string }` → `200` `{ ReplayRestorePayload }`; `404` `{ "error":"not_found" }` if the id is unknown or not for this run |
+
+`POST` bodies that exceed **256 KiB** total bytes return **`413`** `{ "error": "payload_too_large", "message": … }` before JSON parsing.
 
 `OPTIONS` is supported for CORS preflight (`Access-Control-Allow-Origin: *` on responses).
 

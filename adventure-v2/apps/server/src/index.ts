@@ -1,5 +1,9 @@
 export { RunCoordinator } from "./run/runCoordinator.js";
-export { createAdventureHttpServer, listenAdventureServer } from "./http/createServer.js";
+export {
+  createAdventureHttpServer,
+  HTTP_MAX_JSON_BODY_BYTES,
+  listenAdventureServer
+} from "./http/createServer.js";
 export type { OracleBridge, OracleObservationInput, OracleObservationResult } from "./oracle/oracleBridge.js";
 export { createSyntheticOracleBridge, normalizeOracleObservation } from "./oracle/oracleBridge.js";
 export type { ProcessOracleBridgeOptions } from "./oracle/processOracleBridge.js";

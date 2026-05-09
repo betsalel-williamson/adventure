@@ -18,6 +18,16 @@ import {
 import type { RunCoordinator } from "../run/runCoordinator.js";
 import type { WireStreamItem } from "./wireStream.js";
 
+/** Maximum bytes read for JSON request bodies (`POST` routes using `readJsonBody`). */
+export const HTTP_MAX_JSON_BODY_BYTES = 256 * 1024;
+
+class JsonBodyTooLargeError extends Error {
+  constructor() {
+    super("JSON body exceeds maximum size");
+    this.name = "JsonBodyTooLargeError";
+  }
+}
+
 const corsHeaders = (): Record<string, string> => ({
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
@@ -26,8 +36,14 @@ const corsHeaders = (): Record<string, string> => ({
 
 const readJsonBody = async (req: IncomingMessage): Promise<unknown> => {
   const chunks: Buffer[] = [];
+  let total = 0;
   for await (const chunk of req) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    if (total + buf.length > HTTP_MAX_JSON_BODY_BYTES) {
+      throw new JsonBodyTooLargeError();
+    }
+    total += buf.length;
+    chunks.push(buf);
   }
   const raw = Buffer.concat(chunks).toString("utf8");
   if (!raw.trim()) {
@@ -76,6 +92,7 @@ const writeSse = (res: ServerResponse, wire: SseWireEvent): void => {
 };
 
 type Route =
+  | { kind: "get-health" }
   | { kind: "post-runs" }
   | { kind: "post-turn"; runId: string }
   | { kind: "get-events"; runId: string }
@@ -85,6 +102,9 @@ type Route =
 
 const parseRoute = (pathname: string, method: string): Route => {
   const path = pathname.endsWith("/") && pathname.length > 1 ? pathname.slice(0, -1) : pathname;
+  if (method === "GET" && path === "/health") {
+    return { kind: "get-health" };
+  }
   if (method === "POST" && path === "/runs") {
     return { kind: "post-runs" };
   }
@@ -137,6 +157,11 @@ const handleHttp = async (
   const route = parseRoute(pathname, method);
 
   try {
+    if (route.kind === "get-health") {
+      sendJson(res, 200, { status: "ok", service: "adventure-v2" });
+      return;
+    }
+
     if (route.kind === "post-runs") {
       const raw = await readJsonBody(req);
       const body = createRunRequestSchema.parse(raw);
@@ -228,6 +253,13 @@ const handleHttp = async (
 
     sendJson(res, 404, { error: "not_found" });
   } catch (err) {
+    if (err instanceof JsonBodyTooLargeError) {
+      sendJson(res, 413, {
+        error: "payload_too_large",
+        message: err.message
+      });
+      return;
+    }
     const message = err instanceof Error ? err.message : String(err);
     sendJson(res, 400, { error: "bad_request", message });
   }
