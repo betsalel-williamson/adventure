@@ -9,23 +9,21 @@ import {
   formatWireEventForTranscript,
   parseSseWirePayload
 } from "./wireDisplay.js";
-import mermaid from "mermaid";
+import { setupAgentDiagramPanel } from "./agentDiagramPanel.js";
 import {
-  clearAgentDiagramStorage,
-  effectiveBrainMermaid,
-  effectiveControlMermaid,
-  loadAgentDiagramStorage,
-  saveAgentDiagramStorage,
-  type AgentDiagramStorage
-} from "./agentDiagramSettings.js";
-import { BRAIN_GRAPH_MERMAID, CONTROL_MACHINE_MERMAID } from "./agentDiagrams.js";
+  appendGameTerminalVirtualLine,
+  GAME_TERMINAL_AWAITING_ORACLE_PLACEHOLDER,
+  type GameTerminalChunkKind
+} from "./gameTerminalBuffer.js";
 import {
   loadPersistedSession,
   savePersistedSession,
   type PersistedShellSessionV1
 } from "./shellSessionPersistence.js";
+import { loadShellUiPreferences, saveShellUiPreferences } from "./shellUiPreferences.js";
 import { appendTranscriptLine } from "./shellState.js";
 import { stubPlanNextMove, type StubAutoplayContext } from "./stubAutoplayPlanner.js";
+import { fetchRunCheckpoints } from "./runCheckpointsApi.js";
 
 const apiBase: string = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8787";
 
@@ -45,15 +43,13 @@ const sendBtnEl = document.querySelector<HTMLButtonElement>("#send");
 const replayDemoBtnEl = document.querySelector<HTMLButtonElement>("#replay-demo");
 const autoplayBtnEl = document.querySelector<HTMLButtonElement>("#autoplay");
 const stopAutoplayBtnEl = document.querySelector<HTMLButtonElement>("#stop-autoplay");
-const useBundledDiagramsEl = document.querySelector<HTMLInputElement>("#use-bundled-diagrams");
-const diagramCustomEditorEl = document.querySelector<HTMLElement>("#diagram-custom-editor");
-const diagramBrainEditEl = document.querySelector<HTMLTextAreaElement>("#diagram-brain-edit");
-const diagramControlEditEl = document.querySelector<HTMLTextAreaElement>("#diagram-control-edit");
 const cognitionProfileEl = document.querySelector<HTMLInputElement>("#cognition-profile");
 const restoreSessionBtnEl = document.querySelector<HTMLButtonElement>("#restore-session-snapshot");
 
 let transcriptText = "";
-let gameTerminalText = "";
+let gameTerminalText = GAME_TERMINAL_AWAITING_ORACLE_PLACEHOLDER;
+/** Cleared after first oracle_observation line lands in the game lane */
+let awaitingOracleObservation = false;
 let cognitionTraceText = COGNITION_TRACE_EMPTY_PLACEHOLDER;
 let runId: string | null = null;
 let source: EventSource | null = null;
@@ -116,6 +112,9 @@ const schedulePersistSession = (): void => {
 const applyPersistedToShell = (p: PersistedShellSessionV1): void => {
   transcriptText = p.transcriptText;
   gameTerminalText = p.gameTerminalText;
+  awaitingOracleObservation =
+    p.gameTerminalText === GAME_TERMINAL_AWAITING_ORACLE_PLACEHOLDER ||
+    p.gameTerminalText.startsWith(`${GAME_TERMINAL_AWAITING_ORACLE_PLACEHOLDER}\n`);
   cognitionTraceText = p.cognitionTraceText;
   if (transcriptEl) {
     transcriptEl.textContent = p.transcriptText;
@@ -162,8 +161,17 @@ const setGameTerminal = (text: string): void => {
   schedulePersistSession();
 };
 
-const appendGameTerminalLine = (line: string): void => {
-  setGameTerminal(appendTranscriptLine(gameTerminalText, line));
+const appendGameTerminalLine = (line: string, chunkKind: GameTerminalChunkKind): void => {
+  const r = appendGameTerminalVirtualLine(gameTerminalText, line, {
+    awaitingOracleObservation,
+    chunkKind
+  });
+  gameTerminalText = r.text;
+  awaitingOracleObservation = r.awaitingOracleObservation;
+  if (gameTerminalEl) {
+    gameTerminalEl.textContent = gameTerminalText;
+  }
+  schedulePersistSession();
 };
 
 const log = (line: string): void => {
@@ -202,14 +210,13 @@ const refreshCheckpointsPanel = async (): Promise<void> => {
   if (!runId || !checkpointsEl) {
     return;
   }
-  const cpRes = await fetch(`${apiBase}/runs/${runId}/checkpoints`);
-  if (!cpRes.ok) {
-    checkpointsEl.textContent = `GET /checkpoints failed: ${cpRes.status}`;
+  const cp = await fetchRunCheckpoints(apiBase, runId);
+  if (!cp.ok) {
+    checkpointsEl.textContent = `GET /checkpoints failed: ${cp.status}`;
     schedulePersistSession();
     return;
   }
-  const checkpointsUnknown = await cpRes.json();
-  const checkpoints = checkpointsUnknown as { checkpointId: string }[];
+  const { checkpoints } = cp;
   checkpointsEl.textContent =
     checkpoints.length === 0
       ? "(no checkpoints yet — complete a turn)"
@@ -225,8 +232,14 @@ const handleWireData = (raw: string, eventType: string): void => {
   }
   log(formatWireEventForTranscript(wire));
   const vtChunk = formatVirtualTerminalWireChunk(wire);
-  if (vtChunk) {
-    appendGameTerminalLine(vtChunk);
+  if (vtChunk && wire.event === "turn") {
+    const chunkKind: GameTerminalChunkKind =
+      wire.envelope.kind === "oracle_observation"
+        ? "oracle"
+        : wire.envelope.kind === "proposal"
+          ? "proposal"
+          : "meta";
+    appendGameTerminalLine(vtChunk, chunkKind);
   }
   if (wire.event === "phase") {
     appendPhaseTimeline(formatWireEventForTranscript(wire));
@@ -271,7 +284,7 @@ const submitTurn = async (input: string): Promise<boolean> => {
     }
     const echo = formatVirtualTerminalUserEcho(trimmed);
     if (echo) {
-      appendGameTerminalLine(echo);
+      appendGameTerminalLine(echo, "user_echo");
     }
     log(`(rest) POST /turns → 204 input=${JSON.stringify(trimmed)}`);
     await refreshCheckpointsPanel();
@@ -288,13 +301,12 @@ const runReplayDemo = async (): Promise<void> => {
   if (!runId || !checkpointsEl) {
     return;
   }
-  const cpRes = await fetch(`${apiBase}/runs/${runId}/checkpoints`);
-  if (!cpRes.ok) {
-    log(`GET /checkpoints failed: ${cpRes.status}`);
+  const cp = await fetchRunCheckpoints(apiBase, runId);
+  if (!cp.ok) {
+    log(`GET /checkpoints failed: ${cp.status}`);
     return;
   }
-  const checkpointsUnknown = await cpRes.json();
-  const checkpoints = checkpointsUnknown as { checkpointId: string }[];
+  const { checkpoints } = cp;
   if (checkpoints.length === 0) {
     log("(replay demo) no checkpoints yet");
     return;
@@ -355,95 +367,6 @@ const runAutoplayStub = async (): Promise<void> => {
   setShellBusy(false);
 };
 
-const renderAgentDiagrams = async (brain: string, control: string): Promise<void> => {
-  const brainEl = document.getElementById("brain-mermaid");
-  const ctrlEl = document.getElementById("control-mermaid");
-  if (!brainEl || !ctrlEl) {
-    return;
-  }
-  brainEl.removeAttribute("data-processed");
-  ctrlEl.removeAttribute("data-processed");
-  brainEl.textContent = brain;
-  ctrlEl.textContent = control;
-  await mermaid.run({ nodes: [brainEl, ctrlEl] });
-};
-
-const diagramStorageFromUi = (): AgentDiagramStorage => ({
-  useBundled: useBundledDiagramsEl?.checked !== false,
-  brain: diagramBrainEditEl?.value,
-  control: diagramControlEditEl?.value
-});
-
-const syncDiagramEditorVisibility = (): void => {
-  const bundled = useBundledDiagramsEl?.checked !== false;
-  if (diagramCustomEditorEl) {
-    diagramCustomEditorEl.style.display = bundled ? "none" : "";
-  }
-};
-
-const applyDiagramsFromUi = async (): Promise<void> => {
-  const s = diagramStorageFromUi();
-  await renderAgentDiagrams(
-    effectiveBrainMermaid(BRAIN_GRAPH_MERMAID, s),
-    effectiveControlMermaid(CONTROL_MACHINE_MERMAID, s)
-  );
-};
-
-const setupAgentDiagramPanel = async (): Promise<void> => {
-  mermaid.initialize({ startOnLoad: false, theme: "dark", securityLevel: "loose" });
-  const stored = loadAgentDiagramStorage();
-  if (useBundledDiagramsEl) {
-    useBundledDiagramsEl.checked = stored?.useBundled !== false;
-  }
-  if (diagramBrainEditEl) {
-    diagramBrainEditEl.value =
-      stored && stored.useBundled === false && typeof stored.brain === "string"
-        ? stored.brain
-        : BRAIN_GRAPH_MERMAID;
-  }
-  if (diagramControlEditEl) {
-    diagramControlEditEl.value =
-      stored && stored.useBundled === false && typeof stored.control === "string"
-        ? stored.control
-        : CONTROL_MACHINE_MERMAID;
-  }
-  syncDiagramEditorVisibility();
-
-  useBundledDiagramsEl?.addEventListener("change", () => {
-    syncDiagramEditorVisibility();
-    void applyDiagramsFromUi();
-  });
-
-  document.getElementById("diagram-apply")?.addEventListener("click", () => {
-    void applyDiagramsFromUi();
-  });
-
-  document.getElementById("diagram-save-local")?.addEventListener("click", () => {
-    saveAgentDiagramStorage({
-      useBundled: useBundledDiagramsEl?.checked !== false,
-      brain: diagramBrainEditEl?.value,
-      control: diagramControlEditEl?.value
-    });
-  });
-
-  document.getElementById("diagram-reset")?.addEventListener("click", () => {
-    clearAgentDiagramStorage();
-    if (useBundledDiagramsEl) {
-      useBundledDiagramsEl.checked = true;
-    }
-    if (diagramBrainEditEl) {
-      diagramBrainEditEl.value = BRAIN_GRAPH_MERMAID;
-    }
-    if (diagramControlEditEl) {
-      diagramControlEditEl.value = CONTROL_MACHINE_MERMAID;
-    }
-    syncDiagramEditorVisibility();
-    void applyDiagramsFromUi();
-  });
-
-  await applyDiagramsFromUi();
-};
-
 const attachStreamListeners = (): void => {
   if (!runId) {
     return;
@@ -497,6 +420,7 @@ const createNewRun = async (mergeAfterSnapshot: boolean): Promise<boolean> => {
         : `POST /runs failed: ${start.status}`
     );
     if (!mergeAfterSnapshot) {
+      awaitingOracleObservation = false;
       setGameTerminal(`POST /runs failed: ${start.status}`);
     }
     return false;
@@ -518,10 +442,11 @@ const createNewRun = async (mergeAfterSnapshot: boolean): Promise<boolean> => {
 
   if (mergeAfterSnapshot) {
     log(`\n--- New run ${runId} (previous transcript retained above) ---\n`);
-    appendGameTerminalLine(`(stream: connected · ${runId})`);
+    appendGameTerminalLine(`(stream: connected · ${runId})`, "meta");
   } else {
     setTranscript(`(rest) POST /runs → 201 runId=${runId}\n(Stream open — type a command and press Send.)`);
-    setGameTerminal("(Stream open — type a command and press Send.)");
+    awaitingOracleObservation = true;
+    setGameTerminal(GAME_TERMINAL_AWAITING_ORACLE_PLACEHOLDER);
     cognitionTraceText = COGNITION_TRACE_EMPTY_PLACEHOLDER;
     if (cognitionTraceEl) {
       cognitionTraceEl.textContent = cognitionTraceText;
@@ -550,10 +475,20 @@ const attachUiListeners = (): void => {
   }
   uiListenersAttached = true;
 
+  const uiPrefs = loadShellUiPreferences();
+  if (showRawSseEl) {
+    showRawSseEl.checked = uiPrefs.showRawSse;
+  }
+  if (rawSseBlockEl) {
+    rawSseBlockEl.style.display = uiPrefs.showRawSse ? "" : "none";
+  }
+
   showRawSseEl?.addEventListener("change", () => {
+    const checked = showRawSseEl?.checked === true;
     if (rawSseBlockEl) {
-      rawSseBlockEl.style.display = showRawSseEl?.checked ? "" : "none";
+      rawSseBlockEl.style.display = checked ? "" : "none";
     }
+    saveShellUiPreferences({ version: 1, showRawSse: checked });
   });
 
   sendBtnEl?.addEventListener("click", () => {
@@ -602,15 +537,15 @@ const bootstrap = async (): Promise<void> => {
 
     if (persisted !== null && persisted.apiBase === apiBase && persisted.runId.length > 0) {
       try {
-        const cpRes = await fetch(`${apiBase}/runs/${persisted.runId}/checkpoints`);
-        if (cpRes.ok) {
+        const cp = await fetchRunCheckpoints(apiBase, persisted.runId);
+        if (cp.ok) {
           applyPersistedToShell(persisted);
           runId = persisted.runId;
           attachStreamListeners();
           await refreshCheckpointsPanel();
           schedulePersistSession();
           handled = true;
-        } else if (cpRes.status === 404) {
+        } else if (cp.status === 404) {
           applyPersistedToShell(persisted);
           const ok = await createNewRun(true);
           if (ok) {
