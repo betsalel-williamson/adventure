@@ -16,6 +16,18 @@ We are **not** treating v2 as the path to a **human-facing** Adventure demo unti
 
 **Orchestration overtook the game.** LangGraph and XState improved internal structure, but the **game lane** was one panel among many. **Synthetic oracle** defaults made the CRT feel **empty or broken** unless operators read the README. **Stub autoplay** was honest in code but easy to misread as “AI plays Adventure.”
 
+## For agentic v3
+
+**Reuse**
+
+- **Oracle + transcript seams:** HTTP/SSE and subprocess oracle patterns from v2 are useful **behind** the CRT-first shell as long as **Fortran output stays authoritative** for play ([docs/architecture/adventure-fortran-engine.md](../../docs/architecture/adventure-fortran-engine.md)).
+- **Honest labeling:** Scripted paths must stay visibly scripted; assistant panels must not imply autonomy ([US-3-1](stories/US-3-1-honest-scripted-autoplay.md), [E4](epics/E4-session-awareness-and-agent-surfacing.md)).
+
+**Avoid**
+
+- **Graphs over game text:** Do not elevate reconcile traces, raw wires, or diagrams above the hero transcript—keep orchestration as **optional ancillary** chrome ([deferred.md](deferred.md), [guidelines/adventure-v3/orchestration-before-playability.md](../../guidelines/adventure-v3/orchestration-before-playability.md)).
+- **Synthetic-as-demo:** Reserve synthetic oracle paths for **tests**; default human paths show **real room text** or unmistakable not-ready status ([overview.md](overview.md)).
+
 ## Navigation
 
 - [index.md](index.md)
