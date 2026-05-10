@@ -8,12 +8,18 @@ import { CRT_AWAITING_ORACLE_PLACEHOLDER } from "./transcript/constants.js";
 import { createOracleTurnWaitGate } from "./shell/oracleTurnWait.js";
 import { shellClickShouldSkipFocus } from "./shell/shellClickFocus.js";
 import { formatUserEchoLine, virtualTerminalChunkFromWire } from "./wire/virtualTerminal.js";
+import {
+  deriveSessionSignals,
+  formatSessionSignalsForPanel
+} from "./session/sessionSignals.js";
 
 const apiBase: string = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8787";
 
 const statusStripEl = document.querySelector<HTMLElement>("#status-strip");
 const viewportEl = document.querySelector<HTMLElement>("#crt-viewport");
 const transcriptEl = document.querySelector<HTMLElement>("#crt-transcript");
+const sessionSignalsPanelEl = document.querySelector<HTMLParagraphElement>("#session-signals-panel");
+const assistCoverEl = document.querySelector<HTMLDetailsElement>("details.crt-assist-cover");
 const commandLineEl = document.querySelector<HTMLElement>("#crt-command-line");
 const commandInputEl = document.querySelector<HTMLInputElement>("#command-input");
 
@@ -72,19 +78,35 @@ const scrollViewportToTail = (): void => {
   scrollEl.scrollTop = scrollEl.scrollHeight;
 };
 
-const renderTranscript = (opts?: TranscriptRenderOpts): void => {
-  if (!transcriptEl) {
+const syncSessionSignalsAriaLive = (): void => {
+  if (!sessionSignalsPanelEl || !assistCoverEl) {
     return;
   }
-  const followTail = opts?.forceScroll === true || isTranscriptPinnedToBottom();
-  transcriptEl.textContent = transcriptText;
-  if (followTail) {
-    scrollViewportToTail();
-    requestAnimationFrame(() => {
-      scrollViewportToTail();
-      requestAnimationFrame(scrollViewportToTail);
-    });
+  sessionSignalsPanelEl.setAttribute("aria-live", assistCoverEl.open ? "polite" : "off");
+};
+
+const refreshSessionSignalsPanel = (): void => {
+  if (!sessionSignalsPanelEl) {
+    return;
   }
+  const lines = formatSessionSignalsForPanel(deriveSessionSignals(transcriptText));
+  sessionSignalsPanelEl.textContent = lines.join("\n");
+  syncSessionSignalsAriaLive();
+};
+
+const renderTranscript = (opts?: TranscriptRenderOpts): void => {
+  if (transcriptEl) {
+    const followTail = opts?.forceScroll === true || isTranscriptPinnedToBottom();
+    transcriptEl.textContent = transcriptText;
+    if (followTail) {
+      scrollViewportToTail();
+      requestAnimationFrame(() => {
+        scrollViewportToTail();
+        requestAnimationFrame(scrollViewportToTail);
+      });
+    }
+  }
+  refreshSessionSignalsPanel();
 };
 
 const refreshStatusStrip = (): void => {
@@ -283,6 +305,10 @@ const bootstrap = async (): Promise<void> => {
 
   commandInputEl?.focus({ preventScroll: true });
 };
+
+assistCoverEl?.addEventListener("toggle", () => {
+  syncSessionSignalsAriaLive();
+});
 
 void bootstrap();
 

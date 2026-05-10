@@ -209,6 +209,71 @@ body {
   color: rgba(110, 118, 102, 0.88);
 }
 
+/* Disclosure cover — ancillary panels stay opt-in (hero CRT remains primary). */
+.crt-assist-cover {
+  margin: 0;
+}
+
+.crt-assist-cover-summary {
+  cursor: pointer;
+  list-style: none;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: rgba(140, 152, 128, 0.92);
+  padding: 0.2rem 0;
+}
+
+.crt-assist-cover-summary::-webkit-details-marker {
+  display: none;
+}
+
+.crt-assist-cover-summary::before {
+  content: "▸ ";
+  display: inline-block;
+  margin-right: 0.15em;
+  transition: transform 0.12s ease;
+}
+
+.crt-assist-cover[open] > .crt-assist-cover-summary::before {
+  transform: rotate(90deg);
+}
+
+.crt-assist-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-top: 0.45rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid rgba(40, 48, 38, 0.65);
+}
+
+.crt-assist-section-heading {
+  margin: 0 0 0.28rem;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.56rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: rgba(118, 128, 108, 0.95);
+}
+
+.crt-session-signals-body {
+  margin: 0;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.58rem;
+  line-height: 1.45;
+  letter-spacing: 0.02em;
+  color: rgba(125, 135, 115, 0.95);
+  white-space: pre-line;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .crt-assist-cover-summary::before {
+    transition: none;
+  }
+}
+
 @media (max-width: 52rem) {
   .crt-console-row {
     flex-direction: column;

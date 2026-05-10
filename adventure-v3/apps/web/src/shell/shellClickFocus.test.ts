@@ -40,6 +40,11 @@ describe("shellClickShouldSkipFocus", () => {
     expect(shellClickShouldSkipFocus(document.querySelector("button")!)).toBe(true);
   });
 
+  it("skips details summary clicks", () => {
+    document.body.innerHTML = `<details><summary>Panels</summary></details>`;
+    expect(shellClickShouldSkipFocus(document.querySelector("summary")!)).toBe(true);
+  });
+
   it("does not skip disabled buttons (selector uses :not([disabled]))", () => {
     document.body.innerHTML = `<button type="button" disabled>x</button>`;
     const btn = document.querySelector("button")!;

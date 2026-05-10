@@ -23,6 +23,7 @@
 - **Guideline (repo):** [guidelines/adventure-v3/orchestration-before-playability.md](../../guidelines/adventure-v3/orchestration-before-playability.md)
 - **v2 critique:** [ux-multidisciplinary-review-prep.md](../adventure-v2/ux-multidisciplinary-review-prep.md)
 - **Slice 01 review packet:** [slice-01-multidisciplinary-review.md](slice-01-multidisciplinary-review.md) · [pending-changes-review-evidence.md](pending-changes-review-evidence.md)
+- **Slice 02 review (US-4-1 session signals):** [slice-02-multidisciplinary-review.md](slice-02-multidisciplinary-review.md)
 - **Agentic design (E4/E5):** [design-agentic-mvp.md](design-agentic-mvp.md) · [roadmap-next-features.md](roadmap-next-features.md)
 
 ## Legacy monolith
