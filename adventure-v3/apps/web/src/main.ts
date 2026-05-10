@@ -8,6 +8,7 @@ import { CRT_AWAITING_ORACLE_PLACEHOLDER } from "./transcript/constants.js";
 import { createOracleTurnWaitGate } from "./shell/oracleTurnWait.js";
 import { shellClickShouldSkipFocus } from "./shell/shellClickFocus.js";
 import { formatUserEchoLine, virtualTerminalChunkFromWire } from "./wire/virtualTerminal.js";
+import { formatDefaultAssistancePostureForPanel } from "./posture/assistancePosture.js";
 import {
   deriveSessionSignals,
   formatSessionSignalsForPanel
@@ -18,6 +19,8 @@ const apiBase: string = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8787";
 const statusStripEl = document.querySelector<HTMLElement>("#status-strip");
 const viewportEl = document.querySelector<HTMLElement>("#crt-viewport");
 const transcriptEl = document.querySelector<HTMLElement>("#crt-transcript");
+const assistancePosturePanelEl =
+  document.querySelector<HTMLParagraphElement>("#assistance-posture-panel");
 const sessionSignalsPanelEl = document.querySelector<HTMLParagraphElement>("#session-signals-panel");
 const assistCoverEl = document.querySelector<HTMLDetailsElement>("details.crt-assist-cover");
 const commandLineEl = document.querySelector<HTMLElement>("#crt-command-line");
@@ -85,6 +88,13 @@ const syncSessionSignalsAriaLive = (): void => {
   sessionSignalsPanelEl.setAttribute("aria-live", assistCoverEl.open ? "polite" : "off");
 };
 
+const refreshAssistancePosturePanel = (): void => {
+  if (!assistancePosturePanelEl) {
+    return;
+  }
+  assistancePosturePanelEl.textContent = formatDefaultAssistancePostureForPanel().join("\n");
+};
+
 const refreshSessionSignalsPanel = (): void => {
   if (!sessionSignalsPanelEl) {
     return;
@@ -108,6 +118,8 @@ const renderTranscript = (opts?: TranscriptRenderOpts): void => {
   }
   refreshSessionSignalsPanel();
 };
+
+refreshAssistancePosturePanel();
 
 const refreshStatusStrip = (): void => {
   if (!statusStripEl) {

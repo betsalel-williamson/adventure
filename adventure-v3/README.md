@@ -2,7 +2,7 @@
 
 Thin **game-first** web client for Colossal Cave: hero CRT transcript (v1 [`adventure-nl`](../adventure-nl/) metaphor), talking to the **adventure-v2** HTTP + SSE API. The CRT viewport is **80×24** characters (common terminal size; less line-wrapping than a 40-column window for Colossal Cave prose).
 
-Optional **Assist** strip beside the CRT: use **Show assist panels** to disclose session signals (derived from the visible transcript) and placeholders for future draft map / depth tooling — collapsed by default so the game surface stays primary.
+Optional **Assist** strip beside the CRT: use **Show assist panels** to disclose **assistance posture** (current mode and plain-language rules, including how draft apply would work when that control exists) and **session signals** (derived from the visible transcript), plus placeholders for future draft map / depth tooling — collapsed by default so the game surface stays primary.
 
 ## Quick start (API + CRT shell)
 
@@ -27,7 +27,7 @@ VITE_API_URL=http://127.0.0.1:8787 npm start
 
 ## Tests
 
-- **Unit / component logic:** `npm test` (Vitest), including transcript/session signal derivation ([`apps/web/src/session/sessionSignals.test.ts`](apps/web/src/session/sessionSignals.test.ts)).
+- **Unit / component logic:** `npm test` (Vitest), including transcript/session signal derivation ([`apps/web/src/session/sessionSignals.test.ts`](apps/web/src/session/sessionSignals.test.ts)) and assistance posture copy ([`apps/web/src/posture/assistancePosture.test.ts`](apps/web/src/posture/assistancePosture.test.ts)).
 - **Wire Gherkin (synthetic oracle):** `npm run test:cucumber` — temporary API + [`crt_wire_health.feature`](tests/features/crt_wire_health.feature) + [`crt_wire_first_turn.feature`](tests/features/crt_wire_first_turn.feature).
 - **Fortran wire scenarios:** requires repo-root `./adventure` built with `make adventure`. Run `npm run test:cucumber:fortran` (loads [`tests/features/fortran/`](tests/features/fortran/) with auto Fortran oracle detection).
 
