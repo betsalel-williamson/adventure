@@ -8,6 +8,8 @@ export {
 } from "./http/createServer.js";
 export type { OracleBridge, OracleObservationInput, OracleObservationResult } from "./oracle/oracleBridge.js";
 export { createSyntheticOracleBridge, normalizeOracleObservation } from "./oracle/oracleBridge.js";
+export type { PersistentFortranOracleOptions } from "./oracle/persistentFortranOracleBridge.js";
+export { createPersistentFortranOracleBridge } from "./oracle/persistentFortranOracleBridge.js";
 export type { ProcessOracleBridgeOptions } from "./oracle/processOracleBridge.js";
 export { createProcessOracleBridge } from "./oracle/processOracleBridge.js";
 export {

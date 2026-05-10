@@ -55,7 +55,14 @@ rl.once("line", (line) => {
   }
 
   const action = typeof req.action === "string" ? req.action : "";
-  const input = `n\n${action}\n`;
+  const trimmed = action.trim();
+  /**
+   * Empty action ⇒ stdin is only `n` (decline instructions). That yields INIT / welcome / first room
+   * text without a second GETIN — an immediate `look` duplicates “describe location” and triggers the
+   * “SORRY, BUT I AM NOT ALLOWED TO GIVE MORE DETAIL…” path on this engine.
+   * Non-empty: decline instructions then one parser line (`n\n<verb>\n`).
+   */
+  const input = trimmed === "" ? `n\n` : `n\n${trimmed}\n`;
 
   const result = spawnSync(adventureBin, [], {
     cwd: repoRoot,
@@ -87,10 +94,34 @@ rl.once("line", (line) => {
     process.exit(0);
   }
 
-  const combined = `${result.stdout ?? ""}${result.stderr ?? ""}`.replace(
+  const combinedRaw = `${result.stdout ?? ""}${result.stderr ?? ""}`.replace(
     /\r\n/g,
     "\n"
   );
+
+  /** Drop gfortran EOF noise after stdin closes (still happens without a quit line). */
+  const stripFortranCrashTail = (text) => {
+    let s = text;
+    const cutFortran = s.search(/\nAt line \d+ of file adventure\.f\b/);
+    if (cutFortran !== -1) {
+      s = s.slice(0, cutFortran);
+    }
+    const cutRt = s.search(/\nFortran runtime error:/);
+    if (cutRt !== -1) {
+      s = s.slice(0, cutRt);
+    }
+    const cutBt = s.search(/\nError termination\. Backtrace:/);
+    if (cutBt !== -1) {
+      s = s.slice(0, cutBt);
+    }
+    const cutHash = s.search(/\n#\d+\s+0x/);
+    if (cutHash !== -1) {
+      s = s.slice(0, cutHash);
+    }
+    return s.trimEnd();
+  };
+
+  const combined = stripFortranCrashTail(combinedRaw);
   const clipped =
     combined.length > MAX_OUT ? `${combined.slice(0, MAX_OUT)}…` : combined;
 

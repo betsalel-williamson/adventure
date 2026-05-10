@@ -33,7 +33,7 @@ Date: 2026-05-09
 |--------|------------|
 | **Cross-platform npm script:** `NODE_OPTIONS='--import tsx'` is unreliable on Windows shells. | Use `node --import tsx ./node_modules/@cucumber/cucumber/bin/cucumber.js …` in `package.json` `test:cucumber`. |
 | **README drift:** claimed Gherkin was not executed by Cucumber in CI. | README now describes `tests/features/http/` + `npm run test:cucumber` and CI alignment. |
-| **CI gap:** HTTP Gherkin not exercised in workflow. | Added “Cucumber HTTP scenarios” step to [`/.github/workflows/adventure-v2.yml`](../../.github/workflows/adventure-v2.yml). |
+| **CI gap:** HTTP Gherkin not exercised in workflow. | Added “Cucumber HTTP scenarios” step to [`/.github/workflows/adventure.yml`](../../.github/workflows/adventure.yml). |
 
 ## Sign-off
 

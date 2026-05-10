@@ -19,6 +19,7 @@
 - **Milestone order (user value):** `US-1-1` → `US-1-2` → `US-2-1` → `US-3-1` (see story IDs in [stories/](stories/))
 - **Guideline (repo):** [guidelines/adventure-v3/orchestration-before-playability.md](../../guidelines/adventure-v3/orchestration-before-playability.md)
 - **v2 critique:** [ux-multidisciplinary-review-prep.md](../adventure-v2/ux-multidisciplinary-review-prep.md)
+- **Slice 01 review packet:** [slice-01-multidisciplinary-review.md](slice-01-multidisciplinary-review.md) · [pending-changes-review-evidence.md](pending-changes-review-evidence.md)
 
 ## Legacy monolith
 

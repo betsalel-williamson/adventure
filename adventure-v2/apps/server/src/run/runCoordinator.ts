@@ -131,13 +131,15 @@ export class RunCoordinator {
     }
 
     const obs = normalizeOracleObservation(
-      this.oracle.observe({
-        runId,
-        turnId,
-        sequence,
-        action: brain.action,
-        forceReject: options.forceReject
-      })
+      await Promise.resolve(
+        this.oracle.observe({
+          runId,
+          turnId,
+          sequence,
+          action: brain.action,
+          forceReject: options.forceReject
+        })
+      )
     );
     const observation: TurnEnvelope = {
       runId,

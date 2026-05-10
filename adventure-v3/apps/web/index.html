@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ADVENTURE — CRT</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=VT323&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles/crt-shell.css" />
+  </head>
+  <body>
+    <svg class="crt-filters-svg" aria-hidden="true" focusable="false" width="0" height="0">
+      <defs>
+        <filter id="crt-bubble" x="-8%" y="-8%" width="116%" height="116%">
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.006 0.01"
+            numOctaves="2"
+            result="noise"
+            seed="17"
+          />
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="noise"
+            scale="1.2"
+            xChannelSelector="R"
+            yChannelSelector="G"
+          />
+        </filter>
+      </defs>
+    </svg>
+    <main class="page-main crt-shell-caps">
+      <header class="shell-brand">
+        <h1 class="shell-brand-heading">Colossal Cave</h1>
+      </header>
+
+      <section class="crt-housing">
+        <div class="crt-monitor-chassis" aria-label="CRT console">
+          <div class="crt-console-row">
+            <div class="crt-terminal">
+              <div class="crt-terminal-screen">
+                <!-- One scroll buffer: game text then prompt line (historical CLIs had no separate input chrome). -->
+                <div id="crt-viewport" class="crt-viewport" aria-live="polite">
+                  <pre id="crt-transcript" class="transcript-feed--crt"></pre>
+                  <div
+                    id="crt-command-line"
+                    class="crt-command-line"
+                    role="group"
+                    aria-label="Command line"
+                  >
+                    <span class="crt-prompt" aria-hidden="true">&gt;</span>
+                    <input
+                      id="command-input"
+                      type="text"
+                      name="command"
+                      autocomplete="off"
+                      spellcheck="false"
+                      aria-label="Command line"
+                      title="Enter transmits the line (same as hardware terminals)"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Vertical strip beside the tube (lab terminals often had a blank / annotation panel). -->
+            <aside class="crt-side-panel" aria-label="Tools and shortcuts">
+              <h2 class="crt-side-panel-heading">Tools</h2>
+              <div class="crt-side-panel-body" id="crt-side-panel-root">
+                <p class="crt-side-panel-placeholder">
+                  Controls and shortcuts can mount here without crowding the game surface.
+                </p>
+              </div>
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      <p id="status-strip" class="shell-footer" role="status" aria-live="polite">
+        Connecting…
+      </p>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

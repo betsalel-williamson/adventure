@@ -16,7 +16,7 @@ export type OracleObservationResult = {
 };
 
 export type OracleBridge = {
-  observe(input: OracleObservationInput): OracleObservationResult;
+  observe(input: OracleObservationInput): OracleObservationResult | Promise<OracleObservationResult>;
 };
 
 /**

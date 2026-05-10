@@ -2,6 +2,7 @@ import { basename } from "node:path";
 import { RunCoordinator } from "./run/runCoordinator.js";
 import { listenAdventureServer } from "./http/createServer.js";
 import { createSyntheticOracleBridge } from "./oracle/oracleBridge.js";
+import { createPersistentFortranOracleBridge } from "./oracle/persistentFortranOracleBridge.js";
 import { createProcessOracleBridge } from "./oracle/processOracleBridge.js";
 import { resolveOracleStartupConfig } from "./oracle/oracleStartupConfig.js";
 
@@ -10,19 +11,26 @@ const host = process.env.HOST ?? "0.0.0.0";
 
 const oracleCfg = resolveOracleStartupConfig();
 const oracle =
-  oracleCfg.kind === "process"
+  oracleCfg.kind === "process" && oracleCfg.mode === "bridge_script"
     ? createProcessOracleBridge({
         command: process.execPath,
         args: [oracleCfg.scriptPath]
       })
-    : createSyntheticOracleBridge();
+    : oracleCfg.kind === "process" && oracleCfg.mode === "persistent_fortran"
+      ? createPersistentFortranOracleBridge({
+          repoRoot: oracleCfg.repoRoot,
+          adventureBinary: oracleCfg.adventureBinary
+        })
+      : createSyntheticOracleBridge();
 
 listenAdventureServer(new RunCoordinator(oracle), port, host)
   .then(({ baseUrl }) => {
     const oracleMsg =
-      oracleCfg.kind === "process"
+      oracleCfg.kind === "process" && oracleCfg.mode === "bridge_script"
         ? `${oracleCfg.reason} · ${basename(oracleCfg.scriptPath)}`
-        : `synthetic · ${oracleCfg.reason}`;
+        : oracleCfg.kind === "process" && oracleCfg.mode === "persistent_fortran"
+          ? `${oracleCfg.reason} · persistent · ${basename(oracleCfg.adventureBinary)}`
+          : `synthetic · ${oracleCfg.reason}`;
     console.log("");
     console.log(`adventure-v2 · HTTP API ready · ${baseUrl}`);
     console.log(

@@ -9,9 +9,9 @@ Planned v2 runtime for benchmark-oriented adventure orchestration.
 - **Web shell** (`apps/web`): Vite page that starts a run, opens SSE (`EventSource`), and provides an **interactive command** input (multi-turn **`POST /turns`**), optional **replay demo** (first checkpoint), and **stub autoplay** (deterministic command cycle, no LLM). Panels: **game terminal** (`#game-terminal`, CRT-style phosphor lane — player-facing transcript), optional **raw SSE log** (debug — toggle **Show raw SSE log**; reconcile/checkpoint envelopes appear here but are not duplicated into the game terminal by design), phase, reconcile, checkpoints, **accumulated cognition trace**, **agent structure** (Mermaid: LangGraph brain + XState control). **Persisted shell snapshot:** console + side panels (including game terminal text) are **saved in `localStorage`** (debounced); on refresh a **loading overlay** runs while the shell tries **`GET /runs/:id/checkpoints`** — if the server still has that **`runId`**, the UI restores from the snapshot and **reconnects SSE**; if the run is gone (**404**), the snapshot stays visible and a **new run** starts below. **Restore saved console snapshot** reapplies the last save without reconnecting SSE (refresh to reconnect). The status line under the run header reports **oracle mode** (from **`GET /health`**) and **SSE connection** state.
 - **Tests**: Vitest contract, in-process acceptance (`tests/acceptance.test.ts`), and **HTTP acceptance** (`tests/http.acceptance.test.ts`) against a real listener on an ephemeral port.
 
-**Dev API oracle selection:** With no env override, `npm run dev:server` **automatically** uses [`fixtures/oracle-fortran-bridge.mjs`](fixtures/oracle-fortran-bridge.mjs) when both that file and the repo-root **`./adventure`** binary exist (after `make adventure` from the repository root). Otherwise it falls back to the **synthetic** oracle (`OK.`). Set **`ADV_V2_PROCESS_ORACLE_SCRIPT`** to force a specific subprocess oracle (see [oracle subprocess IPC](../docs/architecture/adventure-v2/oracle-subprocess-ipc.md); e.g. `fixtures/oracle-stub.mjs`). Set **`ADV_V2_DISABLE_AUTO_FORTRAN_ORACLE=1`** to force synthetic even when `./adventure` exists (also set automatically for **`npm test`** / **`npm run test:cucumber`** so acceptance tests stay deterministic).
+**Dev API oracle selection:** With no env override, `npm run dev:server` **automatically** starts a **persistent** Fortran oracle when the repo-root **`./adventure`** binary exists (after `make adventure` from the repository root): one game process per HTTP `runId`, stdin fed across turns (see [`persistentFortranOracleBridge.ts`](apps/server/src/oracle/persistentFortranOracleBridge.ts)). If `./adventure` is missing, the server uses the **synthetic** oracle (`OK.`). Set **`ADV_V2_PROCESS_ORACLE_SCRIPT`** to force a **one-shot bridge script** subprocess instead (see [oracle subprocess IPC](../docs/architecture/adventure-v2/oracle-subprocess-ipc.md); e.g. [`fixtures/oracle-fortran-bridge.mjs`](fixtures/oracle-fortran-bridge.mjs) or `fixtures/oracle-stub.mjs`). Set **`ADV_V2_DISABLE_AUTO_FORTRAN_ORACLE=1`** to force synthetic even when `./adventure` exists (also set automatically for **`npm test`** / **`npm run test:cucumber`** so acceptance tests stay deterministic).
 
-**Fortran oracle (CI + opt-in local):** GitHub Actions compiles the repo-root `./adventure` and runs `npm run test:oracle-fortran`, which drives [`fixtures/oracle-fortran-bridge.mjs`](fixtures/oracle-fortran-bridge.mjs) against that binary. Locally: `make adventure` from the repo root, then the same npm script from `adventure-v2/`. **Default `npm test` does not** run `tests/oracleFortran.ci.test.ts` (see [`vitest.config.ts`](vitest.config.ts) exclude list).
+**Fortran oracle (CI + opt-in local):** GitHub Actions compiles the repo-root `./adventure` and runs `npm run test:oracle-fortran`, which exercises the **persistent** oracle against that binary (`tests/oracleFortran.ci.test.ts`). Locally: `make adventure` from the repo root, then the same npm script from `adventure-v2/`. **Default `npm test` does not** run `tests/oracleFortran.ci.test.ts` (see [`vitest.config.ts`](vitest.config.ts) exclude list).
 
 **Not yet:** further deployment hardening (auth, rate limits, TLS termination).
 
@@ -23,11 +23,11 @@ The web shell includes a **game terminal** lane (human-readable): echoed command
 
 | Goal | Command |
 |------|---------|
-| Dev with real game text (when `./adventure` exists at repo root) | From repo root: `make adventure`, then from `adventure-v2/`: `npm run dev:server` — picks the Fortran bridge automatically |
+| Dev with real game text (when `./adventure` exists at repo root) | From repo root: `make adventure`, then from `adventure-v2/`: `npm run dev:server` — **persistent** Fortran oracle (no per-turn process restart) |
 | Dev without building Fortran (synthetic `OK.` responses) | Do not build `./adventure`, or run `ADV_V2_DISABLE_AUTO_FORTRAN_ORACLE=1 npm run dev:server` |
-| Explicit subprocess oracle script | `ADV_V2_PROCESS_ORACLE_SCRIPT=fixtures/oracle-fortran-bridge.mjs npm run dev:server` (same as auto when paths exist) |
+| Explicit **one-shot** subprocess oracle script | `ADV_V2_PROCESS_ORACLE_SCRIPT=fixtures/oracle-fortran-bridge.mjs npm run dev:server` or `fixtures/oracle-stub.mjs` — overrides auto persistent mode |
 
-CI exercises the Fortran bridge via `npm run test:oracle-fortran` after `make adventure`.
+CI exercises the persistent Fortran oracle via `npm run test:oracle-fortran` after `make adventure`.
 
 **Remaining gaps vs a full “prod” MVP:** real **ModelAdapter** / SLM calls in **`plan`** (still stub prompts + digests), optional **XState snapshot** on the wire (today: phase transitions only), **LangGraph checkpointer** unification with **`CheckpointRegistry`**, and optional browser E2E (Playwright).
 
@@ -49,7 +49,7 @@ CI exercises the Fortran bridge via `npm run test:oracle-fortran` after `make ad
 
 **Slice 10 (R5 on HTTP wire):** `tests/http.acceptance.test.ts` asserts invalid-action escalation (`test` and `chaos` phases on SSE) after repeated `forceReject` turns; `tests/features/http/r5_invalid_action_recovery.feature` mirrors that path in Gherkin.
 
-**Slice 11 (operational readiness):** `GET /health` returns `200` with `{ "status": "ok", "service": "adventure-v2", "oracleMode": "synthetic" \| "process", "processOracleScript": string | null }` (`processOracleScript` is basename-only when `oracleMode` is `process`). **`oracleMode`** reflects the same resolution as the CLI: explicit **`ADV_V2_PROCESS_ORACLE_SCRIPT`**, else auto-Fortran when `./adventure` + bridge exist, else synthetic (`apps/server/src/oracle/oracleStartupConfig.ts`). JSON bodies on `POST` routes are capped at **256 KiB** (`HTTP_MAX_JSON_BODY_BYTES` in `apps/server/src/http/createServer.ts`); oversize requests get **`413`** with `{ "error": "payload_too_large", … }`. Covered in `tests/http.acceptance.test.ts`.
+**Slice 11 (operational readiness):** `GET /health` returns `200` with `{ "status": "ok", "service": "adventure-v2", "oracleMode": "synthetic" \| "process", "processOracleScript": string | null }` (`processOracleScript` is basename-only when `oracleMode` is `process`). **`oracleMode`** reflects the same resolution as the CLI: explicit **`ADV_V2_PROCESS_ORACLE_SCRIPT`** uses **bridge_script** mode (basename of that script); else **auto-Fortran** when repo-root **`./adventure`** exists (**persistent** mode — basename **`adventure`**); else synthetic (`apps/server/src/oracle/oracleStartupConfig.ts`). JSON bodies on `POST` routes are capped at **256 KiB** (`HTTP_MAX_JSON_BODY_BYTES` in `apps/server/src/http/createServer.ts`); oversize requests get **`413`** with `{ "error": "payload_too_large", … }`. Covered in `tests/http.acceptance.test.ts`.
 
 **Shell observability (game terminal):** `tests/gameTerminalWire.integration.test.ts` asserts one synthetic-oracle turn produces CRT-mappable SSE (`[agent] …`, `OK.`). The dev shell surfaces **`GET /health`** oracle hints and SSE status in-page; schema drift that breaks `parseSseWirePayload` logs **`[parse error]`** in the raw SSE panel and appends a short **`[wire]`** line to the game terminal.
 
@@ -172,7 +172,8 @@ curl -sS http://127.0.0.1:8787/health
 
 | On disk | Expected `oracleMode` | Notes |
 |--------|------------------------|--------|
-| Repo-root **`./adventure`** executable exists **and** auto-disable is off | `"process"` | `processOracleScript` is the basename of the bridge (e.g. **`oracle-fortran-bridge.mjs`**) |
+| Repo-root **`./adventure`** exists, auto-disable is off, **`ADV_V2_PROCESS_ORACLE_SCRIPT`** unset | `"process"` | **Persistent** oracle — `processOracleScript` is **`adventure`** |
+| **`ADV_V2_PROCESS_ORACLE_SCRIPT`** set (non-empty path to a bridge `.mjs`) | `"process"` | **Bridge script** — `processOracleScript` is that file’s basename |
 | **`./adventure` missing** (or **`ADV_V2_DISABLE_AUTO_FORTRAN_ORACLE=1`**) | `"synthetic"` | `processOracleScript` is `null` |
 
 Game text from Fortran never prints in the **`npm run dev`** terminal; it appears in the browser **game terminal** after SSE `oracle_observation` events.
@@ -201,7 +202,7 @@ Game text from Fortran never prints in the **`npm run dev`** terminal; it appear
 
 ## Testing strategy
 
-**CI gate:** from this directory, `npm test` runs Vitest once (`vitest run`) over `tests/**/*.test.ts` but **`vitest.config.ts` excludes** `tests/oracleFortran.ci.test.ts`. GitHub Actions runs `npm audit` after `npm ci`, then `npm run test:cucumber` for HTTP Gherkin scenarios. `npm run test:oracle-fortran` uses [`vitest.oracle-ci.config.ts`](vitest.oracle-ci.config.ts) so only that file runs, with `ADV_V2_CI_FORTRAN=1`. The root workflow [`.github/workflows/adventure-v2.yml`](../.github/workflows/adventure-v2.yml) installs `gfortran`, runs `make adventure` at the repo root, then `npm run test:oracle-fortran`.
+**CI gate:** from this directory, `npm test` runs Vitest once (`vitest run`) over `tests/**/*.test.ts` but **`vitest.config.ts` excludes** `tests/oracleFortran.ci.test.ts`. GitHub Actions runs `npm audit` after `npm ci`, then `npm run test:cucumber` for HTTP Gherkin scenarios. `npm run test:oracle-fortran` uses [`vitest.oracle-ci.config.ts`](vitest.oracle-ci.config.ts) so only that file runs, with `ADV_V2_CI_FORTRAN=1`. The root workflow [`.github/workflows/adventure.yml`](../.github/workflows/adventure.yml) defines parallel **`adventure-v2`** and **`adventure-v3`** jobs; both install `gfortran` and run `make adventure` at the repo root. The **adventure-v2** job runs `npm run test:oracle-fortran` (along with the rest of the v2 suite).
 
 **Layers (test pyramid):**
 
@@ -214,7 +215,7 @@ Game text from Fortran never prints in the **`npm run dev`** terminal; it appear
 | HTTP + SSE | `tests/http.acceptance.test.ts`, `tests/helpers/httpWire.ts` | Same contracts over a real listener on an ephemeral port; matches what the web shell uses. |
 | HTTP Gherkin (optional) | `tests/features/http/*.feature`, `tests/cucumber/*.ts` | Cucumber reuses `httpWire` + `listenAdventureServer`; run via `npm run test:cucumber`. |
 | Oracle subprocess | `tests/oracleProcess.test.ts` | `createProcessOracleBridge` + `fixtures/oracle-stub.mjs`. |
-| Fortran oracle (CI / opt-in) | `tests/oracleFortran.ci.test.ts` | Same bridge seam against `fixtures/oracle-fortran-bridge.mjs` + built `./adventure`; run via `npm run test:oracle-fortran` (`vitest.oracle-ci.config.ts`) only. |
+| Fortran oracle (CI / opt-in) | `tests/oracleFortran.ci.test.ts` | **Persistent** oracle against built `./adventure`; run via `npm run test:oracle-fortran` (`vitest.oracle-ci.config.ts`) only. |
 | Web helpers | `tests/wireDisplay.test.ts`, `tests/agentDiagrams.test.ts`, `tests/shellSessionPersistence.test.ts` | Transcript/cognition (`wireDisplay`); diagram guards (`agentDiagrams`); session snapshot shape (`shellSessionPersistence`). |
 
 **Gherkin feature files:** `tests/features/r*.feature` remain the **human-readable** R1–R5 reference; those scenarios are implemented in Vitest (`acceptance.test.ts`). **`tests/features/http/`** is executed by Cucumber (`npm run test:cucumber`) against the real HTTP API so Gherkin stays aligned with the wire contract without replacing Vitest.

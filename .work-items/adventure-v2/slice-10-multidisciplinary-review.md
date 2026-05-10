@@ -14,7 +14,7 @@ Date: 2026-05-09
 
 - **Vitest first:** [`http.acceptance.test.ts`](../../adventure-v2/tests/http.acceptance.test.ts) asserts `test` and `chaos` appear among phase `transition.to` values after three `forceReject` turns (aligned with in-process R5 in [`acceptance.test.ts`](../../adventure-v2/tests/acceptance.test.ts)).
 - **Cucumber second:** [`r5_invalid_action_recovery.feature`](../../adventure-v2/tests/features/http/r5_invalid_action_recovery.feature) + [`http_steps.ts`](../../adventure-v2/tests/cucumber/http_steps.ts) reuse the same counts and inputs; no duplicate SSE parsing logic.
-- **Regression discipline:** Full gate is `npm test` then `npm run test:cucumber` (mirrors [`.github/workflows/adventure-v2.yml`](../../.github/workflows/adventure-v2.yml)); documented in [`adventure-v2/README.md`](../../adventure-v2/README.md) under Testing strategy and Verification.
+- **Regression discipline:** Full gate is `npm test` then `npm run test:cucumber` (mirrors the **adventure-v2** job in [`.github/workflows/adventure.yml`](../../.github/workflows/adventure.yml)); documented in [`adventure-v2/README.md`](../../adventure-v2/README.md) under Testing strategy and Verification.
 
 ### Security / safety
 

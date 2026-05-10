@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { givenStartedRun } from "./steps/runSteps.js";
-import { createProcessOracleBridge } from "../apps/server/src/index.js";
-import { oracleFortranBridgePath, repoRootPath } from "./fixturePaths.js";
+import { createPersistentFortranOracleBridge } from "../apps/server/src/index.js";
+import { repoRootPath } from "./fixturePaths.js";
 
 const adventureBin = join(repoRootPath, "adventure");
 
@@ -12,11 +12,10 @@ const shouldRunFortranOracle =
 
 describe.runIf(shouldRunFortranOracle)("Fortran oracle CI bridge", () => {
   it("maps Fortran transcript to oracle observation on the turn envelope", async () => {
-    const bridge = createProcessOracleBridge({
-      command: process.execPath,
-      args: [oracleFortranBridgePath],
-      cwd: join(repoRootPath, "adventure-v2"),
-      timeoutMs: 15_000
+    const bridge = createPersistentFortranOracleBridge({
+      repoRoot: repoRootPath,
+      adventureBinary: adventureBin,
+      maxWaitMs: 15_000
     });
     const world = givenStartedRun("SLM", bridge);
     const turn = await world.coordinator.processTurn(world.runId, "east");
@@ -29,5 +28,25 @@ describe.runIf(shouldRunFortranOracle)("Fortran oracle CI bridge", () => {
       output: expect.stringMatching(/WELL HOUSE|END OF A ROAD/i)
     });
     expect(turn.reconcile.driftDetected).toBe(false);
+  });
+
+  it("keeps one Fortran process per runId (no inventory reset between turns)", async () => {
+    const bridge = createPersistentFortranOracleBridge({
+      repoRoot: repoRootPath,
+      adventureBinary: adventureBin,
+      maxWaitMs: 15_000
+    });
+    const world = givenStartedRun("SLM", bridge);
+    await world.coordinator.processTurn(world.runId, "");
+    await world.coordinator.processTurn(world.runId, "east");
+    await world.coordinator.processTurn(world.runId, "take lamp");
+
+    const obsEvents = world.coordinator
+      .eventsForRun(world.runId)
+      .filter((e) => e.kind === "oracle_observation");
+    const last = obsEvents.at(-1)!;
+    expect(last.payload).toMatchObject({ rejected: false });
+    const out = (last.payload as { output: string }).output;
+    expect(out).not.toMatch(/I SEE NO LAMP HERE/i);
   });
 });

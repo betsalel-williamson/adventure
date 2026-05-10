@@ -1,0 +1,420 @@
+/* Classic ~1976 green-phosphor CRT — Colossal Cave era (ADM-3A / glass-TTY mood) */
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  /* Fixed terminal grid — de facto standard 80×24 (e.g. IBM 3270 / VT100 era; see industry history). */
+  --crt-cols: 80;
+  --crt-rows: 24;
+  /* Phosphor P31-ish green on deep tube black */
+  --phosphor: #41ff7d;
+  --phosphor-dim: #1fa856;
+  --phosphor-glow: rgba(65, 255, 125, 0.45);
+  --tube-bg: #070a08;
+  --tube-bg-mid: #0c120e;
+  --bezel-plastic: #2c2e26;
+  --bezel-plastic-light: #3d4036;
+  --bezel-shadow: #151612;
+  --chrome-muted: #8a9078;
+  --input-bg: #080c09;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .crt-terminal-screen,
+  .crt-terminal-screen::after,
+  .transcript-feed--crt {
+    animation: none !important;
+  }
+}
+
+html {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: "IBM Plex Mono", ui-monospace, system-ui, sans-serif;
+  background:
+    radial-gradient(ellipse 120% 80% at 50% 20%, #1a211c 0%, #0d0f0c 45%, #080907 100%);
+  color: var(--chrome-muted);
+  line-height: 1.45;
+  min-height: 100%;
+  overflow-x: hidden;
+}
+
+.crt-filters-svg {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+.page-main {
+  box-sizing: border-box;
+  max-width: min(100%, 64rem);
+  margin: 0 auto;
+  padding: 1rem 1rem 1.25rem;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ----- Title only — keeps focus on the CRT ----- */
+.shell-brand {
+  flex-shrink: 0;
+  margin: 0 0 0.85rem;
+}
+
+/* Whole shell presents in caps (glass-TTY / early ADM era). */
+.crt-shell-caps {
+  text-transform: uppercase;
+}
+
+.crt-shell-caps input,
+.crt-shell-caps textarea {
+  text-transform: uppercase;
+}
+
+.shell-brand-heading {
+  margin: 0;
+  font-family: "VT323", monospace;
+  font-size: clamp(1.25rem, 3vw, 1.6rem);
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #aeb8a8;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
+}
+
+/* ----- Subdued footer — detail on hover (title attr) ----- */
+.shell-footer {
+  flex-shrink: 0;
+  margin: 0.85rem 0 0;
+  padding: 0;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.02em;
+  line-height: 1.35;
+  color: rgba(130, 138, 118, 0.65);
+  border: none;
+  background: none;
+  box-shadow: none;
+}
+
+.shell-footer.shell-footer--bad {
+  color: rgba(255, 150, 120, 0.85);
+}
+
+/* ----- Monitor housing (plastic chassis, 1970s lab gear) ----- */
+.crt-housing {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 1rem 1rem 0.85rem;
+  border-radius: 12px;
+  background: linear-gradient(165deg, var(--bezel-plastic-light) 0%, var(--bezel-plastic) 40%, var(--bezel-shadow) 100%);
+  box-shadow:
+    0 24px 48px rgba(0, 0, 0, 0.65),
+    inset 0 2px 0 rgba(255, 255, 255, 0.05),
+    inset 0 -3px 8px rgba(0, 0, 0, 0.45);
+}
+
+.crt-monitor-chassis {
+  flex: 0 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
+/* CRT + optional right strip (classic deskside layout had dead panel space beside the mask). */
+.crt-console-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: stretch;
+  justify-content: center;
+  gap: 0.65rem 0.85rem;
+  width: 100%;
+}
+
+.crt-terminal {
+  --crt-font-size: clamp(0.8rem, 0.68rem + 0.55vw, 1.05rem);
+  /*
+   * `1ch` is the advance width of "0" in this element's font. The transcript and prompt use VT323
+   * at --crt-font-size; match that here so calc(--crt-cols * 1ch) equals the real 80-column raster.
+   * (Otherwise inherited IBM Plex Mono from body makes the tube wider than the glyphs.)
+   */
+  font-family: "VT323", monospace;
+  font-size: var(--crt-font-size);
+  flex: 0 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  /* Lock deck + tube to the same width as the character cell grid */
+  width: min(calc(var(--crt-cols) * 1ch), 100%);
+  max-width: 100%;
+  margin-inline: 0;
+  min-width: 0;
+}
+
+.crt-side-panel {
+  flex: 1 1 11rem;
+  min-width: min(100%, 10.5rem);
+  max-width: 15rem;
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  border-radius: 10px;
+  border: 2px solid #151812;
+  background: linear-gradient(165deg, #121410 0%, #080a07 55%, #050604 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    inset 0 -2px 10px rgba(0, 0, 0, 0.55);
+}
+
+.crt-side-panel-heading {
+  margin: 0;
+  padding: 0.45rem 0.65rem;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(130, 142, 118, 0.75);
+  border-bottom: 1px solid rgba(40, 48, 38, 0.85);
+}
+
+.crt-side-panel-body {
+  flex: 1 1 auto;
+  min-height: 6rem;
+  padding: 0.55rem 0.65rem 0.65rem;
+  overflow: auto;
+}
+
+.crt-side-panel-placeholder {
+  margin: 0;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.62rem;
+  line-height: 1.45;
+  letter-spacing: 0.02em;
+  color: rgba(110, 118, 102, 0.88);
+}
+
+@media (max-width: 52rem) {
+  .crt-console-row {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .crt-side-panel {
+    flex: 1 1 auto;
+    width: min(calc(var(--crt-cols) * 1ch), 100%);
+    max-width: min(calc(var(--crt-cols) * 1ch), 100%);
+    min-height: 0;
+  }
+
+  .crt-terminal {
+    margin-inline: auto;
+  }
+}
+
+.crt-terminal-screen {
+  position: relative;
+  flex: 0 0 auto;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  border-radius: 20px;
+  overflow: hidden;
+  /* No perspective/rotateX: 3D tilt made upper lines look smaller and lower lines larger (bad grid). */
+  filter: url(#crt-bubble);
+  border: 3px solid #1a1c18;
+  box-shadow:
+    0 32px 64px rgba(0, 0, 0, 0.75),
+    inset 0 0 0 2px rgba(60, 75, 55, 0.35),
+    inset 0 -50px 90px rgba(0, 0, 0, 0.55),
+    0 0 40px rgba(40, 120, 60, 0.08);
+  animation: crt-tube-hum 6s ease-in-out infinite;
+}
+
+@keyframes crt-tube-hum {
+  0%,
+  100% {
+    filter: url(#crt-bubble) brightness(1);
+  }
+  50% {
+    filter: url(#crt-bubble) brightness(1.02);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .crt-terminal-screen {
+    animation: none;
+    filter: url(#crt-bubble);
+  }
+}
+
+/* Scanlines — heavier, visible raster */
+.crt-terminal-screen::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  border-radius: inherit;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0) 0px,
+    rgba(0, 0, 0, 0) 3px,
+    rgba(0, 0, 0, 0.22) 3px,
+    rgba(0, 0, 0, 0.22) 4px
+  );
+  mix-blend-mode: multiply;
+}
+
+/* Glass curvature + vignette */
+.crt-terminal-screen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    radial-gradient(ellipse 95% 85% at 48% 42%, transparent 25%, rgba(0, 0, 0, 0.15) 55%, rgba(0, 0, 0, 0.65) 100%),
+    radial-gradient(ellipse 55% 35% at 22% 18%, rgba(255, 255, 255, 0.06), transparent 55%);
+  animation: crt-vignette-drift 8s ease-in-out infinite;
+}
+
+@keyframes crt-vignette-drift {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.92;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .crt-terminal-screen::after {
+    animation: none;
+  }
+}
+
+/*
+ * Single 80×24-high viewport: scrollback text flows into the prompt row (continuous raster).
+ */
+.crt-viewport {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  align-self: stretch;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: calc(var(--crt-rows) * 1.25em);
+  max-height: calc(var(--crt-rows) * 1.25em);
+  overflow-x: hidden;
+  /* Always reserve the scrollbar lane so adding transcript lines does not narrow the row or jump the prompt. */
+  overflow-y: scroll;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding: 0.12em 0.5ch 0.15em;
+  background: radial-gradient(ellipse 100% 80% at 50% 20%, var(--tube-bg-mid) 0%, var(--tube-bg) 65%);
+  scrollbar-color: var(--phosphor-dim) var(--tube-bg);
+}
+
+.transcript-feed--crt {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  font-family: "VT323", monospace;
+  line-height: 1.25;
+  font-size: var(--crt-font-size);
+  letter-spacing: 0;
+  color: var(--phosphor);
+  text-shadow:
+    0 0 4px var(--phosphor-glow),
+    0 0 12px rgba(50, 255, 120, 0.2),
+    0 0 1px var(--phosphor-dim);
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  background: transparent;
+}
+
+.transcript-feed--crt::selection {
+  background: rgba(65, 255, 125, 0.35);
+  color: #f0fff4;
+}
+
+.crt-command-line {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: baseline;
+  /* Must match formatUserEchoLine: `> ` + input (one space after >), not a thin flex gap. */
+  gap: 1ch;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+}
+
+/* Hide live prompt until Fortran/oracle output for this turn is painted (avoid extra line before game text). */
+.crt-command-line.crt-command-line--awaiting-oracle {
+  visibility: hidden;
+}
+
+.crt-prompt {
+  flex: 0 0 auto;
+  font-family: "VT323", monospace;
+  font-size: var(--crt-font-size);
+  line-height: 1.25;
+  color: var(--phosphor);
+  text-shadow:
+    0 0 4px var(--phosphor-glow),
+    0 0 1px var(--phosphor-dim);
+  user-select: none;
+}
+
+.crt-command-line input[type="text"] {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--phosphor);
+  font-family: "VT323", monospace;
+  font-size: var(--crt-font-size);
+  line-height: 1.25;
+  letter-spacing: 0;
+  box-shadow: none;
+  caret-color: var(--phosphor);
+}
+
+.crt-command-line input[type="text"]::placeholder {
+  color: rgba(65, 255, 125, 0.22);
+}
+
+.crt-command-line input[type="text"]:focus,
+.crt-command-line input[type="text"]:focus-visible {
+  outline: none;
+}
+
+.crt-command-line input[type="text"]:read-only {
+  /* Match enabled glyph metrics (some UAs tweak disabled/readonly appearance). */
+  opacity: 1;
+  color: var(--phosphor);
+  -webkit-text-fill-color: var(--phosphor);
+}
