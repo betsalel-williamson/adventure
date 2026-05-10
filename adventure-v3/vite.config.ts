@@ -8,11 +8,14 @@ export default defineConfig({
   root: "apps/web",
   resolve: {
     alias: {
-      "@contracts": path.resolve(rootDir, "../adventure-v2/packages/contracts/src/index.ts")
-    }
+      "@contracts": path.resolve(
+        rootDir,
+        "../adventure-v2/packages/contracts/src/index.ts",
+      ),
+    },
   },
   server: {
     port: 5174,
-    strictPort: false
-  }
+    strictPort: false,
+  },
 });

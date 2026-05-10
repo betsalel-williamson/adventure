@@ -5,9 +5,12 @@ import { readSseUntilCount } from "../../../../adventure-v2/tests/helpers/httpWi
 import { createRunConfig } from "../../../../adventure-v2/tests/steps/runSteps.js";
 import type { HttpWorld } from "../http_world.js";
 
-Given("the adventure HTTP API is running for v3 shell", async function (this: HttpWorld) {
-  assert.ok(this.baseUrl, "server should be up (Before hook)");
-});
+Given(
+  "the adventure HTTP API is running for v3 shell",
+  async function (this: HttpWorld) {
+    assert.ok(this.baseUrl, "server should be up (Before hook)");
+  },
+);
 
 When("I request the health endpoint", async function (this: HttpWorld) {
   assert.ok(this.baseUrl);
@@ -16,10 +19,13 @@ When("I request the health endpoint", async function (this: HttpWorld) {
   this.healthBody = (await res.json()) as Record<string, unknown>;
 });
 
-Then("the health JSON has oracleMode {string}", async function (this: HttpWorld, mode: string) {
-  assert.ok(this.healthBody);
-  assert.strictEqual(this.healthBody.oracleMode, mode);
-});
+Then(
+  "the health JSON has oracleMode {string}",
+  async function (this: HttpWorld, mode: string) {
+    assert.ok(this.healthBody);
+    assert.strictEqual(this.healthBody.oracleMode, mode);
+  },
+);
 
 When(
   "I start a run for SLM and stream ten events for input {string}",
@@ -28,7 +34,7 @@ When(
     const response = await fetch(`${this.baseUrl}/runs`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ config: createRunConfig("SLM") })
+      body: JSON.stringify({ config: createRunConfig("SLM") }),
     });
     assert.strictEqual(response.status, 201);
     const body = (await response.json()) as { runId: string };
@@ -42,24 +48,27 @@ When(
     const postTurnResponse = await fetch(`${this.baseUrl}${turnsPath}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ input })
+      body: JSON.stringify({ input }),
     });
     assert.strictEqual(postTurnResponse.status, 204);
     this.wire = await this.readPromise;
-  }
+  },
 );
 
-Then("the stream includes oracle_observation with non-empty output", function (this: HttpWorld) {
-  const wire = this.wire;
-  assert.ok(wire && wire.length > 0);
-  const oracle = wire.find(
-    (w): w is Extract<SseWireEvent, { event: "turn" }> =>
-      w.event === "turn" && w.envelope.kind === "oracle_observation"
-  );
-  assert.ok(oracle);
-  const output = oracle.envelope.payload.output;
-  assert.ok(typeof output === "string" && output.length > 0);
-});
+Then(
+  "the stream includes oracle_observation with non-empty output",
+  function (this: HttpWorld) {
+    const wire = this.wire;
+    assert.ok(wire && wire.length > 0);
+    const oracle = wire.find(
+      (w): w is Extract<SseWireEvent, { event: "turn" }> =>
+        w.event === "turn" && w.envelope.kind === "oracle_observation",
+    );
+    assert.ok(oracle);
+    const output = oracle.envelope.payload.output;
+    assert.ok(typeof output === "string" && output.length > 0);
+  },
+);
 
 Then(
   "if the oracle is process mode the observation is longer than stub-only text",
@@ -75,10 +84,13 @@ Then(
     assert.ok(wire);
     const oracle = wire.find(
       (w): w is Extract<SseWireEvent, { event: "turn" }> =>
-        w.event === "turn" && w.envelope.kind === "oracle_observation"
+        w.event === "turn" && w.envelope.kind === "oracle_observation",
     );
     assert.ok(oracle);
     const output = oracle.envelope.payload.output as string;
-    assert.ok(output.length > 4, `expected substantive Fortran text, got: ${output}`);
-  }
+    assert.ok(
+      output.length > 4,
+      `expected substantive Fortran text, got: ${output}`,
+    );
+  },
 );

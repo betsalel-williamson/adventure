@@ -12,8 +12,8 @@ describe("parseSseWirePayload", () => {
         source: "oracle",
         kind: "oracle_observation",
         ts: "2020-01-01T00:00:00.000Z",
-        payload: { outcome: "accepted", rejected: false, output: "OK." }
-      }
+        payload: { outcome: "accepted", rejected: false, output: "OK." },
+      },
     });
     const ev = parseSseWirePayload(raw);
     expect(ev?.event).toBe("turn");

@@ -8,6 +8,9 @@ cd "$REPO_ROOT/adventure-nl" || exit 1
 npx lint-staged
 
 cd "$REPO_ROOT" || exit 1
+if git diff --cached --name-only | grep -q '^adventure-v3/'; then
+  (cd adventure-v3 && npx lint-staged)
+fi
 if git diff --cached --name-only | grep -q '^adventure-v2/'; then
   (cd adventure-v2 && npm test)
 fi

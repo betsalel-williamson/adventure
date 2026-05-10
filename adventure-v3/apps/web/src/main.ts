@@ -1,17 +1,33 @@
 /// <reference types="vite/client" />
 
 import type { SseWireEvent } from "@contracts";
-import { createRun, fetchHealth, openRunEventSource, postTurn } from "./api/client.js";
+import {
+  createRun,
+  fetchHealth,
+  openRunEventSource,
+  postTurn,
+} from "./api/client.js";
 import { describeHealthStatus, minimalOracleHint } from "./status/health.js";
 import { appendOracleAwareLine } from "./transcript/buffer.js";
 import { CRT_AWAITING_ORACLE_PLACEHOLDER } from "./transcript/constants.js";
 import { createOracleTurnWaitGate } from "./shell/oracleTurnWait.js";
 import { shellClickShouldSkipFocus } from "./shell/shellClickFocus.js";
-import { formatUserEchoLine, virtualTerminalChunkFromWire } from "./wire/virtualTerminal.js";
-import { formatDefaultAssistancePostureForPanel } from "./posture/assistancePosture.js";
+import {
+  formatUserEchoLine,
+  virtualTerminalChunkFromWire,
+} from "./wire/virtualTerminal.js";
+import {
+  ASSISTANCE_POSTURE_STORAGE_KEY,
+  POSTURE_CHANGE_STALE_NOTICE,
+  formatAssistancePostureForPanel,
+  formatPostureChangeAcknowledgment,
+  isAssistancePostureId,
+  parseStoredAssistancePostureId,
+  type AssistancePostureId,
+} from "./posture/assistancePosture.js";
 import {
   deriveSessionSignals,
-  formatSessionSignalsForPanel
+  formatSessionSignalsForPanel,
 } from "./session/sessionSignals.js";
 
 const apiBase: string = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8787";
@@ -19,12 +35,35 @@ const apiBase: string = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8787";
 const statusStripEl = document.querySelector<HTMLElement>("#status-strip");
 const viewportEl = document.querySelector<HTMLElement>("#crt-viewport");
 const transcriptEl = document.querySelector<HTMLElement>("#crt-transcript");
-const assistancePosturePanelEl =
-  document.querySelector<HTMLParagraphElement>("#assistance-posture-panel");
-const sessionSignalsPanelEl = document.querySelector<HTMLParagraphElement>("#session-signals-panel");
-const assistCoverEl = document.querySelector<HTMLDetailsElement>("details.crt-assist-cover");
+const assistancePosturePanelEl = document.querySelector<HTMLParagraphElement>(
+  "#assistance-posture-panel",
+);
+const sessionSignalsPanelEl = document.querySelector<HTMLParagraphElement>(
+  "#session-signals-panel",
+);
+const assistCoverEl = document.querySelector<HTMLDetailsElement>(
+  "details.crt-assist-cover",
+);
 const commandLineEl = document.querySelector<HTMLElement>("#crt-command-line");
-const commandInputEl = document.querySelector<HTMLInputElement>("#command-input");
+const commandInputEl =
+  document.querySelector<HTMLInputElement>("#command-input");
+const postureRadioInputs = [
+  ...document.querySelectorAll<HTMLInputElement>(
+    'input[name="assistance-posture"]',
+  ),
+];
+const postureChangeStatusEl = document.querySelector<HTMLElement>(
+  "#posture-change-status",
+);
+const postureStaleNoticeEl = document.querySelector<HTMLElement>(
+  "#posture-stale-notice",
+);
+const postureStaleNoticeTextEl = document.querySelector<HTMLElement>(
+  "#posture-stale-notice-text",
+);
+const postureStaleDismissEl = document.querySelector<HTMLButtonElement>(
+  "#posture-stale-dismiss",
+);
 
 let transcriptText = CRT_AWAITING_ORACLE_PLACEHOLDER;
 let awaitingOracle = true;
@@ -37,6 +76,10 @@ let sseEverOpened = false;
 let currentRunId: string | null = null;
 
 let esHandle: { close: () => void } | null = null;
+
+let selectedPostureId: AssistancePostureId = parseStoredAssistancePostureId(
+  sessionStorage.getItem(ASSISTANCE_POSTURE_STORAGE_KEY),
+);
 
 /** Prevents overlapping submits; prefer readOnly over disabled to avoid UA layout/style jumps. */
 let turnInFlight = false;
@@ -85,28 +128,82 @@ const syncSessionSignalsAriaLive = (): void => {
   if (!sessionSignalsPanelEl || !assistCoverEl) {
     return;
   }
-  sessionSignalsPanelEl.setAttribute("aria-live", assistCoverEl.open ? "polite" : "off");
+  sessionSignalsPanelEl.setAttribute(
+    "aria-live",
+    assistCoverEl.open ? "polite" : "off",
+  );
+};
+
+const syncPostureRadiosFromSelection = (): void => {
+  for (const input of postureRadioInputs) {
+    input.checked = input.value === selectedPostureId;
+  }
+};
+
+syncPostureRadiosFromSelection();
+
+if (postureStaleNoticeTextEl) {
+  postureStaleNoticeTextEl.textContent = POSTURE_CHANGE_STALE_NOTICE;
+}
+
+const hideStalePostureNotice = (): void => {
+  postureStaleNoticeEl?.setAttribute("hidden", "");
+};
+
+const showStalePostureNotice = (): void => {
+  postureStaleNoticeEl?.removeAttribute("hidden");
 };
 
 const refreshAssistancePosturePanel = (): void => {
   if (!assistancePosturePanelEl) {
     return;
   }
-  assistancePosturePanelEl.textContent = formatDefaultAssistancePostureForPanel().join("\n");
+  assistancePosturePanelEl.textContent =
+    formatAssistancePostureForPanel(selectedPostureId).join("\n");
 };
+
+const applyUserPostureChange = (nextId: AssistancePostureId): void => {
+  const previous = selectedPostureId;
+  if (previous === nextId) {
+    return;
+  }
+  selectedPostureId = nextId;
+  sessionStorage.setItem(ASSISTANCE_POSTURE_STORAGE_KEY, selectedPostureId);
+  syncPostureRadiosFromSelection();
+  refreshAssistancePosturePanel();
+  if (postureChangeStatusEl) {
+    postureChangeStatusEl.textContent =
+      formatPostureChangeAcknowledgment(selectedPostureId);
+  }
+  showStalePostureNotice();
+};
+
+for (const input of postureRadioInputs) {
+  input.addEventListener("change", () => {
+    if (!isAssistancePostureId(input.value)) {
+      return;
+    }
+    applyUserPostureChange(input.value);
+  });
+}
+
+postureStaleDismissEl?.addEventListener("click", hideStalePostureNotice);
 
 const refreshSessionSignalsPanel = (): void => {
   if (!sessionSignalsPanelEl) {
     return;
   }
-  const lines = formatSessionSignalsForPanel(deriveSessionSignals(transcriptText));
+  const lines = formatSessionSignalsForPanel(
+    deriveSessionSignals(transcriptText),
+  );
   sessionSignalsPanelEl.textContent = lines.join("\n");
   syncSessionSignalsAriaLive();
 };
 
 const renderTranscript = (opts?: TranscriptRenderOpts): void => {
   if (transcriptEl) {
-    const followTail = opts?.forceScroll === true || isTranscriptPinnedToBottom();
+    const followTail =
+      opts?.forceScroll === true || isTranscriptPinnedToBottom();
     transcriptEl.textContent = transcriptText;
     if (followTail) {
       scrollViewportToTail();
@@ -126,17 +223,18 @@ const refreshStatusStrip = (): void => {
     return;
   }
 
-  let line = "";
-  if (!sseEverOpened) {
-    line = "Connecting…";
-  } else if (!sseListening) {
-    line = "Connection lost — is the API running?";
-  } else {
-    line = healthShort;
-  }
+  const line = !sseEverOpened
+    ? "Connecting…"
+    : !sseListening
+      ? "Connection lost — is the API running?"
+      : healthShort;
 
   statusStripEl.textContent = line;
-  const streamNote = !sseEverOpened ? "Opening event stream…" : !sseListening ? "SSE disconnected" : "SSE OK";
+  const streamNote = !sseEverOpened
+    ? "Opening event stream…"
+    : !sseListening
+      ? "SSE disconnected"
+      : "SSE OK";
   statusStripEl.title = `${healthTooltip} · ${streamNote}`;
   const trouble = Boolean(!sseListening && sseEverOpened);
   statusStripEl.classList.toggle("shell-footer--bad", trouble);
@@ -156,7 +254,7 @@ const appendFromWire = (wire: SseWireEvent): void => {
     wire.event === "turn" && wire.envelope.kind === "oracle_observation";
   const next = appendOracleAwareLine(transcriptText, chunk, {
     awaitingOracle,
-    isOracleChunk: isOracle
+    isOracleChunk: isOracle,
   });
   transcriptText = next.text;
   awaitingOracle = next.awaitingOracle;
@@ -174,7 +272,10 @@ const setCommandLineLocked = (locked: boolean): void => {
 };
 
 const setCommandLineAwaitingOracle = (awaiting: boolean): void => {
-  commandLineEl?.classList.toggle("crt-command-line--awaiting-oracle", awaiting);
+  commandLineEl?.classList.toggle(
+    "crt-command-line--awaiting-oracle",
+    awaiting,
+  );
 };
 
 const loadHealth = async (): Promise<void> => {
@@ -195,7 +296,7 @@ const submitPlayerInput = async (raw: string): Promise<void> => {
     const errLine = appendOracleAwareLine(
       transcriptText,
       "Session not ready — reload the page.",
-      { awaitingOracle, isOracleChunk: false }
+      { awaitingOracle, isOracleChunk: false },
     );
     transcriptText = errLine.text;
     awaitingOracle = errLine.awaitingOracle;
@@ -217,7 +318,7 @@ const submitPlayerInput = async (raw: string): Promise<void> => {
     const echo = formatUserEchoLine(line);
     const echoed = appendOracleAwareLine(transcriptText, echo, {
       awaitingOracle,
-      isOracleChunk: false
+      isOracleChunk: false,
     });
     transcriptText = echoed.text;
     awaitingOracle = echoed.awaitingOracle;
@@ -234,10 +335,14 @@ const submitPlayerInput = async (raw: string): Promise<void> => {
 
     if ("error" in res) {
       oracleWait.cancel();
-      const err = appendOracleAwareLine(transcriptText, `[error] ${res.error}`, {
-        awaitingOracle,
-        isOracleChunk: false
-      });
+      const err = appendOracleAwareLine(
+        transcriptText,
+        `[error] ${res.error}`,
+        {
+          awaitingOracle,
+          isOracleChunk: false,
+        },
+      );
       transcriptText = err.text;
       awaitingOracle = err.awaitingOracle;
       renderTranscript({ forceScroll: true });
@@ -245,15 +350,18 @@ const submitPlayerInput = async (raw: string): Promise<void> => {
       const outcome = await Promise.race([
         oracleWait.promise.then(() => "oracle" as const),
         new Promise<"timeout">((resolve) => {
-          window.setTimeout(() => resolve("timeout"), ORACLE_OBSERVATION_WAIT_MS);
-        })
+          window.setTimeout(
+            () => resolve("timeout"),
+            ORACLE_OBSERVATION_WAIT_MS,
+          );
+        }),
       ]);
       if (outcome === "timeout") {
         oracleWait.cancel();
         const err = appendOracleAwareLine(
           transcriptText,
           "[error] Game output did not arrive in time — check the API connection or reload.",
-          { awaitingOracle, isOracleChunk: false }
+          { awaitingOracle, isOracleChunk: false },
         );
         transcriptText = err.text;
         awaitingOracle = err.awaitingOracle;
@@ -312,7 +420,7 @@ const bootstrap = async (): Promise<void> => {
       window.setTimeout(() => {
         void postTurn(apiBase, run.runId, "");
       }, SILENT_BOOTSTRAP_DELAY_MS);
-    }
+    },
   );
 
   commandInputEl?.focus({ preventScroll: true });

@@ -48,7 +48,8 @@ export const extractRecentMoves = (lines: readonly string[]): string[] => {
 const isEchoLine = (line: string): boolean => ECHO_LINE.test(line);
 
 /** Adventure-style location line — start with YOU ARE (avoids prose like “WITHOUT YOU ARE”). */
-const lineStartsWithYouAre = (line: string): boolean => /^\s*YOU ARE\b/i.test(line);
+const lineStartsWithYouAre = (line: string): boolean =>
+  /^\s*YOU ARE\b/i.test(line);
 
 export const extractLocationCues = (lines: readonly string[]): string[] => {
   const seen = new Set<string>();
@@ -73,7 +74,9 @@ export const extractLocationCues = (lines: readonly string[]): string[] => {
   return out;
 };
 
-export const deriveSessionSignals = (transcript: string): DerivedSessionSignals => {
+export const deriveSessionSignals = (
+  transcript: string,
+): DerivedSessionSignals => {
   const trimmed = transcript.trim();
   if (trimmed === "" || trimmed === CRT_AWAITING_ORACLE_PLACEHOLDER) {
     return { phase: "waiting", recentMoves: [], locationCues: [] };
@@ -83,11 +86,13 @@ export const deriveSessionSignals = (transcript: string): DerivedSessionSignals 
   return {
     phase: "ready",
     recentMoves: extractRecentMoves(lines),
-    locationCues: extractLocationCues(lines)
+    locationCues: extractLocationCues(lines),
   };
 };
 
-export const formatSessionSignalsForPanel = (d: DerivedSessionSignals): string[] => {
+export const formatSessionSignalsForPanel = (
+  d: DerivedSessionSignals,
+): string[] => {
   if (d.phase === "waiting") {
     return ["Waiting for game text…"];
   }

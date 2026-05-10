@@ -11,15 +11,36 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:cucumber": "node --import tsx ./node_modules/@cucumber/cucumber/bin/cucumber.js --import tests/cucumber/setup.ts tests/features/crt_wire_health.feature tests/features/crt_wire_first_turn.feature",
-    "test:cucumber:fortran": "node --import tsx ./node_modules/@cucumber/cucumber/bin/cucumber.js --import tests/cucumber/setupFortran.ts tests/features/fortran"
+    "test:cucumber:fortran": "node --import tsx ./node_modules/@cucumber/cucumber/bin/cucumber.js --import tests/cucumber/setupFortran.ts tests/features/fortran",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "verify": "npm run lint && npm run format:check && npm test -- --run && npm run test:cucumber && npm run build"
+  },
+  "lint-staged": {
+    "*.{ts,mts,cts}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,css,html}": "prettier --write",
+    "eslint.config.js": "prettier --write",
+    "prettier.config.js": "prettier --write"
   },
   "devDependencies": {
     "@cucumber/cucumber": "^12.8.3",
+    "@eslint/js": "^10.0.1",
     "@types/node": "^22.10.0",
     "concurrently": "^9.2.1",
+    "eslint": "^10.3.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^16.5.0",
     "jsdom": "^29.1.1",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.8.3",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0",
+    "typescript-eslint": "^8.59.2",
     "vite": "^6.0.0",
     "vitest": "^3.0.0",
     "zod": "^3.24.0"

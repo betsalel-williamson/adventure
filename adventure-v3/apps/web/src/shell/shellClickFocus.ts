@@ -9,7 +9,7 @@ export function shellClickShouldSkipFocus(target: Element): boolean {
   }
   if (
     target.closest(
-      'a[href], button:not([disabled]), summary, textarea, select, input:not(#command-input), [role="button"], [contenteditable="true"]'
+      'a[href], button:not([disabled]), summary, textarea, select, input:not(#command-input), [role="button"], [contenteditable="true"]',
     )
   ) {
     return true;

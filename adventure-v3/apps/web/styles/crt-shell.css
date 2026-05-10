@@ -35,8 +35,12 @@ html {
 body {
   margin: 0;
   font-family: "IBM Plex Mono", ui-monospace, system-ui, sans-serif;
-  background:
-    radial-gradient(ellipse 120% 80% at 50% 20%, #1a211c 0%, #0d0f0c 45%, #080907 100%);
+  background: radial-gradient(
+    ellipse 120% 80% at 50% 20%,
+    #1a211c 0%,
+    #0d0f0c 45%,
+    #080907 100%
+  );
   color: var(--chrome-muted);
   line-height: 1.45;
   min-height: 100%;
@@ -117,7 +121,12 @@ body {
   justify-content: center;
   padding: 1rem 1rem 0.85rem;
   border-radius: 12px;
-  background: linear-gradient(165deg, var(--bezel-plastic-light) 0%, var(--bezel-plastic) 40%, var(--bezel-shadow) 100%);
+  background: linear-gradient(
+    165deg,
+    var(--bezel-plastic-light) 0%,
+    var(--bezel-plastic) 40%,
+    var(--bezel-shadow) 100%
+  );
   box-shadow:
     0 24px 48px rgba(0, 0, 0, 0.65),
     inset 0 2px 0 rgba(255, 255, 255, 0.05),
@@ -268,6 +277,94 @@ body {
   white-space: pre-line;
 }
 
+.crt-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.crt-assist-posture-fieldset {
+  margin: 0;
+  padding: 0;
+  border: none;
+  min-width: 0;
+}
+
+.crt-assist-posture-radios {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.45rem;
+}
+
+.crt-assist-posture-radio-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.56rem;
+  line-height: 1.35;
+  letter-spacing: 0.04em;
+  color: rgba(118, 128, 108, 0.98);
+  cursor: pointer;
+}
+
+.crt-assist-posture-radio-label input {
+  margin-top: 0.12rem;
+  accent-color: rgba(90, 140, 95, 0.95);
+}
+
+.crt-assist-posture-status {
+  margin: 0 0 0.4rem;
+  min-height: 1.2em;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.54rem;
+  line-height: 1.4;
+  letter-spacing: 0.03em;
+  color: rgba(130, 155, 125, 0.98);
+}
+
+.crt-assist-posture-stale {
+  margin: 0 0 0.45rem;
+  padding: 0.35rem 0.4rem;
+  border-radius: 4px;
+  border: 1px solid rgba(90, 110, 85, 0.45);
+  background: rgba(20, 28, 22, 0.55);
+}
+
+.crt-assist-posture-stale-text {
+  margin: 0 0 0.35rem;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.54rem;
+  line-height: 1.45;
+  letter-spacing: 0.02em;
+  color: rgba(125, 135, 115, 0.98);
+}
+
+.crt-assist-posture-stale-dismiss {
+  padding: 0.15rem 0.45rem;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.52rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(118, 135, 115, 0.98);
+  background: rgba(28, 36, 30, 0.85);
+  border: 1px solid rgba(75, 95, 78, 0.55);
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.crt-assist-posture-stale-dismiss:focus-visible {
+  outline: 2px solid rgba(120, 180, 130, 0.65);
+  outline-offset: 2px;
+}
+
 .crt-assist-posture-body {
   margin: 0;
   font-family: "IBM Plex Mono", monospace;
@@ -367,8 +464,17 @@ body {
   pointer-events: none;
   border-radius: inherit;
   background:
-    radial-gradient(ellipse 95% 85% at 48% 42%, transparent 25%, rgba(0, 0, 0, 0.15) 55%, rgba(0, 0, 0, 0.65) 100%),
-    radial-gradient(ellipse 55% 35% at 22% 18%, rgba(255, 255, 255, 0.06), transparent 55%);
+    radial-gradient(
+      ellipse 95% 85% at 48% 42%,
+      transparent 25%,
+      rgba(0, 0, 0, 0.15) 55%,
+      rgba(0, 0, 0, 0.65) 100%
+    ),
+    radial-gradient(
+      ellipse 55% 35% at 22% 18%,
+      rgba(255, 255, 255, 0.06),
+      transparent 55%
+    );
   animation: crt-vignette-drift 8s ease-in-out infinite;
 }
 
@@ -406,7 +512,11 @@ body {
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
   padding: 0.12em 0.5ch 0.15em;
-  background: radial-gradient(ellipse 100% 80% at 50% 20%, var(--tube-bg-mid) 0%, var(--tube-bg) 65%);
+  background: radial-gradient(
+    ellipse 100% 80% at 50% 20%,
+    var(--tube-bg-mid) 0%,
+    var(--tube-bg) 65%
+  );
   scrollbar-color: var(--phosphor-dim) var(--tube-bg);
 }
 

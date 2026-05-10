@@ -37,12 +37,16 @@ describe("shellClickShouldSkipFocus", () => {
 
   it("skips button clicks", () => {
     document.body.innerHTML = `<button type="button">x</button>`;
-    expect(shellClickShouldSkipFocus(document.querySelector("button")!)).toBe(true);
+    expect(shellClickShouldSkipFocus(document.querySelector("button")!)).toBe(
+      true,
+    );
   });
 
   it("skips details summary clicks", () => {
     document.body.innerHTML = `<details><summary>Panels</summary></details>`;
-    expect(shellClickShouldSkipFocus(document.querySelector("summary")!)).toBe(true);
+    expect(shellClickShouldSkipFocus(document.querySelector("summary")!)).toBe(
+      true,
+    );
   });
 
   it("does not skip disabled buttons (selector uses :not([disabled]))", () => {
@@ -53,17 +57,25 @@ describe("shellClickShouldSkipFocus", () => {
 
   it("skips other inputs", () => {
     document.body.innerHTML = `<input id="other" type="checkbox" /><input id="command-input" />`;
-    expect(shellClickShouldSkipFocus(document.querySelector("#other")!)).toBe(true);
+    expect(shellClickShouldSkipFocus(document.querySelector("#other")!)).toBe(
+      true,
+    );
   });
 
   it("skips textarea and role=button", () => {
     document.body.innerHTML = `<textarea></textarea><span role="button">go</span>`;
-    expect(shellClickShouldSkipFocus(document.querySelector("textarea")!)).toBe(true);
-    expect(shellClickShouldSkipFocus(document.querySelector('[role="button"]')!)).toBe(true);
+    expect(shellClickShouldSkipFocus(document.querySelector("textarea")!)).toBe(
+      true,
+    );
+    expect(
+      shellClickShouldSkipFocus(document.querySelector('[role="button"]')!),
+    ).toBe(true);
   });
 
   it("skips contenteditable", () => {
     document.body.innerHTML = `<div contenteditable="true">edit</div>`;
-    expect(shellClickShouldSkipFocus(document.querySelector("div")!)).toBe(true);
+    expect(shellClickShouldSkipFocus(document.querySelector("div")!)).toBe(
+      true,
+    );
   });
 });

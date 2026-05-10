@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { CRT_AWAITING_ORACLE_PLACEHOLDER } from "../transcript/constants.js";
 import {
   deriveSessionSignals,
-  formatSessionSignalsForPanel
+  formatSessionSignalsForPanel,
 } from "./sessionSignals.js";
 
 describe("deriveSessionSignals", () => {
@@ -19,7 +19,9 @@ describe("deriveSessionSignals", () => {
   });
 
   it("is ready after game text and captures recent move from echo line", () => {
-    const r = deriveSessionSignals("> LOOK\nYOU ARE STANDING AT THE END OF A ROAD.");
+    const r = deriveSessionSignals(
+      "> LOOK\nYOU ARE STANDING AT THE END OF A ROAD.",
+    );
     expect(r.phase).toBe("ready");
     expect(r.recentMoves).toEqual(["LOOK"]);
     expect(r.locationCues.some((c) => /YOU ARE STANDING/i.test(c))).toBe(true);
@@ -37,7 +39,9 @@ describe("deriveSessionSignals", () => {
   });
 
   it("matches YOU ARE IN style descriptions", () => {
-    const r = deriveSessionSignals("YOU ARE IN A MAZE OF TWISTY LITTLE PASSAGES.");
+    const r = deriveSessionSignals(
+      "YOU ARE IN A MAZE OF TWISTY LITTLE PASSAGES.",
+    );
     expect(r.locationCues.length).toBeGreaterThanOrEqual(1);
     expect(r.locationCues[0]).toContain("MAZE");
   });
@@ -58,13 +62,15 @@ describe("formatSessionSignalsForPanel", () => {
   it("shows ready copy when no cues yet", () => {
     const r = deriveSessionSignals("Some oracle text without YOU ARE.");
     expect(formatSessionSignalsForPanel(r)).toContain(
-      "No session cues yet — keep playing."
+      "No session cues yet — keep playing.",
     );
   });
 
   it("includes recent moves when present", () => {
     const r = deriveSessionSignals("> NORTH\nOK.");
     const lines = formatSessionSignalsForPanel(r);
-    expect(lines.some((l) => /Recent moves/i.test(l) && /NORTH/.test(l))).toBe(true);
+    expect(lines.some((l) => /Recent moves/i.test(l) && /NORTH/.test(l))).toBe(
+      true,
+    );
   });
 });

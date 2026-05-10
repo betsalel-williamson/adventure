@@ -18,7 +18,7 @@ export type OracleAppendResult = {
 export const appendOracleAwareLine = (
   previous: string,
   line: string,
-  opts: { awaitingOracle: boolean; isOracleChunk: boolean }
+  opts: { awaitingOracle: boolean; isOracleChunk: boolean },
 ): OracleAppendResult => {
   const ph = CRT_AWAITING_ORACLE_PLACEHOLDER;
   let base = previous;
@@ -35,6 +35,6 @@ export const appendOracleAwareLine = (
 
   return {
     text: appendTranscriptLine(base, line),
-    awaitingOracle: awaiting
+    awaitingOracle: awaiting,
   };
 };

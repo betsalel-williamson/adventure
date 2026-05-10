@@ -6,7 +6,7 @@ export type HealthWireBody = {
 /** Short label for a subdued footer — no URLs or jargon. */
 export const minimalOracleHint = (
   body: HealthWireBody | null,
-  opts: { fetchError?: string }
+  opts: { fetchError?: string },
 ): string => {
   if (opts.fetchError) {
     return "API unreachable";
@@ -25,7 +25,7 @@ export const minimalOracleHint = (
  */
 export const describeHealthStatus = (
   body: HealthWireBody | null,
-  opts: { fetchError?: string }
+  opts: { fetchError?: string },
 ): string => {
   if (opts.fetchError) {
     return `Not connected — ${opts.fetchError}`;

@@ -13,7 +13,13 @@
     <link rel="stylesheet" href="/styles/crt-shell.css" />
   </head>
   <body>
-    <svg class="crt-filters-svg" aria-hidden="true" focusable="false" width="0" height="0">
+    <svg
+      class="crt-filters-svg"
+      aria-hidden="true"
+      focusable="false"
+      width="0"
+      height="0"
+    >
       <defs>
         <filter id="crt-bubble" x="-8%" y="-8%" width="116%" height="116%">
           <feTurbulence
@@ -71,26 +77,83 @@
               <h2 class="crt-side-panel-heading">Assist</h2>
               <div class="crt-side-panel-body" id="crt-side-panel-root">
                 <details class="crt-assist-cover">
-                  <summary class="crt-assist-cover-summary">Show assist panels</summary>
+                  <summary class="crt-assist-cover-summary">
+                    Show assist panels
+                  </summary>
                   <div class="crt-assist-stack">
                     <section
                       class="crt-assist-section"
                       aria-labelledby="assistance-posture-heading"
                     >
-                      <h3 class="crt-assist-section-heading" id="assistance-posture-heading">
+                      <h3
+                        class="crt-assist-section-heading"
+                        id="assistance-posture-heading"
+                      >
                         Assistance posture
                       </h3>
-                      <p
-                        id="assistance-posture-panel"
-                        class="crt-assist-posture-body"
-                        aria-live="off"
-                      ></p>
+                      <fieldset class="crt-assist-posture-fieldset">
+                        <legend class="crt-visually-hidden">
+                          Choose assistance posture
+                        </legend>
+                        <div class="crt-assist-posture-radios">
+                          <label class="crt-assist-posture-radio-label">
+                            <input
+                              type="radio"
+                              name="assistance-posture"
+                              value="quickAssist"
+                            />
+                            Quick assist
+                          </label>
+                          <label class="crt-assist-posture-radio-label">
+                            <input
+                              type="radio"
+                              name="assistance-posture"
+                              value="studyFirst"
+                            />
+                            Study first
+                          </label>
+                        </div>
+                        <p
+                          id="posture-change-status"
+                          class="crt-assist-posture-status"
+                          role="status"
+                          aria-live="polite"
+                        ></p>
+                        <div
+                          id="posture-stale-notice"
+                          class="crt-assist-posture-stale"
+                          role="status"
+                          aria-live="polite"
+                          aria-label="Posture change notice"
+                          hidden
+                        >
+                          <p
+                            id="posture-stale-notice-text"
+                            class="crt-assist-posture-stale-text"
+                          ></p>
+                          <button
+                            type="button"
+                            id="posture-stale-dismiss"
+                            class="crt-assist-posture-stale-dismiss"
+                          >
+                            Dismiss
+                          </button>
+                        </div>
+                        <p
+                          id="assistance-posture-panel"
+                          class="crt-assist-posture-body"
+                          aria-live="off"
+                        ></p>
+                      </fieldset>
                     </section>
                     <section
                       class="crt-assist-section"
                       aria-labelledby="session-signals-heading"
                     >
-                      <h3 class="crt-assist-section-heading" id="session-signals-heading">
+                      <h3
+                        class="crt-assist-section-heading"
+                        id="session-signals-heading"
+                      >
                         Session signals
                       </h3>
                       <p
@@ -99,21 +162,47 @@
                         aria-live="off"
                       ></p>
                     </section>
-                    <section class="crt-assist-section" aria-labelledby="draft-map-heading">
-                      <h3 class="crt-assist-section-heading" id="draft-map-heading">
+                    <section
+                      class="crt-assist-section"
+                      aria-labelledby="draft-map-heading"
+                    >
+                      <h3
+                        class="crt-assist-section-heading"
+                        id="draft-map-heading"
+                      >
                         Draft map
                       </h3>
-                      <p class="crt-assist-placeholder">Not available in this build.</p>
+                      <p class="crt-assist-placeholder">
+                        Not available in this build.
+                      </p>
                     </section>
-                    <section class="crt-assist-section" aria-labelledby="xstate-heading">
-                      <h3 class="crt-assist-section-heading" id="xstate-heading">XState</h3>
-                      <p class="crt-assist-placeholder">Not available in this build.</p>
+                    <section
+                      class="crt-assist-section"
+                      aria-labelledby="xstate-heading"
+                    >
+                      <h3
+                        class="crt-assist-section-heading"
+                        id="xstate-heading"
+                      >
+                        XState
+                      </h3>
+                      <p class="crt-assist-placeholder">
+                        Not available in this build.
+                      </p>
                     </section>
-                    <section class="crt-assist-section" aria-labelledby="langgraph-heading">
-                      <h3 class="crt-assist-section-heading" id="langgraph-heading">
+                    <section
+                      class="crt-assist-section"
+                      aria-labelledby="langgraph-heading"
+                    >
+                      <h3
+                        class="crt-assist-section-heading"
+                        id="langgraph-heading"
+                      >
                         LangGraph
                       </h3>
-                      <p class="crt-assist-placeholder">Not available in this build.</p>
+                      <p class="crt-assist-placeholder">
+                        Not available in this build.
+                      </p>
                     </section>
                   </div>
                 </details>
@@ -123,7 +212,12 @@
         </div>
       </section>
 
-      <p id="status-strip" class="shell-footer" role="status" aria-live="polite">
+      <p
+        id="status-strip"
+        class="shell-footer"
+        role="status"
+        aria-live="polite"
+      >
         Connecting…
       </p>
     </main>

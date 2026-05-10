@@ -23,20 +23,27 @@ export const oracleObservationText = (env: TurnEnvelope): string | null => {
     return null;
   }
   const output = env.payload.output;
-  const text = typeof output === "string" ? output : JSON.stringify(output ?? "");
+  const text =
+    typeof output === "string" ? output : JSON.stringify(output ?? "");
   return normalizeOracleOutputLineBreaks(text).replace(/\s+$/, "");
 };
 
-export const virtualTerminalChunkFromEnvelope = (env: TurnEnvelope): string | null => {
+export const virtualTerminalChunkFromEnvelope = (
+  env: TurnEnvelope,
+): string | null => {
   if (env.kind === "proposal") {
     const action =
-      typeof env.payload.action === "string" ? env.payload.action : String(env.payload.action ?? "?");
+      typeof env.payload.action === "string"
+        ? env.payload.action
+        : String(env.payload.action ?? "?");
     return `[agent] ${action}`;
   }
   return oracleObservationText(env);
 };
 
-export const virtualTerminalChunkFromWire = (wire: SseWireEvent): string | null => {
+export const virtualTerminalChunkFromWire = (
+  wire: SseWireEvent,
+): string | null => {
   if (wire.event !== "turn") {
     return null;
   }

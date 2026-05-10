@@ -7,11 +7,14 @@ const rootDir = fileURLToPath(new URL(".", import.meta.url));
 export default defineConfig({
   resolve: {
     alias: {
-      "@contracts": path.resolve(rootDir, "../adventure-v2/packages/contracts/src/index.ts")
-    }
+      "@contracts": path.resolve(
+        rootDir,
+        "../adventure-v2/packages/contracts/src/index.ts",
+      ),
+    },
   },
   test: {
     environment: "node",
-    include: ["apps/web/src/**/*.test.ts"]
-  }
+    include: ["apps/web/src/**/*.test.ts"],
+  },
 });

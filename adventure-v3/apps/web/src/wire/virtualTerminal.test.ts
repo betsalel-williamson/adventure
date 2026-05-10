@@ -4,7 +4,7 @@ import {
   formatUserEchoLine,
   normalizeOracleOutputLineBreaks,
   oracleObservationText,
-  virtualTerminalChunkFromEnvelope
+  virtualTerminalChunkFromEnvelope,
 } from "./virtualTerminal.js";
 
 const oracleEnv = (output: string): TurnEnvelope => ({
@@ -14,14 +14,14 @@ const oracleEnv = (output: string): TurnEnvelope => ({
   source: "oracle",
   kind: "oracle_observation",
   ts: "x",
-  payload: { outcome: "accepted", rejected: false, output }
+  payload: { outcome: "accepted", rejected: false, output },
 });
 
 describe("virtualTerminalChunkFromEnvelope", () => {
   it("extracts oracle text", () => {
-    expect(virtualTerminalChunkFromEnvelope(oracleEnv("You are in a forest."))).toBe(
-      "You are in a forest."
-    );
+    expect(
+      virtualTerminalChunkFromEnvelope(oracleEnv("You are in a forest.")),
+    ).toBe("You are in a forest.");
   });
 
   it("formats proposal", () => {
@@ -32,7 +32,7 @@ describe("virtualTerminalChunkFromEnvelope", () => {
       source: "cognition",
       kind: "proposal",
       ts: "x",
-      payload: { action: "north" }
+      payload: { action: "north" },
     };
     expect(virtualTerminalChunkFromEnvelope(env)).toBe("[agent] north");
   });
@@ -58,13 +58,15 @@ describe("oracleObservationText", () => {
       source: "oracle",
       kind: "reconcile",
       ts: "x",
-      payload: {}
+      payload: {},
     };
     expect(oracleObservationText(env)).toBeNull();
   });
 
   it("applies newline collapsing on oracle output", () => {
-    expect(oracleObservationText(oracleEnv("LINE ONE.\n\n\nLINE TWO."))).toBe("LINE ONE.\n\nLINE TWO.");
+    expect(oracleObservationText(oracleEnv("LINE ONE.\n\n\nLINE TWO."))).toBe(
+      "LINE ONE.\n\nLINE TWO.",
+    );
   });
 });
 

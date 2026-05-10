@@ -1,4 +1,8 @@
-import type { CreateRunRequest, CreateRunResponse, SseWireEvent } from "@contracts";
+import type {
+  CreateRunRequest,
+  CreateRunResponse,
+  SseWireEvent,
+} from "@contracts";
 import type { HealthWireBody } from "../status/health.js";
 import { parseSseWirePayload } from "../wire/parse.js";
 
@@ -7,8 +11,8 @@ const defaultRunBody = (): CreateRunRequest => ({
     scenarioId: "benchmark-scenario-1",
     modelCategory: "SLM",
     modelName: "slm-baseline",
-    seed: 42
-  }
+    seed: 42,
+  },
 });
 
 export async function fetchHealth(apiBase: string): Promise<{
@@ -29,12 +33,14 @@ export async function fetchHealth(apiBase: string): Promise<{
   }
 }
 
-export async function createRun(apiBase: string): Promise<{ runId: string } | { error: string }> {
+export async function createRun(
+  apiBase: string,
+): Promise<{ runId: string } | { error: string }> {
   try {
     const res = await fetch(`${apiBase.replace(/\/$/, "")}/runs`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(defaultRunBody())
+      body: JSON.stringify(defaultRunBody()),
     });
     if (!res.ok) {
       return { error: `POST /runs failed: HTTP ${res.status}` };
@@ -47,13 +53,20 @@ export async function createRun(apiBase: string): Promise<{ runId: string } | { 
   }
 }
 
-export async function postTurn(apiBase: string, runId: string, input: string): Promise<{ ok: true } | { error: string }> {
+export async function postTurn(
+  apiBase: string,
+  runId: string,
+  input: string,
+): Promise<{ ok: true } | { error: string }> {
   try {
-    const res = await fetch(`${apiBase.replace(/\/$/, "")}/runs/${runId}/turns`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ input })
-    });
+    const res = await fetch(
+      `${apiBase.replace(/\/$/, "")}/runs/${runId}/turns`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ input }),
+      },
+    );
     if (res.status !== 204) {
       return { error: `POST /turns failed: HTTP ${res.status}` };
     }
@@ -76,7 +89,7 @@ export function openRunEventSource(
   runId: string,
   onEvent: (ev: SseWireEvent) => void,
   onConnectionError: () => void,
-  onOpen?: () => void
+  onOpen?: () => void,
 ): RunEventSourceHandle {
   const url = `${apiBase.replace(/\/$/, "")}/runs/${runId}/events`;
   const es = new EventSource(url);
@@ -105,6 +118,6 @@ export function openRunEventSource(
   return {
     close: () => {
       es.close();
-    }
+    },
   };
 }
