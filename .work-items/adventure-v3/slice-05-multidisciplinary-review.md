@@ -1,3 +1,5 @@
+> **Historical:** Superseded for **default product direction** by the exploration map reset (map column + feature flags). Probe and full Assist strip are off by default; implementations remain behind flags.
+
 # Multidisciplinary review — adventure-v3 slice 05 (Cartographer + Navigator, LangGraph + SLM draft map)
 
 Audience: UX, architecture, operations. Scope: **`adventure-v3`** CRT shell plus **`packages/map-core`**, **`packages/assist-server`**: inspectable **draft** directed-graph map, **LangGraph** cartographer/navigator pipeline, **SLM adapter** (Ollama or deterministic heuristic).

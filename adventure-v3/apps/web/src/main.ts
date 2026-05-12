@@ -18,10 +18,8 @@ import {
 } from "./wire/virtualTerminal.js";
 import {
   ASSISTANCE_POSTURE_STORAGE_KEY,
-  POSTURE_CHANGE_STALE_NOTICE,
   formatAssistancePostureForPanel,
   formatPostureChangeAcknowledgment,
-  isAssistancePostureId,
   parseStoredAssistancePostureId,
   type AssistancePostureId,
 } from "./posture/assistancePosture.js";
@@ -34,9 +32,16 @@ import {
   renderDraftMapPanels,
   requestAssistStep,
   setDraftMapStatus,
-  wireDraftMapDom,
   type DraftMapElements,
 } from "./assist/draftMapUi.js";
+import {
+  refreshExplorationMapFromTranscript,
+  type ExplorationMapElements,
+} from "./assist/explorationMapUpdate.js";
+import { v3FeatureFlags } from "./featureFlags.js";
+import { applyV3ChromeFromFlags } from "./shell/applyChromeFromFlags.js";
+import { wireExplorationMapControls } from "./shell/wireExplorationMapControls.js";
+import { wireLegacyAssistControls } from "./shell/wireLegacyAssistControls.js";
 
 const apiBase: string = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8787";
 
@@ -88,6 +93,16 @@ const draftMapEls: DraftMapElements = {
   copyJson: document.querySelector("#assist-copy-json"),
   dismiss: document.querySelector("#assist-dismiss-map"),
 };
+
+const explorationMapEls: ExplorationMapElements = {
+  mermaidVisual: document.querySelector("#exploration-map-mermaid-visual"),
+  mermaidPre: document.querySelector("#exploration-map-mermaid"),
+  status: document.querySelector("#exploration-map-status"),
+};
+
+applyV3ChromeFromFlags();
+
+wireExplorationMapControls(explorationMapEls);
 
 let transcriptText = CRT_AWAITING_ORACLE_PLACEHOLDER;
 let awaitingOracle = true;
@@ -175,12 +190,6 @@ const syncPostureRadiosFromSelection = (): void => {
   }
 };
 
-syncPostureRadiosFromSelection();
-
-if (postureStaleNoticeTextEl) {
-  postureStaleNoticeTextEl.textContent = POSTURE_CHANGE_STALE_NOTICE;
-}
-
 const hideStalePostureNotice = (): void => {
   postureStaleNoticeEl?.setAttribute("hidden", "");
 };
@@ -213,19 +222,8 @@ const applyUserPostureChange = (nextId: AssistancePostureId): void => {
   showStalePostureNotice();
 };
 
-for (const input of postureRadioInputs) {
-  input.addEventListener("change", () => {
-    if (!isAssistancePostureId(input.value)) {
-      return;
-    }
-    applyUserPostureChange(input.value);
-  });
-}
-
-postureStaleDismissEl?.addEventListener("click", hideStalePostureNotice);
-
 const refreshSessionSignalsPanel = (): void => {
-  if (!sessionSignalsPanelEl) {
+  if (!v3FeatureFlags.assistPanels || !sessionSignalsPanelEl) {
     return;
   }
   const lines = formatSessionSignalsForPanel(
@@ -249,12 +247,19 @@ const renderTranscript = (opts?: TranscriptRenderOpts): void => {
     }
   }
   refreshSessionSignalsPanel();
+  refreshExplorationMapPanel();
 };
 
-refreshAssistancePosturePanel();
-
-wireDraftMapDom(draftMapEls);
-applyProbeToggleLabel(draftMapEls.probeToggle, false);
+const refreshExplorationMapPanel = (): void => {
+  if (!v3FeatureFlags.explorationMap) {
+    return;
+  }
+  void refreshExplorationMapFromTranscript({
+    runId: currentRunId,
+    transcript: transcriptText,
+    els: explorationMapEls,
+  });
+};
 
 const refreshDraftMapOnly = async (): Promise<void> => {
   if (!currentRunId) {
@@ -281,26 +286,10 @@ const refreshDraftMapOnly = async (): Promise<void> => {
   await renderDraftMapPanels(draftMapEls, r.mermaid, r.mapJson);
 };
 
-draftMapEls.refreshBtn?.addEventListener("click", () => {
-  void refreshDraftMapOnly();
-});
-
-draftMapEls.probeToggle?.addEventListener("click", () => {
-  assistMapProbeEnabled = !assistMapProbeEnabled;
-  assistProbeStepCount = 0;
-  applyProbeToggleLabel(draftMapEls.probeToggle, assistMapProbeEnabled);
-  setDraftMapStatus(
-    draftMapEls.status,
-    assistMapProbeEnabled
-      ? "Map probe on — each game output turn will ask assist for the next compass move."
-      : "Map probe off.",
-  );
-  if (assistMapProbeEnabled) {
-    void refreshDraftMapOnly();
-  }
-});
-
 const scheduleAssistMapProbe = (): void => {
+  if (!v3FeatureFlags.mapProbe) {
+    return;
+  }
   if (!assistMapProbeEnabled) {
     return;
   }
@@ -384,6 +373,37 @@ const runAssistProbeCycle = async (): Promise<void> => {
     }
   }
 };
+
+wireLegacyAssistControls({
+  assistCoverEl,
+  sessionSignalsDetailsEl,
+  syncSessionSignalsAriaLive,
+  draftMapEls,
+  postureRadioInputs,
+  postureStaleNoticeTextEl,
+  postureStaleDismissEl,
+  syncPostureRadiosFromSelection,
+  refreshAssistancePosturePanel,
+  applyUserPostureChange,
+  hideStalePostureNotice,
+  onRefreshDraftMap: () => {
+    void refreshDraftMapOnly();
+  },
+  onProbeToggle: () => {
+    assistMapProbeEnabled = !assistMapProbeEnabled;
+    assistProbeStepCount = 0;
+    applyProbeToggleLabel(draftMapEls.probeToggle, assistMapProbeEnabled);
+    setDraftMapStatus(
+      draftMapEls.status,
+      assistMapProbeEnabled
+        ? "Map probe on — each game output turn will ask assist for the next compass move."
+        : "Map probe off.",
+    );
+    if (assistMapProbeEnabled) {
+      void refreshDraftMapOnly();
+    }
+  },
+});
 
 const refreshStatusStrip = (): void => {
   if (!statusStripEl) {
@@ -593,14 +613,6 @@ const bootstrap = async (): Promise<void> => {
 
   commandInputEl?.focus({ preventScroll: true });
 };
-
-assistCoverEl?.addEventListener("toggle", () => {
-  syncSessionSignalsAriaLive();
-});
-
-sessionSignalsDetailsEl?.addEventListener("toggle", () => {
-  syncSessionSignalsAriaLive();
-});
 
 void bootstrap();
 

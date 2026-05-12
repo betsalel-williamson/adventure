@@ -19,6 +19,12 @@ export class HttpWorld extends World {
   readPromise?: Promise<SseWireEvent[]>;
   wire?: SseWireEvent[];
   healthBody?: Record<string, unknown>;
+  /** Last JSON from `GET /assist/health` (only @assist scenarios). */
+  assistHealthBody?: Record<string, unknown>;
+  /** Assist HTTP app (only for @assist scenarios). */
+  assistServer?: Server;
+  assistBaseUrl?: string;
+  assistIngestBody?: Record<string, unknown>;
 }
 
 setWorldConstructor(HttpWorld);

@@ -2,11 +2,33 @@
 
 Thin **game-first** web client for Colossal Cave: hero CRT transcript (v1 [`adventure-nl`](../adventure-nl/) metaphor), talking to the **adventure-v2** HTTP + SSE API. The CRT viewport is **80×24** characters (common terminal size; less line-wrapping than a 40-column window for Colossal Cave prose).
 
-Optional **Assist** strip beside the CRT: use **Show assist panels** to choose **assistance posture** (**Quick assist** / **Study first**; choice persists in this browser tab via `sessionStorage` under `adventure-v3-assistance-posture`), see acknowledgment and stale-preview notice on change, and read plain-language rules (including how draft apply would work when that control exists). The strip shows **session signals** (derived from the visible transcript) and an **inspectable draft map**: Mermaid + JSON summaries built from compass echoes and `YOU ARE …` lines you already see on the CRT (not engine truth).
+**Default beside-CRT surface:** an **exploration map** column — a **draft** Mermaid directed graph of inferred places and compass moves from the visible transcript (Fortran remains truth). A background **location agent** path (`POST /assist/ingest`) merges transcript lines; when assist is unreachable, the client falls back to deterministic merge in `@adventure-v3/map-core`.
 
-## Assist runtime — LangGraph draft map probe
+**Legacy Assist** (posture, session signals, probe, JSON/Mermaid inspectors) stays in the tree but is **off by default** via feature flags.
 
-The shell can call a small **assist HTTP server** (default **http://127.0.0.1:8790**) implemented in [`packages/assist-server`](packages/assist-server). It merges transcript text into a **directed graph** (`@adventure-v3/map-core`), then runs a **LangGraph** pipeline (cartographer → navigator). **Navigator** prefers a **local SLM** when configured; otherwise it uses a deterministic **heuristic** adapter so CI stays green.
+## Feature flags (build + dev overrides)
+
+Defaults live in [`apps/web/v3-feature-flags.json`](apps/web/v3-feature-flags.json). Resolution runs in [`apps/web/src/featureFlags.ts`](apps/web/src/featureFlags.ts): **Vite env** overrides config defaults; **query string** or **`sessionStorage`** (`adventure-v3-flag-<name>`) overrides for local regression.
+
+| Flag             | Env                       | Default |
+| ---------------- | ------------------------- | ------- |
+| `explorationMap` | `VITE_V3_EXPLORATION_MAP` | on      |
+| `assistPanels`   | `VITE_V3_ASSIST_PANELS`   | off     |
+| `mapProbe`       | `VITE_V3_MAP_PROBE`       | off     |
+| `mapInspectors`  | `VITE_V3_MAP_INSPECTORS`  | off     |
+| `locationAgent`  | `VITE_V3_LOCATION_AGENT`  | on      |
+
+Example — re-enable slice-02–05 Assist chrome:
+
+```bash
+VITE_V3_ASSIST_PANELS=true VITE_V3_MAP_PROBE=true VITE_V3_MAP_INSPECTORS=true npm run dev
+```
+
+Assist server: set **`ASSIST_PROBE_ENABLED=true`** to allow `advance: true` on **`POST /assist/step`** (still requires client `mapProbe`).
+
+## Assist runtime
+
+[`packages/assist-server`](packages/assist-server) merges transcript text into a **directed graph** (`@adventure-v3/map-core`). **`POST /assist/ingest`** updates the graph from transcript (+ optional patch). **`POST /assist/step`** with `advance: true` runs the LangGraph navigator only when probe is enabled server- and client-side.
 
 From `adventure-v3/`:
 
@@ -17,9 +39,9 @@ From `adventure-v3/`:
 
 **Optional Ollama (Llama / Gemma, etc.):** set **`OLLAMA_URL`** (e.g. `http://127.0.0.1:11434`) and optionally **`OLLAMA_MODEL`** (`llama3.2`, `gemma2`, …). If **`OLLAMA_URL`** is unset, the server uses the **heuristic** adapter only.
 
-**Study first posture:** automated probe steps require the **Study first: confirm next probe step** checkbox before each assist-backed move (`studyFirstConfirmed` on **`POST /assist/step`**).
+**Study first posture** (legacy Assist, when enabled): automated probe steps require the **Study first: confirm next probe step** checkbox before each assist-backed move (`studyFirstConfirmed` on **`POST /assist/step`**).
 
-**Honest labeling (US‑3‑1 alignment):** the Draft map strip describes **model-assisted map probe**; the heuristic adapter is **not** an SLM — run Ollama when you intend real local LLM-backed navigation hints.
+**Honest labeling (US‑3‑1 alignment):** map copy describes **draft assistance**; the heuristic adapter is **not** an SLM — run Ollama when you intend real local LLM-backed navigation hints.
 
 ## Quick start (API + CRT shell)
 
@@ -50,8 +72,9 @@ VITE_API_URL=http://127.0.0.1:8787 npm start
 
 ## Tests
 
-- **Unit / component logic:** `npm test` (Vitest), including transcript/session signal derivation ([`apps/web/src/session/sessionSignals.test.ts`](apps/web/src/session/sessionSignals.test.ts)) and assistance posture copy ([`apps/web/src/posture/assistancePosture.test.ts`](apps/web/src/posture/assistancePosture.test.ts)).
-- **Wire Gherkin (synthetic oracle):** `npm run test:cucumber` — temporary API + [`crt_wire_health.feature`](tests/features/crt_wire_health.feature) + [`crt_wire_first_turn.feature`](tests/features/crt_wire_first_turn.feature).
+- **Unit / component logic:** `npm test` (Vitest). **`test.projects`** in [`vitest.config.ts`](vitest.config.ts): **`web`** = jsdom for `apps/web/**`; **`node`** for `packages/**`. Put **colocated** specs next to the module under `apps/web/src/**/*.test.ts` when you need `vi.mock` of sibling imports; keep **harness-style** cases under [`apps/web/tests/`](apps/web/tests/) when the test loads full shell HTML or shared DOM helpers.
+- **Frontend shell harness:** [`apps/web/tests/harness/`](apps/web/tests/harness/) loads real [`index.html`](apps/web/index.html) markup into jsdom (`loadShellIndexBodyIntoDocument`, `resetShellDomWithFlags`). Contract + integration tests live under [`apps/web/tests/`](apps/web/tests/). Run only web (jsdom) tests: `npm run test:web` (`vitest run --project web`).
+- **Wire Gherkin (synthetic oracle):** `npm run test:cucumber` — temporary API + assist (for `@assist` features) + [`crt_wire_health.feature`](tests/features/crt_wire_health.feature) + [`crt_wire_first_turn.feature`](tests/features/crt_wire_first_turn.feature) + [`crt_assist_exploration_wire.feature`](tests/features/crt_assist_exploration_wire.feature) (HTTP contract for `POST /assist/ingest` used by the exploration map).
 - **Fortran wire scenarios:** requires repo-root `./adventure` built with `make adventure`. Run `npm run test:cucumber:fortran` (loads [`tests/features/fortran/`](tests/features/fortran/) with auto Fortran oracle detection).
 
 Suggested regression before merge from `adventure-v3/`: `npm run verify` (lint, Prettier check, unit tests, cucumber wire tests, production build). Add `npm run test:cucumber:fortran` when you change oracle/subprocess wiring. For edits inside [`adventure-v2`](../adventure-v2/), also follow that package’s gates.

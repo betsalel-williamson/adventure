@@ -8,7 +8,7 @@ Ship a **human-facing** Colossal Cave experience again: **game text first**, **C
 
 **CRT-first MVP shipped** in-repo: [`adventure-v3/README.md`](../../adventure-v3/README.md) documents the shell talking to the adventure-v2 HTTP + SSE API with honest status and wire tests. Planning docs ([epics/index.md](epics/index.md), [stories/](stories/)) track **what end users see next**.
 
-**Next phase (queue):** optional **ancillary** surfaces—session awareness, assistance posture, draft location picture—under **E4** and **E5**, without displacing the hero transcript (see [guidelines/adventure-v3/orchestration-before-playability.md](../../guidelines/adventure-v3/orchestration-before-playability.md)).
+**Next phase (queue):** **exploration map column** beside the hero CRT — a **draft** Mermaid directed graph of locations and compass moves, updated from visible play via a **background location agent** (line + transcript context → graph). **E4** ancillary UI (session signals, posture) remains **deferred** for the default surface; implementations stay **feature-flagged** for regression (see [`deferred.md`](deferred.md) and [`design-agentic-mvp.md`](design-agentic-mvp.md)).
 
 ## Rule (non-negotiable)
 
@@ -22,7 +22,8 @@ Ship a **human-facing** Colossal Cave experience again: **game text first**, **C
 ## Terms (this planning folder)
 
 - **Hero CRT / CRT transcript:** the main game surface—readable Adventure output plus command input—not diagram or trace panels.
-- **Ancillary:** optional UI beside the hero CRT (session signals, posture, draft map); never replaces the transcript as the primary surface.
+- **Exploration map column:** optional beside-CRT **draft** Mermaid diagram of inferred places and compass edges; default product surface after the map reset.
+- **Ancillary (legacy):** optional Assist panels (session signals, posture, probe, inspectors); **off by default** via feature flags.
 
 ## References
 

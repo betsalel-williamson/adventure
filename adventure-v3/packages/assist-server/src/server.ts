@@ -5,6 +5,8 @@ import {
   mergeGraphFromTranscript,
   directedGraphToMermaidFlowchart,
   graphToJson,
+  applyLocationGraphPatch,
+  parseLocationGraphPatch,
   type DirectedMapGraph,
 } from "@adventure-v3/map-core";
 import { z } from "zod";
@@ -24,6 +26,41 @@ const assistStepBodySchema = z.object({
 const PORT = Number(process.env.ASSIST_SERVER_PORT ?? "8790");
 const OLLAMA_URL = process.env.OLLAMA_URL;
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL ?? "llama3.2";
+
+const parseEnvTruthy = (
+  raw: string | undefined,
+  fallback: boolean,
+): boolean => {
+  if (raw === undefined || raw.trim() === "") {
+    return fallback;
+  }
+  const normalized = raw.trim().toLowerCase();
+  if (["1", "true", "yes", "on"].includes(normalized)) {
+    return true;
+  }
+  if (["0", "false", "no", "off"].includes(normalized)) {
+    return false;
+  }
+  return fallback;
+};
+
+const ASSIST_PROBE_ENABLED = parseEnvTruthy(
+  process.env.ASSIST_PROBE_ENABLED,
+  false,
+);
+
+const assistIngestBodySchema = z.object({
+  runId: z.string(),
+  transcript: z.string(),
+  line: z.string().optional(),
+  context: z
+    .object({
+      priorLines: z.array(z.string()).optional(),
+      currentPlaceId: z.string().nullable().optional(),
+    })
+    .optional(),
+  patch: z.unknown().optional(),
+});
 
 /** Per adventure-v2 run — draft map is hypothetical assist state only. */
 const graphsByRunId = new Map<string, DirectedMapGraph>();
@@ -72,8 +109,21 @@ export const createAssistApp = (): express.Application => {
     }
 
     /** Study first: require explicit confirm flag before automating compass moves only. */
+    const prev = graphsByRunId.get(body.runId) ?? createEmptyGraph();
     const posture = body.assistancePosture ?? "quickAssist";
     const advancing = body.advance !== false;
+    if (advancing && !ASSIST_PROBE_ENABLED) {
+      const merged = mergeGraphFromTranscript(prev, body.transcript);
+      graphsByRunId.set(body.runId, merged);
+      res.json({
+        status: "ok",
+        nextMove: null,
+        mapJson: graphToJson(merged),
+        mermaid: directedGraphToMermaidFlowchart(merged),
+        notice: "Map probe disabled on assist server.",
+      });
+      return;
+    }
     if (
       advancing &&
       posture === "studyFirst" &&
@@ -89,8 +139,6 @@ export const createAssistApp = (): express.Application => {
       });
       return;
     }
-
-    const prev = graphsByRunId.get(body.runId) ?? createEmptyGraph();
 
     try {
       if (body.advance === false) {
@@ -126,10 +174,40 @@ export const createAssistApp = (): express.Application => {
     }
   });
 
+  app.post("/assist/ingest", (req, res): void => {
+    let body: z.infer<typeof assistIngestBodySchema>;
+    try {
+      body = assistIngestBodySchema.parse(req.body);
+    } catch (e) {
+      res.status(400).json({
+        status: "error",
+        errorMessage:
+          e instanceof Error
+            ? e.message
+            : "Invalid JSON body for /assist/ingest",
+      });
+      return;
+    }
+
+    const prev = graphsByRunId.get(body.runId) ?? createEmptyGraph();
+    let merged = mergeGraphFromTranscript(prev, body.transcript);
+    const patch = parseLocationGraphPatch(body.patch);
+    if (patch !== null) {
+      merged = applyLocationGraphPatch(merged, patch);
+    }
+    graphsByRunId.set(body.runId, merged);
+    res.json({
+      status: "ok",
+      mapJson: graphToJson(merged),
+      mermaid: directedGraphToMermaidFlowchart(merged),
+    });
+  });
+
   app.get("/assist/health", (_req, res) => {
     res.json({
       status: "ok",
       adapter: OLLAMA_URL ? `ollama:${OLLAMA_MODEL}` : "heuristic",
+      probeEnabled: ASSIST_PROBE_ENABLED,
     });
   });
 

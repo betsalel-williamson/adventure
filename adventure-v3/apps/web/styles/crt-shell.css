@@ -202,6 +202,33 @@ body {
   border-bottom: 1px solid rgba(40, 48, 38, 0.85);
 }
 
+.crt-exploration-map-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-height: 0;
+}
+
+.crt-exploration-map-intro,
+.crt-exploration-map-status {
+  margin: 0;
+  padding: 0 0.65rem;
+  font-size: 0.62rem;
+  line-height: 1.35;
+  color: rgba(130, 142, 118, 0.85);
+}
+
+.crt-exploration-map-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0 0.65rem 0.5rem;
+}
+
+.crt-legacy-assist-panels[hidden] {
+  display: none !important;
+}
+
 .crt-side-panel-body {
   flex: 1 1 auto;
   min-height: 6rem;

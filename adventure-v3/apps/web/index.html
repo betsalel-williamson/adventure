@@ -72,196 +72,250 @@
                 </div>
               </div>
             </div>
-            <!-- Vertical strip beside the tube (lab terminals often had a blank / annotation panel). -->
-            <aside class="crt-side-panel" aria-label="Assist panels">
-              <h2 class="crt-side-panel-heading">Assist</h2>
-              <div class="crt-side-panel-body" id="crt-side-panel-root">
-                <details class="crt-assist-cover">
-                  <summary class="crt-assist-cover-summary">
-                    Show assist panels
-                  </summary>
-                  <p class="crt-assist-open-hint">
-                    Open a section below; the CRT stays the main game surface.
-                  </p>
-                  <div class="crt-assist-stack">
-                    <details
-                      class="crt-assist-nested"
-                      id="assist-posture-details"
-                    >
-                      <summary
-                        class="crt-assist-nested-summary"
-                        id="assistance-posture-heading"
+            <!-- Beside CRT: exploration map (default) + legacy Assist (feature-flagged). -->
+            <aside class="crt-side-panel" aria-label="Exploration map">
+              <section
+                id="exploration-map-panel"
+                class="crt-exploration-map-panel"
+                aria-label="Exploration map"
+              >
+                <h2 class="crt-side-panel-heading">Exploration map</h2>
+                <p class="crt-exploration-map-intro">
+                  Draft only — Fortran is truth. Inferred places and compass
+                  moves from this transcript.
+                </p>
+                <p
+                  id="exploration-map-status"
+                  class="crt-exploration-map-status"
+                  role="status"
+                  aria-live="polite"
+                ></p>
+                <pre
+                  id="exploration-map-mermaid"
+                  class="crt-visually-hidden"
+                  aria-hidden="true"
+                ></pre>
+                <div
+                  id="exploration-map-mermaid-visual"
+                  class="crt-draft-mermaid-visual"
+                  aria-label="Exploration map diagram (Mermaid)"
+                ></div>
+                <div class="crt-exploration-map-actions">
+                  <button type="button" id="exploration-map-copy">
+                    Copy Mermaid + disclaimer
+                  </button>
+                  <button type="button" id="exploration-map-hide">
+                    Hide diagram
+                  </button>
+                </div>
+              </section>
+
+              <div
+                id="v3-legacy-assist-panels"
+                class="crt-legacy-assist-panels"
+                hidden
+              >
+                <h2 class="crt-side-panel-heading">Assist</h2>
+                <div class="crt-side-panel-body" id="crt-side-panel-root">
+                  <details class="crt-assist-cover">
+                    <summary class="crt-assist-cover-summary">
+                      Show assist panels
+                    </summary>
+                    <p class="crt-assist-open-hint">
+                      Open a section below; the CRT stays the main game surface.
+                    </p>
+                    <div class="crt-assist-stack">
+                      <details
+                        class="crt-assist-nested"
+                        id="assist-posture-details"
                       >
-                        Posture &amp; rules
-                      </summary>
-                      <div class="crt-assist-nested-body">
-                        <fieldset class="crt-assist-posture-fieldset">
-                          <legend class="crt-visually-hidden">
-                            Choose assistance posture
-                          </legend>
-                          <div class="crt-assist-posture-radios">
-                            <label class="crt-assist-posture-radio-label">
+                        <summary
+                          class="crt-assist-nested-summary"
+                          id="assistance-posture-heading"
+                        >
+                          Posture &amp; rules
+                        </summary>
+                        <div class="crt-assist-nested-body">
+                          <fieldset class="crt-assist-posture-fieldset">
+                            <legend class="crt-visually-hidden">
+                              Choose assistance posture
+                            </legend>
+                            <div class="crt-assist-posture-radios">
+                              <label class="crt-assist-posture-radio-label">
+                                <input
+                                  type="radio"
+                                  name="assistance-posture"
+                                  value="quickAssist"
+                                />
+                                Quick assist
+                              </label>
+                              <label class="crt-assist-posture-radio-label">
+                                <input
+                                  type="radio"
+                                  name="assistance-posture"
+                                  value="studyFirst"
+                                />
+                                Study first
+                              </label>
+                            </div>
+                            <p
+                              id="posture-change-status"
+                              class="crt-assist-posture-status"
+                              role="status"
+                              aria-live="polite"
+                            ></p>
+                            <div
+                              id="posture-stale-notice"
+                              class="crt-assist-posture-stale"
+                              role="status"
+                              aria-live="polite"
+                              aria-label="Posture change notice"
+                              hidden
+                            >
+                              <p
+                                id="posture-stale-notice-text"
+                                class="crt-assist-posture-stale-text"
+                              ></p>
+                              <button
+                                type="button"
+                                id="posture-stale-dismiss"
+                                class="crt-assist-posture-stale-dismiss"
+                              >
+                                Dismiss
+                              </button>
+                            </div>
+                            <details class="crt-assist-subnested">
+                              <summary class="crt-assist-subnested-summary">
+                                Full posture text (what to expect / avoid)
+                              </summary>
+                              <p
+                                id="assistance-posture-panel"
+                                class="crt-assist-posture-body"
+                                aria-live="off"
+                              ></p>
+                            </details>
+                          </fieldset>
+                        </div>
+                      </details>
+
+                      <details
+                        class="crt-assist-nested"
+                        id="assist-session-signals-details"
+                      >
+                        <summary
+                          class="crt-assist-nested-summary"
+                          id="session-signals-heading"
+                        >
+                          Session signals
+                        </summary>
+                        <div class="crt-assist-nested-body">
+                          <p
+                            id="session-signals-panel"
+                            class="crt-session-signals-body"
+                            aria-live="off"
+                          ></p>
+                        </div>
+                      </details>
+
+                      <details
+                        class="crt-assist-nested"
+                        id="assist-draft-details"
+                      >
+                        <summary
+                          class="crt-assist-nested-summary"
+                          id="draft-map-heading"
+                        >
+                          Draft map &amp; probe
+                        </summary>
+                        <div class="crt-assist-nested-body">
+                          <p class="crt-assist-draft-intro">
+                            Draft only — Fortran is truth. Map merges compass
+                            moves &amp; YOU ARE lines from this transcript.
+                            Probe: LangGraph + heuristic or Ollama (README).
+                          </p>
+                          <div
+                            class="crt-assist-draft-actions"
+                            data-v3-flag="mapProbe"
+                          >
+                            <button type="button" id="assist-refresh-map">
+                              Refresh draft map
+                            </button>
+                            <button type="button" id="assist-probe-toggle">
+                              Start map probe
+                            </button>
+                            <label class="crt-assist-study-confirm">
                               <input
-                                type="radio"
-                                name="assistance-posture"
-                                value="quickAssist"
+                                type="checkbox"
+                                id="assist-study-confirm"
+                                name="assist-study-confirm"
                               />
-                              Quick assist
-                            </label>
-                            <label class="crt-assist-posture-radio-label">
-                              <input
-                                type="radio"
-                                name="assistance-posture"
-                                value="studyFirst"
-                              />
-                              Study first
+                              Study&nbsp;first: confirm next probe step
                             </label>
                           </div>
                           <p
-                            id="posture-change-status"
-                            class="crt-assist-posture-status"
+                            id="draft-map-status"
+                            class="crt-assist-draft-status"
                             role="status"
                             aria-live="polite"
                           ></p>
                           <div
-                            id="posture-stale-notice"
-                            class="crt-assist-posture-stale"
-                            role="status"
-                            aria-live="polite"
-                            aria-label="Posture change notice"
-                            hidden
+                            id="draft-map-mermaid-visual"
+                            class="crt-draft-mermaid-visual"
+                            aria-label="Draft map diagram (Mermaid)"
+                          ></div>
+                          <details
+                            class="crt-assist-draft-details"
+                            data-v3-flag="mapInspectors"
                           >
-                            <p
-                              id="posture-stale-notice-text"
-                              class="crt-assist-posture-stale-text"
-                            ></p>
-                            <button
-                              type="button"
-                              id="posture-stale-dismiss"
-                              class="crt-assist-posture-stale-dismiss"
-                            >
-                              Dismiss
+                            <summary>Mermaid source (copy)</summary>
+                            <pre
+                              id="draft-map-mermaid"
+                              class="crt-assist-draft-pre"
+                              aria-label="Draft map Mermaid source"
+                            ></pre>
+                          </details>
+                          <details
+                            class="crt-assist-draft-details"
+                            data-v3-flag="mapInspectors"
+                          >
+                            <summary>JSON (draft)</summary>
+                            <pre
+                              id="draft-map-json"
+                              class="crt-assist-draft-pre"
+                              aria-label="Draft map JSON"
+                            ></pre>
+                          </details>
+                          <div
+                            class="crt-assist-draft-actions"
+                            data-v3-flag="mapProbe"
+                          >
+                            <button type="button" id="assist-copy-mermaid">
+                              Copy Mermaid + disclaimer
+                            </button>
+                            <button type="button" id="assist-copy-json">
+                              Copy JSON + disclaimer
+                            </button>
+                            <button type="button" id="assist-dismiss-map">
+                              Hide diagram panels
                             </button>
                           </div>
-                          <details class="crt-assist-subnested">
-                            <summary class="crt-assist-subnested-summary">
-                              Full posture text (what to expect / avoid)
-                            </summary>
-                            <p
-                              id="assistance-posture-panel"
-                              class="crt-assist-posture-body"
-                              aria-live="off"
-                            ></p>
-                          </details>
-                        </fieldset>
-                      </div>
-                    </details>
-
-                    <details
-                      class="crt-assist-nested"
-                      id="assist-session-signals-details"
-                    >
-                      <summary
-                        class="crt-assist-nested-summary"
-                        id="session-signals-heading"
-                      >
-                        Session signals
-                      </summary>
-                      <div class="crt-assist-nested-body">
-                        <p
-                          id="session-signals-panel"
-                          class="crt-session-signals-body"
-                          aria-live="off"
-                        ></p>
-                      </div>
-                    </details>
-
-                    <details
-                      class="crt-assist-nested"
-                      id="assist-draft-details"
-                    >
-                      <summary
-                        class="crt-assist-nested-summary"
-                        id="draft-map-heading"
-                      >
-                        Draft map &amp; probe
-                      </summary>
-                      <div class="crt-assist-nested-body">
-                        <p class="crt-assist-draft-intro">
-                          Draft only — Fortran is truth. Map merges compass
-                          moves &amp; YOU ARE lines from this transcript. Probe:
-                          LangGraph + heuristic or Ollama (README).
-                        </p>
-                        <div class="crt-assist-draft-actions">
-                          <button type="button" id="assist-refresh-map">
-                            Refresh draft map
-                          </button>
-                          <button type="button" id="assist-probe-toggle">
-                            Start map probe
-                          </button>
-                          <label class="crt-assist-study-confirm">
-                            <input
-                              type="checkbox"
-                              id="assist-study-confirm"
-                              name="assist-study-confirm"
-                            />
-                            Study&nbsp;first: confirm next probe step
-                          </label>
                         </div>
-                        <p
-                          id="draft-map-status"
-                          class="crt-assist-draft-status"
-                          role="status"
-                          aria-live="polite"
-                        ></p>
-                        <div
-                          id="draft-map-mermaid-visual"
-                          class="crt-draft-mermaid-visual"
-                          aria-label="Draft map diagram (Mermaid)"
-                        ></div>
-                        <details class="crt-assist-draft-details">
-                          <summary>Mermaid source (copy)</summary>
-                          <pre
-                            id="draft-map-mermaid"
-                            class="crt-assist-draft-pre"
-                            aria-label="Draft map Mermaid source"
-                          ></pre>
-                        </details>
-                        <details class="crt-assist-draft-details">
-                          <summary>JSON (draft)</summary>
-                          <pre
-                            id="draft-map-json"
-                            class="crt-assist-draft-pre"
-                            aria-label="Draft map JSON"
-                          ></pre>
-                        </details>
-                        <div class="crt-assist-draft-actions">
-                          <button type="button" id="assist-copy-mermaid">
-                            Copy Mermaid + disclaimer
-                          </button>
-                          <button type="button" id="assist-copy-json">
-                            Copy JSON + disclaimer
-                          </button>
-                          <button type="button" id="assist-dismiss-map">
-                            Hide diagram panels
-                          </button>
-                        </div>
-                      </div>
-                    </details>
+                      </details>
 
-                    <details class="crt-assist-nested">
-                      <summary class="crt-assist-nested-summary">
-                        Depth tooling (not in this build)
-                      </summary>
-                      <div class="crt-assist-nested-body">
-                        <p class="crt-assist-placeholder">
-                          XState and LangGraph dashboard views are deferred; map
-                          probe uses the assist server (see Draft map).
-                        </p>
-                      </div>
-                    </details>
-                  </div>
-                </details>
+                      <details class="crt-assist-nested">
+                        <summary class="crt-assist-nested-summary">
+                          Depth tooling (not in this build)
+                        </summary>
+                        <div class="crt-assist-nested-body">
+                          <p class="crt-assist-placeholder">
+                            XState and LangGraph dashboard views are deferred;
+                            map probe uses the assist server (see Draft map).
+                          </p>
+                        </div>
+                      </details>
+                    </div>
+                  </details>
+                </div>
               </div>
             </aside>
           </div>

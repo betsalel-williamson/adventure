@@ -5,4 +5,6 @@ process.env.ADV_V2_DISABLE_AUTO_FORTRAN_ORACLE = "1";
 
 import "./http_world.js";
 import "./http_hooks.js";
+import "./assist_hooks.js";
 import "./steps/crt_steps.js";
+import "./steps/assist_steps.js";
