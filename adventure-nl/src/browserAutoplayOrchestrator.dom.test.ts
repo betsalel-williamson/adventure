@@ -58,7 +58,12 @@ describe("resolveStatelyInspectOption", () => {
   it("matches the option shape passed to createBrowserAutoplayCognitionActor", () => {
     const inspect = vi.fn();
     const createWebSocketInspector = vi.fn(() => ({ inspect }));
-    const createBrowserAutoplayCognitionActor = vi.fn(() => ({
+    const createBrowserAutoplayCognitionActor = vi.fn<
+      (
+        input: unknown,
+        options?: { inspect?: unknown },
+      ) => { send: ReturnType<typeof vi.fn> }
+    >(() => ({
       send: vi.fn(),
     }));
 
