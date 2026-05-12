@@ -12,10 +12,17 @@ export default defineConfig({
         rootDir,
         "../adventure-v2/packages/contracts/src/index.ts",
       ),
+      "@adventure-v3/map-core": path.resolve(
+        rootDir,
+        "packages/map-core/src/index.ts",
+      ),
     },
   },
   server: {
     port: 5174,
     strictPort: false,
+  },
+  optimizeDeps: {
+    include: ["mermaid"],
   },
 });

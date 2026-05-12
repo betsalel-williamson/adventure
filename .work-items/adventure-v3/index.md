@@ -26,6 +26,7 @@
 - **Slice 02 review (US-4-1 session signals):** [slice-02-multidisciplinary-review.md](slice-02-multidisciplinary-review.md)
 - **Slice 03 review (US-4-2 assistance posture):** [slice-03-multidisciplinary-review.md](slice-03-multidisciplinary-review.md)
 - **Slice 04 review (US-4-3 posture selection):** [slice-04-multidisciplinary-review.md](slice-04-multidisciplinary-review.md)
+- **Slice 05 review (LangGraph draft map probe + SLM):** [slice-05-multidisciplinary-review.md](slice-05-multidisciplinary-review.md)
 - **Agentic design (E4/E5):** [design-agentic-mvp.md](design-agentic-mvp.md) · [roadmap-next-features.md](roadmap-next-features.md)
 
 ## Legacy monolith
