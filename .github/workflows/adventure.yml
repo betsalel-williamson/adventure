@@ -94,3 +94,25 @@ jobs:
       - name: Production build
         working-directory: adventure-v3
         run: npm run build
+
+  docs-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: docs/package-lock.json
+
+      - name: Install dependencies (docs)
+        working-directory: docs
+        run: npm ci
+
+      - name: mdcp documentation check
+        working-directory: docs
+        run: npm run docs:check

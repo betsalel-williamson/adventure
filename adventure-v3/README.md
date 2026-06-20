@@ -2,6 +2,8 @@
 
 Thin **game-first** web client for Colossal Cave: hero CRT transcript (v1 [`adventure-nl`](../adventure-nl/) metaphor), talking to the **adventure-v2** HTTP + SSE API. The CRT viewport is **80×24** characters (common terminal size; less line-wrapping than a 40-column window for Colossal Cave prose).
 
+**Documentation:** end-user / researcher guide — [`docs/client/`](../docs/client/index.md); maintainer setup — [`docs/developer/v3-dev-setup.md`](../docs/developer/v3-dev-setup.md).
+
 **Default beside-CRT surface:** an **exploration map** column — a **draft** Mermaid directed graph of inferred places and compass moves from the visible transcript (Fortran remains truth). A background **location agent** path (`POST /assist/ingest`) merges transcript lines; when assist is unreachable, the client falls back to deterministic merge in `@adventure-v3/map-core`.
 
 **Legacy Assist** (posture, session signals, probe, JSON/Mermaid inspectors) stays in the tree but is **off by default** via feature flags.
