@@ -1,9 +1,13 @@
 # Features — adventure-v3
 
-Product capabilities for the CRT-first Colossal Cave shell.
+Product capabilities for the CRT-first Colossal Cave shell and assist path.
 
-See the [glossary](../glossary/index.md) for shared terms.
+Shared terms: [Glossary](../glossary/index.md).
 
 ## Sections
 
-- [Placeholder](stub.md)
+- [v3 overview](v3-overview.md)
+- [CRT shell](crt-shell.md)
+- [Exploration map column](exploration-map-column.md)
+- [Assist runtime](assist-runtime.md)
+- [Cartographer fixtures](cartographer-fixtures.md)
