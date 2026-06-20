@@ -1,8 +1,12 @@
+# Build artifacts
 /adventure
-/adventure-nl/node_modules/
-/adventure-nl/**/node_modules/
+
+# Dependencies (package lockfiles are tracked per package; root lockfile is not)
+**/node_modules/
+/package-lock.json
+
+# adventure-nl
 /adventure-nl/**/dist/
-# esbuild output (npm run build → scripts/bundle-browser-cognition.mjs)
 /adventure-nl/public/generated/
 /adventure-nl/reports/
 /adventure-nl/.env
@@ -10,12 +14,19 @@
 /adventure-nl/.cache/
 /adventure-nl/.prompt-projects/
 /adventure-nl/.venv/
-/adventure-v2/node_modules/
-/adventure-v2/**/node_modules/
+
+# adventure-v2
 /adventure-v2/**/dist/
 /adventure-v2/coverage/
+
+# adventure-v3
+/adventure-v3/dist/
+
+# docs — mdcp generated output
 /docs/_build/
-/.caches/mdcp/
 /docs/mdcp.v*.llms.txt
-/package-lock.json
+.caches/
+
+# Local / tooling
 sample-code/
+.specstory/
