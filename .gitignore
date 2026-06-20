@@ -14,5 +14,8 @@
 /adventure-v2/**/node_modules/
 /adventure-v2/**/dist/
 /adventure-v2/coverage/
+/docs/_build/
+/.caches/mdcp/
+/docs/mdcp.v*.llms.txt
 /package-lock.json
 sample-code/
