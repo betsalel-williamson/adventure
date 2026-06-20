@@ -1,12 +1,9 @@
-# Glossary
+# Product terms — adventure-v3
 
-Shared definitions for adventure-v3 documentation. Use these terms consistently across feature, developer, and client guides.
-
-Browse by group: [Product terms (v3)](index-product.md).
+Terms for the CRT shell, assist server, and draft exploration map.
 
 ## Terms
 
-- [Product terms index](index-product.md)
 - [Oracle](oracle.md)
 - [SLM vs LLM](slm-vs-llm.md)
 - [Draft assistance](draft-assistance.md)

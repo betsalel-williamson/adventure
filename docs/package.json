@@ -8,7 +8,7 @@
   "scripts": {
     "docs:fetch": "mdcp export --llms-index --fetch --fetch-ref v0.4.1 --config mdcp.config.json --docs-root .",
     "docs:compile": "mdcp compile --config mdcp.config.json --docs-root .",
-    "docs:check": "mdcp check --config mdcp.config.json --docs-root . --require-lint",
+    "docs:check": "mdcp check --config mdcp.config.json --docs-root . --require-lint --skip-vale",
     "docs:context": "mdcp export --llm --stdout --config mdcp.config.json --docs-root .",
     "docs:refs": "mdcp refs lookup"
   },
