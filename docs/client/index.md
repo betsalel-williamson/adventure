@@ -1,9 +1,13 @@
 # Client guide — adventure-v3
 
-End-user documentation for playing and evaluating the game.
+End-user and researcher documentation for playing and evaluating the CRT shell.
 
-See the [glossary](../glossary/index.md) for shared terms.
+Shared terms: [Glossary](../glossary/index.md).
 
 ## Sections
 
-- [Placeholder](stub.md)
+- [About this guide](about-this-guide.md)
+- [Quick start](quick-start.md)
+- [Exploration map guide](exploration-map-guide.md)
+- [SLM configuration](slm-configuration.md)
+- [Research workflows](research-workflows.md)
