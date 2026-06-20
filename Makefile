@@ -151,3 +151,13 @@ dependency-check-quick: install-nl
 	mkdir -p $(NL_REPORTS)
 	dependency-check --noupdate --project adventure-nl --scan $(NL_DIR) \
 		--out $(NL_REPORTS) --format HTML --format JSON
+
+# =============================================================================
+# Documentation — mdcp sharded guides (docs/)
+# =============================================================================
+
+docs-check:
+	cd docs && npm ci && npm run docs:check
+
+docs-compile:
+	cd docs && npm ci && npm run docs:compile
