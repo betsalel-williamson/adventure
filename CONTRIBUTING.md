@@ -41,7 +41,7 @@ reading every line.
 | Component   | Notes |
 | ----------- | ----- |
 | GNU Fortran | `gfortran` (see root `README.md` for install hints) |
-| Node.js     | **20+** for `adventure-nl/` |
+| Node.js     | **24+** for TypeScript packages (see root `.nvmrc`) |
 | Optional text models (NL stack) | `GEMINI_API_KEY`, MLX, or HTTP provider — see [`adventure-nl/.env.example`](adventure-nl/.env.example) |
 
 Secrets belong in environment variables or a local `.env` file (gitignored),

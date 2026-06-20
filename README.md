@@ -25,7 +25,7 @@ scripted GETIN-compatible play, optional natural-language mapping, and a
 ## Tech stack
 
 - **Fortran 77** — game engine (`gfortran`, `make`)
-- **TypeScript / Node 20+** — `adventure-nl` CLI, tests (Vitest), local HTTP
+- **TypeScript / Node 24+** — `adventure-nl` CLI, tests (Vitest), local HTTP
   dashboard (static ES modules)
 - **Optional text models** — Google Gemini, local MLX weights, or OpenAI-compatible HTTP (hosted LLMs or smaller local models)
   (see [`adventure-nl/.env.example`](adventure-nl/.env.example))
