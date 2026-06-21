@@ -28,6 +28,10 @@ Play and evaluate: `docs/client/`. Product capabilities: `docs/features/`.
 - [Webclient feature flags](webclient-feature-flags.md)
 - [Webclient migration catalog](webclient-migration-catalog.md)
 
+### Cloud deploy MVP
+
+- [Cloud deploy MVP](cloud-deploy-mvp/index.md) — hosted runtime, inference relay, desktop agent (implementation: GitHub work graph)
+
 ### Other packages
 
 - `adventure-v2/README.md` — shards in `docs/developer/readme-adventure-v2/`

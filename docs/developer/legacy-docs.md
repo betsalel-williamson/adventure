@@ -11,6 +11,7 @@ Notable views:
 - [adventure-fortran-engine.md](../architecture/adventure-fortran-engine.md) — Fortran oracle and `adventure.dat`
 - [adventure-v2/](../architecture/adventure-v2/overview.md) — HTTP API, oracle IPC, cognition layout
 - [adventure-nl-cognition-and-workspace.md](../architecture/adventure-nl-cognition-and-workspace.md) — NL dashboard stack
+- [cloud-deploy-mvp/](../architecture/cloud-deploy-mvp/overview.md) — hosted deploy MVP + desktop SLM bridge
 
 ## Architecture decision records
 
