@@ -1,6 +1,6 @@
 # Work registry
 
-Machine-readable catalog of trackable work, migrated from legacy [`.work-items/`](../../../.work-items/) into GitHub Issues and a single GitHub Project.
+Machine-readable catalog of trackable work. **GitHub Issues + [`manifest.json`](../../../scripts/work-registry/manifest.json) are canonical.** Legacy [`.work-items/`](../../../.work-items/) is a backup and design archive only — see [`.work-items/README.md`](../../../.work-items/README.md).
 
 ## Components
 
@@ -30,13 +30,13 @@ From repo root. Requires `gh` with `project` scope:
 gh auth refresh -h github.com -s project,read:project
 ```
 
-### 1. Extract / refresh manifest from `.work-items/`
+### 1. Extract / refresh manifest from `.work-items/` (re-seed only)
 
 ```bash
 node scripts/work-registry/extract-from-work-items.mjs --merge --write
 ```
 
-Merge mode preserves seeded issue numbers and ledger entries.
+Merge mode preserves hand-edited `issue`, `status`, and ledger entries. **Do not run extract to re-derive issue numbers or statuses** after migration — edit [`manifest.json`](../../../scripts/work-registry/manifest.json) directly, then sync. Skips `_archive/`.
 
 ### 2. Create GitHub issues (idempotent)
 
@@ -164,11 +164,24 @@ If `gh` reports rate limits but `gh api rate_limit` shows quota available, clear
 grep -rl 'X-Ratelimit-Remaining: 0' ~/.cache/gh/ 2>/dev/null | xargs rm -f
 ```
 
+## GraphQL quota fallback
+
+When `./scripts/work-registry/sync-github-project.sh` exits **42** or GraphQL quota is exhausted:
+
+1. **Do not block TDD** — Pick work from manifest + [issue-triage.md](issue-triage.md); cache scope with `gh issue view #N > .caches/work-items/issue-N.md` (gitignored) if offline.
+2. **Record intent locally** — Update manifest `status` / `projectStatus`; optional note in `.work-items/` header (backup only).
+3. **Defer board sync** — Re-run `./scripts/work-registry/sync-github-project.sh --resume --auto-wait` when quota resets (`source scripts/lib/gh-graphql.sh && gh_print_quota_status`).
+4. **Never create parallel trackers** — No new epic/story files under `.work-items/` for cloud-deploy work.
+
+See [TDD + GitHub workflow](../tdd-and-github-workflow.md).
+
 ## Project board
 
 See [GitHub Project management](github-project.md).
 
 ## Related
 
+- [Issue triage catalog](issue-triage.md)
+- [TDD + GitHub workflow](../tdd-and-github-workflow.md)
 - [Agent work-item tracking](../agent-work-item-tracking.md)
 - [Cloud deploy work graph](../../architecture/cloud-deploy-mvp/work-graph.md)

@@ -1,3 +1,5 @@
+> **GitHub:** [#16](https://github.com/betsalel-williamson/adventure/issues/16) · **Status:** deferred · Track in GitHub + manifest, not here.
+
 # Epic E2 — Trust and clarity
 
 ## Objective

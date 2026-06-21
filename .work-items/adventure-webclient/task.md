@@ -1,3 +1,5 @@
+> **GitHub:** Phases [#29–#34](https://github.com/betsalel-williamson/adventure/issues?q=is%3Aissue+label%3Aprogram%3Aadventure-webclient) · **Status:** deferred (MVP uses [#8](https://github.com/betsalel-williamson/adventure/issues/8) C2) · Track in GitHub + manifest.
+
 # adventure-webclient — tasks
 
 Incremental migration. Each task is independently testable. Follow TDD when porting behavior.

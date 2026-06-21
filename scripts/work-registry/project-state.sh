@@ -82,6 +82,27 @@ missing_field_options() {
   echo "$missing"
 }
 
+# Build full single-select option payload (preserves existing option ids).
+merged_select_options_json() {
+  local field_name="$1"
+  shift
+  local required_json
+  required_json="$(printf '%s\n' "$@" | sort -u | jq -R . | jq -s '.')"
+  echo "$FIELDS_CACHE" | jq --arg fn "$field_name" --argjson required "$required_json" '
+    (.fields[] | select(.name == $fn) | .options // []) as $existing |
+    ($required | unique) as $names |
+    [
+      $names[] as $n |
+      ($existing | map(select(.name == $n)) | .[0]) as $ex |
+      if $ex then
+        {id: $ex.id, name: $n, color: "GRAY", description: ""}
+      else
+        {name: $n, color: "GRAY", description: ""}
+      end
+    ]
+  '
+}
+
 # Merge manifest options into an existing single-select field via GraphQL.
 # Usage: update_single_select_options <FieldName> <dry_run true|false> <option>...
 update_single_select_options() {
@@ -89,20 +110,11 @@ update_single_select_options() {
   local dry_run="$2"
   shift 2
 
-  local field_id merged_json opt missing_count input_file
+  local field_id merged_json missing_count input_file query
   field_id="$(field_id "$field_name")"
   [[ -z "$field_id" || "$field_id" == "null" ]] && return 1
 
   local -a new_options=("$@")
-  local -a all_names=()
-  while IFS= read -r opt; do
-    [[ -n "$opt" ]] && all_names+=("$opt")
-  done < <(field_option_names "$field_name")
-  for opt in "${new_options[@]}"; do
-    all_names+=("$opt")
-  done
-
-  merged_json="$(printf '%s\n' "${all_names[@]}" | sort -u | jq -R . | jq -s '[.[] | {name: .}]')"
 
   missing_count="$(missing_field_options "$field_name" "${new_options[@]}" | grep -c . || true)"
   if [[ "$missing_count" -eq 0 ]]; then
@@ -116,14 +128,25 @@ update_single_select_options() {
     return 0
   fi
 
+  merged_json="$(merged_select_options_json "$field_name" "${new_options[@]}")"
+
+  query='mutation($fieldId: ID!, $options: [ProjectV2SingleSelectFieldOptionInput!]!) {
+  updateProjectV2Field(input: {fieldId: $fieldId, singleSelectOptions: $options}) {
+    projectV2Field {
+      ... on ProjectV2SingleSelectField {
+        id
+        name
+      }
+    }
+  }
+}'
+
   input_file="$(mktemp)"
   jq -n \
+    --arg query "$query" \
     --arg fieldId "$field_id" \
     --argjson options "$merged_json" \
-    '{
-      query: "mutation($fieldId:ID!,$options:[ProjectV2SingleSelectFieldOptionInput!]!) { updateProjectV2Field(input:{fieldId:$fieldId,singleSelectOptions:$options}) { projectV2Field { ... on ProjectV2SingleSelectField { id name } } } } }",
-      variables: {fieldId: $fieldId, options: $options}
-    }' >"$input_file"
+    '{query: $query, variables: {fieldId: $fieldId, options: $options}}' >"$input_file"
   gh_retry mutation -- gh api graphql --input "$input_file" >/dev/null
   rm -f "$input_file"
   echo "Updated $field_name options (+$missing_count new)"
@@ -218,9 +241,13 @@ audit_project_gaps() {
   done < <(manifest_all_items)
 
   local wk_missing ph_missing prog_missing
-  wk_missing="$(missing_field_options "Work key" $(collect_work_keys) | wc -l | tr -d ' ')"
-  ph_missing="$(missing_field_options "Phase" $(collect_phases) | wc -l | tr -d ' ')"
-  prog_missing="$(missing_field_options "Program" $(collect_programs) | wc -l | tr -d ' ')"
+  local -a _wk _ph _prog
+  while IFS= read -r line; do [[ -n "$line" ]] && _wk+=("$line"); done < <(collect_work_keys)
+  while IFS= read -r line; do [[ -n "$line" ]] && _ph+=("$line"); done < <(collect_phases)
+  while IFS= read -r line; do [[ -n "$line" ]] && _prog+=("$line"); done < <(collect_programs)
+  wk_missing="$(missing_field_options "Work key" "${_wk[@]}" | sed '/^$/d' | wc -l | tr -d ' ')"
+  ph_missing="$(missing_field_options "Phase" "${_ph[@]}" | sed '/^$/d' | wc -l | tr -d ' ')"
+  prog_missing="$(missing_field_options "Program" "${_prog[@]}" | sed '/^$/d' | wc -l | tr -d ' ')"
 
   echo "SUMMARY: expected=$expected_on_board on_board=$on_board missing_board=$missing_board synced=$synced need_field_sync=$need_fields"
   echo "FIELD_GAPS: work_key_options_missing=$wk_missing phase_options_missing=$ph_missing program_options_missing=$prog_missing"

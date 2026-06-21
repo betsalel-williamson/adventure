@@ -59,5 +59,7 @@ Shared shards: `docs/client/readme-shards/`, `docs/developer/readme-shards/`.
 
 ## Agent automation
 
+- [TDD + GitHub workflow](tdd-and-github-workflow.md) — Red/Green/Refactor with Issues and project #3
 - [Agent work-item tracking](agent-work-item-tracking.md)
-- [Work registry](work-registry/index.md) — migrate and sync `.work-items/` to GitHub
+- [Work registry](work-registry/index.md) — manifest, sync, GraphQL fallback
+- [Issue triage catalog](work-registry/issue-triage.md) — Active / Deferred / Stale classification

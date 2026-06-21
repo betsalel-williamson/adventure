@@ -52,11 +52,19 @@ for field in Program "Work key" Phase; do
     Phase) want="$(collect_phases | wc -l | tr -d ' ')" ;;
   esac
   echo "$field: $have/$want options on board"
-  missing="$(missing_field_options "$field" $(case "$field" in
-    Program) collect_programs ;;
-    "Work key") collect_work_keys ;;
-    Phase) collect_phases ;;
-  esac) | head -5)"
+  _opts=()
+  case "$field" in
+    Program)
+      while IFS= read -r line; do [[ -n "$line" ]] && _opts+=("$line"); done < <(collect_programs)
+      ;;
+    "Work key")
+      while IFS= read -r line; do [[ -n "$line" ]] && _opts+=("$line"); done < <(collect_work_keys)
+      ;;
+    Phase)
+      while IFS= read -r line; do [[ -n "$line" ]] && _opts+=("$line"); done < <(collect_phases)
+      ;;
+  esac
+  missing="$(missing_field_options "$field" "${_opts[@]}" | head -5)"
   if [[ -n "$missing" ]]; then
     echo "  missing (first 5):"
     echo "$missing" | sed 's/^/    /'

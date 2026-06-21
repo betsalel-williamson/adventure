@@ -1,3 +1,5 @@
+> **GitHub:** [#42](https://github.com/betsalel-williamson/adventure/issues/42) · **Status:** deferred
+
 # Epic AP3 — Trust and honest labels
 
 ## Objective

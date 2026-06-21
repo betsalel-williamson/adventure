@@ -1,3 +1,5 @@
+> **GitHub:** [#40](https://github.com/betsalel-williamson/adventure/issues/40) · **Status:** deferred
+
 # Epic AP1 — Your configuration is clear
 
 ## Objective
