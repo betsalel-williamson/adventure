@@ -5,7 +5,7 @@
 - [Prerequisites](../readme-shards/prerequisites.md)
 - [Documentation map](../readme-shards/documentation-map.md)
 - [Overview](overview.md)
-- [HTTP API](http-api.md)
+- [API reference](api-reference.md)
 - [Oracle modes](oracle-modes.md)
 - [Local dev](local-dev.md)
 - [Testing](testing.md)

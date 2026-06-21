@@ -4,11 +4,7 @@ The **CRT shell** (`apps/web`) is the primary player surface in adventure-langgr
 
 ## Wire protocol
 
-The client connects to adventure-v2:
-
-- `POST /runs` — start a run
-- `POST /runs/:id/turns` — submit a parser command
-- SSE events — turn output and phase updates
+The client connects to the adventure-v2 HTTP API — see [`adventure-v2/openapi.yaml`](../../adventure-v2/openapi.yaml).
 
 The transcript renders oracle text in an 80×24 viewport. A status strip reports API and oracle health.
 
