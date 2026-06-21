@@ -21,7 +21,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
           cache-dependency-path: adventure-v2/package-lock.json
 
@@ -31,7 +31,7 @@ jobs:
 
       - name: Audit dependencies
         working-directory: adventure-v2
-        run: npm audit
+        run: npm audit --audit-level=moderate
 
       - name: Run tests
         working-directory: adventure-v2
@@ -61,7 +61,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
           cache-dependency-path: |
             adventure-v2/package-lock.json
@@ -77,7 +77,7 @@ jobs:
 
       - name: Audit dependencies (adventure-v3)
         working-directory: adventure-v3
-        run: npm audit
+        run: npm audit --audit-level=moderate
 
       - name: Unit tests
         working-directory: adventure-v3
@@ -94,3 +94,25 @@ jobs:
       - name: Production build
         working-directory: adventure-v3
         run: npm run build
+
+  docs-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: docs/package-lock.json
+
+      - name: Install dependencies (docs)
+        working-directory: docs
+        run: npm ci
+
+      - name: mdcp documentation check
+        working-directory: docs
+        run: npm run docs:check

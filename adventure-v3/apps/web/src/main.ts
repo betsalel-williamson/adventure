@@ -18,10 +18,8 @@ import {
 } from "./wire/virtualTerminal.js";
 import {
   ASSISTANCE_POSTURE_STORAGE_KEY,
-  POSTURE_CHANGE_STALE_NOTICE,
   formatAssistancePostureForPanel,
   formatPostureChangeAcknowledgment,
-  isAssistancePostureId,
   parseStoredAssistancePostureId,
   type AssistancePostureId,
 } from "./posture/assistancePosture.js";
@@ -29,6 +27,21 @@ import {
   deriveSessionSignals,
   formatSessionSignalsForPanel,
 } from "./session/sessionSignals.js";
+import {
+  applyProbeToggleLabel,
+  renderDraftMapPanels,
+  requestAssistStep,
+  setDraftMapStatus,
+  type DraftMapElements,
+} from "./assist/draftMapUi.js";
+import {
+  refreshExplorationMapFromTranscript,
+  type ExplorationMapElements,
+} from "./assist/explorationMapUpdate.js";
+import { v3FeatureFlags } from "./featureFlags.js";
+import { applyV3ChromeFromFlags } from "./shell/applyChromeFromFlags.js";
+import { wireExplorationMapControls } from "./shell/wireExplorationMapControls.js";
+import { wireLegacyAssistControls } from "./shell/wireLegacyAssistControls.js";
 
 const apiBase: string = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8787";
 
@@ -43,6 +56,9 @@ const sessionSignalsPanelEl = document.querySelector<HTMLParagraphElement>(
 );
 const assistCoverEl = document.querySelector<HTMLDetailsElement>(
   "details.crt-assist-cover",
+);
+const sessionSignalsDetailsEl = document.querySelector<HTMLDetailsElement>(
+  "#assist-session-signals-details",
 );
 const commandLineEl = document.querySelector<HTMLElement>("#crt-command-line");
 const commandInputEl =
@@ -64,6 +80,29 @@ const postureStaleNoticeTextEl = document.querySelector<HTMLElement>(
 const postureStaleDismissEl = document.querySelector<HTMLButtonElement>(
   "#posture-stale-dismiss",
 );
+
+const draftMapEls: DraftMapElements = {
+  status: document.querySelector("#draft-map-status"),
+  mermaidVisual: document.querySelector("#draft-map-mermaid-visual"),
+  mermaidPre: document.querySelector("#draft-map-mermaid"),
+  jsonPre: document.querySelector("#draft-map-json"),
+  probeToggle: document.querySelector("#assist-probe-toggle"),
+  refreshBtn: document.querySelector("#assist-refresh-map"),
+  studyConfirm: document.querySelector("#assist-study-confirm"),
+  copyMermaid: document.querySelector("#assist-copy-mermaid"),
+  copyJson: document.querySelector("#assist-copy-json"),
+  dismiss: document.querySelector("#assist-dismiss-map"),
+};
+
+const explorationMapEls: ExplorationMapElements = {
+  mermaidVisual: document.querySelector("#exploration-map-mermaid-visual"),
+  mermaidPre: document.querySelector("#exploration-map-mermaid"),
+  status: document.querySelector("#exploration-map-status"),
+};
+
+applyV3ChromeFromFlags();
+
+wireExplorationMapControls(explorationMapEls);
 
 let transcriptText = CRT_AWAITING_ORACLE_PLACEHOLDER;
 let awaitingOracle = true;
@@ -101,6 +140,14 @@ const PIN_TO_BOTTOM_THRESHOLD_PX = 80;
 /** After HTTP accepts a turn, unlock the shell if SSE never delivers `oracle_observation`. */
 const ORACLE_OBSERVATION_WAIT_MS = 45_000;
 
+/** LangGraph + SLM/heuristic assist loop — bounded so a bad graph cannot spin forever. */
+const ASSIST_PROBE_MAX_STEPS = 400;
+
+let assistMapProbeEnabled = false;
+let assistProbeBusy = false;
+let assistProbeStepCount = 0;
+let assistProbePendingOracleTick = false;
+
 const isTranscriptPinnedToBottom = (): boolean => {
   const el = viewportEl ?? transcriptEl;
   if (!el) {
@@ -128,9 +175,12 @@ const syncSessionSignalsAriaLive = (): void => {
   if (!sessionSignalsPanelEl || !assistCoverEl) {
     return;
   }
+  /** Announce session signal updates only when that section is open — avoids noisy SR when Assist is open for another section. */
+  const announceSignals =
+    assistCoverEl.open && sessionSignalsDetailsEl?.open === true;
   sessionSignalsPanelEl.setAttribute(
     "aria-live",
-    assistCoverEl.open ? "polite" : "off",
+    announceSignals ? "polite" : "off",
   );
 };
 
@@ -139,12 +189,6 @@ const syncPostureRadiosFromSelection = (): void => {
     input.checked = input.value === selectedPostureId;
   }
 };
-
-syncPostureRadiosFromSelection();
-
-if (postureStaleNoticeTextEl) {
-  postureStaleNoticeTextEl.textContent = POSTURE_CHANGE_STALE_NOTICE;
-}
 
 const hideStalePostureNotice = (): void => {
   postureStaleNoticeEl?.setAttribute("hidden", "");
@@ -178,19 +222,8 @@ const applyUserPostureChange = (nextId: AssistancePostureId): void => {
   showStalePostureNotice();
 };
 
-for (const input of postureRadioInputs) {
-  input.addEventListener("change", () => {
-    if (!isAssistancePostureId(input.value)) {
-      return;
-    }
-    applyUserPostureChange(input.value);
-  });
-}
-
-postureStaleDismissEl?.addEventListener("click", hideStalePostureNotice);
-
 const refreshSessionSignalsPanel = (): void => {
-  if (!sessionSignalsPanelEl) {
+  if (!v3FeatureFlags.assistPanels || !sessionSignalsPanelEl) {
     return;
   }
   const lines = formatSessionSignalsForPanel(
@@ -214,9 +247,163 @@ const renderTranscript = (opts?: TranscriptRenderOpts): void => {
     }
   }
   refreshSessionSignalsPanel();
+  refreshExplorationMapPanel();
 };
 
-refreshAssistancePosturePanel();
+const refreshExplorationMapPanel = (): void => {
+  if (!v3FeatureFlags.explorationMap) {
+    return;
+  }
+  void refreshExplorationMapFromTranscript({
+    runId: currentRunId,
+    transcript: transcriptText,
+    els: explorationMapEls,
+  });
+};
+
+const refreshDraftMapOnly = async (): Promise<void> => {
+  if (!currentRunId) {
+    setDraftMapStatus(draftMapEls.status, "No session yet.");
+    return;
+  }
+  setDraftMapStatus(draftMapEls.status, "Refreshing draft map…");
+  const r = await requestAssistStep({
+    runId: currentRunId,
+    transcript: transcriptText,
+    posture: selectedPostureId,
+    studyConfirmChecked: draftMapEls.studyConfirm?.checked === true,
+    advance: false,
+  });
+  if (!r.ok) {
+    setDraftMapStatus(draftMapEls.status, r.error ?? "Assist error");
+    return;
+  }
+  if (r.notice) {
+    setDraftMapStatus(draftMapEls.status, r.notice);
+  } else {
+    setDraftMapStatus(draftMapEls.status, "Draft map updated.");
+  }
+  await renderDraftMapPanels(draftMapEls, r.mermaid, r.mapJson);
+};
+
+const scheduleAssistMapProbe = (): void => {
+  if (!v3FeatureFlags.mapProbe) {
+    return;
+  }
+  if (!assistMapProbeEnabled) {
+    return;
+  }
+  if (!currentRunId || !sseListening) {
+    return;
+  }
+  if (transcriptText.trim() === CRT_AWAITING_ORACLE_PLACEHOLDER) {
+    return;
+  }
+  if (assistProbeBusy) {
+    assistProbePendingOracleTick = true;
+    return;
+  }
+  queueMicrotask(() => void runAssistProbeCycle());
+};
+
+const runAssistProbeCycle = async (): Promise<void> => {
+  if (!assistMapProbeEnabled || !currentRunId) {
+    return;
+  }
+  if (assistProbeBusy) {
+    return;
+  }
+  assistProbeBusy = true;
+  try {
+    assistProbeStepCount += 1;
+    if (assistProbeStepCount > ASSIST_PROBE_MAX_STEPS) {
+      assistMapProbeEnabled = false;
+      applyProbeToggleLabel(draftMapEls.probeToggle, false);
+      setDraftMapStatus(
+        draftMapEls.status,
+        "Map probe stopped — step budget exceeded.",
+      );
+      return;
+    }
+
+    const r = await requestAssistStep({
+      runId: currentRunId,
+      transcript: transcriptText,
+      posture: selectedPostureId,
+      studyConfirmChecked: draftMapEls.studyConfirm?.checked === true,
+      advance: true,
+    });
+
+    if (!r.ok) {
+      assistMapProbeEnabled = false;
+      applyProbeToggleLabel(draftMapEls.probeToggle, false);
+      setDraftMapStatus(
+        draftMapEls.status,
+        r.error ?? "Assist error — probe stopped.",
+      );
+      return;
+    }
+
+    await renderDraftMapPanels(draftMapEls, r.mermaid, r.mapJson);
+
+    if (r.notice) {
+      setDraftMapStatus(draftMapEls.status, r.notice);
+      return;
+    }
+
+    if (selectedPostureId === "studyFirst") {
+      if (draftMapEls.studyConfirm) {
+        draftMapEls.studyConfirm.checked = false;
+      }
+    }
+
+    if (r.nextMove !== null && r.nextMove !== "") {
+      await submitPlayerInput(r.nextMove);
+    } else {
+      setDraftMapStatus(
+        draftMapEls.status,
+        "Assist returned no further move — probe idle until more exploration or you stop probe.",
+      );
+    }
+  } finally {
+    assistProbeBusy = false;
+    if (assistProbePendingOracleTick) {
+      assistProbePendingOracleTick = false;
+      queueMicrotask(() => void runAssistProbeCycle());
+    }
+  }
+};
+
+wireLegacyAssistControls({
+  assistCoverEl,
+  sessionSignalsDetailsEl,
+  syncSessionSignalsAriaLive,
+  draftMapEls,
+  postureRadioInputs,
+  postureStaleNoticeTextEl,
+  postureStaleDismissEl,
+  syncPostureRadiosFromSelection,
+  refreshAssistancePosturePanel,
+  applyUserPostureChange,
+  hideStalePostureNotice,
+  onRefreshDraftMap: () => {
+    void refreshDraftMapOnly();
+  },
+  onProbeToggle: () => {
+    assistMapProbeEnabled = !assistMapProbeEnabled;
+    assistProbeStepCount = 0;
+    applyProbeToggleLabel(draftMapEls.probeToggle, assistMapProbeEnabled);
+    setDraftMapStatus(
+      draftMapEls.status,
+      assistMapProbeEnabled
+        ? "Map probe on — each game output turn will ask assist for the next compass move."
+        : "Map probe off.",
+    );
+    if (assistMapProbeEnabled) {
+      void refreshDraftMapOnly();
+    }
+  },
+});
 
 const refreshStatusStrip = (): void => {
   if (!statusStripEl) {
@@ -262,6 +449,7 @@ const appendFromWire = (wire: SseWireEvent): void => {
 
   if (isOracle) {
     oracleTurnWait.notifyOraclePainted();
+    scheduleAssistMapProbe();
   }
 };
 
@@ -425,10 +613,6 @@ const bootstrap = async (): Promise<void> => {
 
   commandInputEl?.focus({ preventScroll: true });
 };
-
-assistCoverEl?.addEventListener("toggle", () => {
-  syncSessionSignalsAriaLive();
-});
 
 void bootstrap();
 

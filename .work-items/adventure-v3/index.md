@@ -19,13 +19,15 @@
 - **Repo work queues (Draft / Ready / Active / Finished):** [`../planning/plan-queues-index.md`](../planning/plan-queues-index.md) · short pointer [`../planning/work-in-progress.md`](../planning/work-in-progress.md)
 - **Agent project authoring (prompts / behaviors / AP stories):** [`../agent-project-authoring/index.md`](../agent-project-authoring/index.md)
 - **Epics:** [epics/index.md](epics/index.md)
-- **Milestone order (user value):** [US-1-1](stories/US-1-1-crt-hero-layout.md) → [US-1-2](stories/US-1-2-real-game-or-clear-failure.md) → [US-2-1](stories/US-2-1-connection-status-visible.md) → [US-3-1](stories/US-3-1-honest-scripted-autoplay.md) → [US-4-1](stories/US-4-1-session-signals-visible.md) → [US-4-2](stories/US-4-2-operating-posture-visible.md) → [US-4-3](stories/US-4-3-user-chooses-assistance-posture.md) → [US-5-1](stories/US-5-1-draft-location-diagram-reviewable.md) (see [stories/index.md](stories/index.md))
+- **Milestone order (user value):** [US-1-1](stories/US-1-1-crt-hero-layout.md) → [US-1-2](stories/US-1-2-real-game-or-clear-failure.md) → [US-2-1](stories/US-2-1-connection-status-visible.md) → [US-3-1](stories/US-3-1-honest-scripted-autoplay.md) → [US-5-1](stories/US-5-1-draft-location-diagram-reviewable.md) (see [stories/index.md](stories/index.md); **E4** deferred — [deferred.md](deferred.md))
 - **Guideline (repo):** [guidelines/adventure-v3/orchestration-before-playability.md](../../guidelines/adventure-v3/orchestration-before-playability.md)
 - **v2 critique:** [ux-multidisciplinary-review-prep.md](../adventure-v2/ux-multidisciplinary-review-prep.md)
 - **Slice 01 review packet:** [slice-01-multidisciplinary-review.md](slice-01-multidisciplinary-review.md) · [pending-changes-review-evidence.md](pending-changes-review-evidence.md)
 - **Slice 02 review (US-4-1 session signals):** [slice-02-multidisciplinary-review.md](slice-02-multidisciplinary-review.md)
 - **Slice 03 review (US-4-2 assistance posture):** [slice-03-multidisciplinary-review.md](slice-03-multidisciplinary-review.md)
 - **Slice 04 review (US-4-3 posture selection):** [slice-04-multidisciplinary-review.md](slice-04-multidisciplinary-review.md)
+- **Slice 05 review (LangGraph draft map probe + SLM):** [slice-05-multidisciplinary-review.md](slice-05-multidisciplinary-review.md)
+- **Slice 06 review (shell wire extraction + exploration map hardening):** [slice-06-multidisciplinary-review.md](slice-06-multidisciplinary-review.md)
 - **Agentic design (E4/E5):** [design-agentic-mvp.md](design-agentic-mvp.md) · [roadmap-next-features.md](roadmap-next-features.md)
 
 ## Legacy monolith

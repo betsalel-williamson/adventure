@@ -26,7 +26,7 @@ Paths are repo-relative (`adventure/` root).
 | Field | Value |
 | --- | --- |
 | **Loop state** | `BetweenPlans` |
-| **Primary direction** | **Adventure v3** — sharded backlog [`../adventure-v3/index.md`](../adventure-v3/index.md); implement **[`../adventure-v3/stories/index.md`](../adventure-v3/stories/index.md)** order (**US-1-1** → **US-3-1**). |
+| **Primary direction** | **Adventure v3** — exploration **map column** + background location agent ([`../adventure-v3/index.md`](../adventure-v3/index.md)); **E4** deferred for default UX ([`../adventure-v3/deferred.md`](../adventure-v3/deferred.md)). |
 | **Secondary tracks** | **AAB** LangGraph pivot — [`Implementing`](#concurrently-active-queue). **Adventure v2** — maintenance / slice close-out only (e.g. [`slice-18-multidisciplinary-review.md`](../adventure-v2/slice-18-multidisciplinary-review.md)); not the path for “simple game-first” UX (see [`lessons-from-v2.md`](../adventure-v3/lessons-from-v2.md)). |
 | **Blocking** | _(none)_ |
 | **Next after v3 MLP** | Per [`../adventure-v3/deferred.md`](../adventure-v3/deferred.md); v2 **README Not yet** items (auth, TLS, Playwright, …) remain backlog unless reprioritized. |

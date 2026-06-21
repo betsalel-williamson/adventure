@@ -6,6 +6,7 @@ import {
   createProcessOracleBridge,
   createPersistentFortranOracleBridge,
   resolveOracleStartupConfig,
+  shutdownOracleBridge,
 } from "../../../adventure-v2/apps/server/src/index.js";
 import { closeServer } from "../../../adventure-v2/tests/helpers/closeServer.js";
 import type { HttpWorld } from "./http_world.js";
@@ -24,6 +25,7 @@ Before(async function (this: HttpWorld) {
             adventureBinary: oracleCfg.adventureBinary,
           })
         : createSyntheticOracleBridge();
+  this.oracleBridge = oracle;
   this.coordinator = new RunCoordinator(oracle);
   const { server, baseUrl } = await listenAdventureServer(this.coordinator, 0);
   this.server = server;
@@ -33,5 +35,12 @@ Before(async function (this: HttpWorld) {
 After(async function (this: HttpWorld) {
   if (this.server) {
     await closeServer(this.server);
+    this.server = undefined;
   }
+  if (this.oracleBridge) {
+    await shutdownOracleBridge(this.oracleBridge);
+    this.oracleBridge = undefined;
+  }
+  this.coordinator = undefined;
+  this.baseUrl = undefined;
 });

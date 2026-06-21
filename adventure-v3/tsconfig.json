@@ -6,14 +6,20 @@
     "strict": true,
     "skipLibCheck": true,
     "noEmit": true,
+    "resolveJsonModule": true,
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "types": ["vite/client"],
     "paths": {
-      "@contracts": ["../adventure-v2/packages/contracts/src/index.ts"]
+      "@contracts": ["../adventure-v2/packages/contracts/src/index.ts"],
+      "@adventure-v3/map-core": ["./packages/map-core/src/index.ts"]
     }
   },
   "include": [
     "apps/web/src/**/*.ts",
+    "apps/web/tests/**/*.ts",
+    "apps/web/v3-feature-flags.json",
+    "packages/map-core/src/**/*.ts",
+    "packages/assist-server/src/**/*.ts",
     "tests/**/*.ts",
     "vite.config.ts",
     "vitest.config.ts"

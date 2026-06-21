@@ -1,3 +1,5 @@
+> **Historical:** Superseded for **default product direction** by the exploration map reset (map column + feature flags). Retained for regression when legacy Assist / probe flags are enabled.
+
 # Multidisciplinary review — adventure-v3 slice 04 (US-4-3 user chooses assistance posture)
 
 Audience: UX, architecture, operations. Scope: [`adventure-v3`](../../adventure-v3/) web shell — **selectable** assistance postures with confirmation and stale-preview messaging ([US-4-3](stories/US-4-3-user-chooses-assistance-posture.md)), extending slice 03 layout.

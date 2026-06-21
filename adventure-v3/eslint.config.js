@@ -27,10 +27,56 @@ export default tseslint.config(
     },
   },
   {
+    files: ["apps/web/tests/**/*.ts"],
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+        ...globals.vitest,
+        ...globals.node,
+      },
+    },
+  },
+  {
     files: ["tests/**/*.ts"],
     languageOptions: {
       globals: {
         ...globals.node,
+      },
+    },
+  },
+  {
+    files: ["packages/map-core/src/**/*.ts"],
+    ignores: ["packages/map-core/src/**/*.test.ts"],
+    languageOptions: {
+      globals: {
+        ...globals.es2021,
+      },
+    },
+  },
+  {
+    files: ["packages/map-core/src/**/*.test.ts"],
+    languageOptions: {
+      globals: {
+        ...globals.es2021,
+        ...globals.vitest,
+      },
+    },
+  },
+  {
+    files: ["packages/assist-server/src/**/*.ts"],
+    ignores: ["packages/assist-server/src/**/*.test.ts"],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
+    },
+  },
+  {
+    files: ["packages/assist-server/src/**/*.test.ts"],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+        ...globals.vitest,
       },
     },
   },

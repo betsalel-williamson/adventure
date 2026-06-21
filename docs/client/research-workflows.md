@@ -1,0 +1,38 @@
+# Research workflows
+
+Patterns for evaluating SLMs and LLMs against the v3 play surface.
+
+## Manual play + observation
+
+1. Build Fortran oracle: `make adventure`
+2. Start v3 with optional Ollama ([SLM configuration](slm-configuration.md))
+3. Play manually; record transcript, map snapshots, and which hints helped
+4. Separate **oracle text** from **draft map/hints** in notes
+
+## Fixture-based eval
+
+Use `@adventure-v3/cartographer-fixtures` JSON cases with `acceptableResponses` to benchmark ingest output without clicking through full games.
+
+Run package tests from `adventure-v3/`:
+
+```bash
+npm test -- packages/assist-server/src/cartographerFixtureIngest.test.ts
+```
+
+## Map probe (advanced, off by default)
+
+Automated probe steps require:
+
+- Server: `ASSIST_PROBE_ENABLED=true`
+- Client flags: `VITE_V3_MAP_PROBE=true` (and related Assist panels if using legacy UI)
+- **Study first** confirmation when that posture is enabled
+
+Probe sends assist-backed moves — label runs as **scripted probe**, not autonomous LLM play (aligned with user story US-3-1 in `.work-items/adventure-v3/`).
+
+## Agent framework roadmap
+
+AG2 ([ag2ai/ag2](https://github.com/ag2ai/ag2)) integration for multi-agent game solving is planned; this guide documents the **current** HTTP + LangGraph assist path.
+
+## Work items for agents
+
+When driving doc or code tasks from issues, set `WORK_ITEM_LOOKUP` to `docs/developer/agent-work-item-tracking.md`.

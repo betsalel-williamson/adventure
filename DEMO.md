@@ -5,7 +5,7 @@ autoplay with a live map, inventory hints, and transcript.
 
 ## Prerequisites
 
-- **GNU Fortran** (`gfortran`) and **Node.js 20+**
+- **GNU Fortran** (`gfortran`) and **Node.js 24+**
 - Optional: read the root [`README.md`](README.md) **Naming** note — **`adventure-nl`**
   and **`ADVENTURE_NL_*`** use **NL** for **natural language** (the TypeScript stack).
 - At least one **text model** backend configured for `adventure-nl` (for example

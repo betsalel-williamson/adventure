@@ -202,6 +202,33 @@ body {
   border-bottom: 1px solid rgba(40, 48, 38, 0.85);
 }
 
+.crt-exploration-map-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-height: 0;
+}
+
+.crt-exploration-map-intro,
+.crt-exploration-map-status {
+  margin: 0;
+  padding: 0 0.65rem;
+  font-size: 0.62rem;
+  line-height: 1.35;
+  color: rgba(130, 142, 118, 0.85);
+}
+
+.crt-exploration-map-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0 0.65rem 0.5rem;
+}
+
+.crt-legacy-assist-panels[hidden] {
+  display: none !important;
+}
+
 .crt-side-panel-body {
   flex: 1 1 auto;
   min-height: 6rem;
@@ -249,22 +276,97 @@ body {
   transform: rotate(90deg);
 }
 
+.crt-assist-open-hint {
+  margin: 0.25rem 0 0;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.52rem;
+  line-height: 1.4;
+  letter-spacing: 0.04em;
+  color: rgba(105, 115, 98, 0.95);
+}
+
 .crt-assist-stack {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: 0.45rem;
   margin-top: 0.45rem;
   padding-top: 0.35rem;
   border-top: 1px solid rgba(40, 48, 38, 0.65);
 }
 
-.crt-assist-section-heading {
-  margin: 0 0 0.28rem;
+.crt-assist-nested {
+  margin: 0;
+  border: 1px solid rgba(45, 55, 42, 0.55);
+  border-radius: 4px;
+  background: rgba(12, 16, 13, 0.35);
+}
+
+.crt-assist-nested-summary {
+  cursor: pointer;
+  list-style: none;
   font-family: "IBM Plex Mono", monospace;
   font-size: 0.56rem;
   font-weight: 600;
-  letter-spacing: 0.14em;
-  color: rgba(118, 128, 108, 0.95);
+  letter-spacing: 0.12em;
+  color: rgba(125, 136, 115, 0.96);
+  padding: 0.35rem 0.4rem;
+}
+
+.crt-assist-nested-summary::-webkit-details-marker {
+  display: none;
+}
+
+.crt-assist-nested-summary::before {
+  content: "▸ ";
+  display: inline-block;
+  margin-right: 0.15em;
+  transition: transform 0.12s ease;
+}
+
+.crt-assist-nested[open] > .crt-assist-nested-summary::before {
+  transform: rotate(90deg);
+}
+
+.crt-assist-nested-body {
+  padding: 0 0.45rem 0.45rem;
+  border-top: 1px solid rgba(40, 48, 38, 0.45);
+}
+
+.crt-assist-subnested {
+  margin: 0.45rem 0 0;
+  border: 1px solid rgba(38, 48, 36, 0.5);
+  border-radius: 3px;
+  background: rgba(8, 12, 10, 0.5);
+}
+
+.crt-assist-subnested-summary {
+  cursor: pointer;
+  list-style: none;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.52rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: rgba(115, 125, 108, 0.94);
+  padding: 0.28rem 0.35rem;
+}
+
+.crt-assist-subnested-summary::-webkit-details-marker {
+  display: none;
+}
+
+.crt-assist-subnested-summary::before {
+  content: "▸ ";
+  display: inline-block;
+  margin-right: 0.12em;
+  font-size: 0.85em;
+}
+
+.crt-assist-subnested[open] > .crt-assist-subnested-summary::before {
+  content: "▾ ";
+}
+
+.crt-assist-subnested .crt-assist-posture-body {
+  margin: 0.3rem 0.35rem 0.35rem;
 }
 
 .crt-session-signals-body {
@@ -275,6 +377,111 @@ body {
   letter-spacing: 0.02em;
   color: rgba(125, 135, 115, 0.95);
   white-space: pre-line;
+}
+
+.crt-assist-draft-intro {
+  margin: 0 0 0.4rem;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.52rem;
+  line-height: 1.42;
+  letter-spacing: 0.03em;
+  color: rgba(125, 135, 115, 0.92);
+}
+
+.crt-assist-draft-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.35rem 0 0.4rem;
+}
+
+.crt-assist-draft-actions button {
+  padding: 0.15rem 0.45rem;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.52rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(118, 135, 115, 0.98);
+  background: rgba(28, 36, 30, 0.85);
+  border: 1px solid rgba(75, 95, 78, 0.55);
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.crt-assist-draft-actions button:focus-visible {
+  outline: 2px solid rgba(120, 180, 130, 0.65);
+  outline-offset: 2px;
+}
+
+.crt-assist-study-confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.5rem;
+  letter-spacing: 0.03em;
+  color: rgba(118, 128, 108, 0.95);
+  cursor: pointer;
+}
+
+.crt-assist-draft-status {
+  margin: 0 0 0.45rem;
+  min-height: 1.1em;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.52rem;
+  line-height: 1.35;
+  letter-spacing: 0.03em;
+  color: rgba(185, 195, 170, 0.95);
+}
+
+/* Mermaid SVG — same idea as v1 map card, sized for the CRT side strip */
+.crt-draft-mermaid-visual {
+  margin: 0 0 0.5rem;
+  max-height: 14rem;
+  overflow: auto;
+  border: 1px solid rgba(48, 62, 52, 0.55);
+  border-radius: 4px;
+  background: rgba(8, 12, 10, 0.75);
+}
+
+.crt-draft-mermaid-visual:empty {
+  display: none;
+}
+
+.crt-draft-mermaid-visual svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.crt-assist-draft-details {
+  margin: 0 0 0.35rem;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.54rem;
+  letter-spacing: 0.04em;
+  color: rgba(128, 138, 118, 0.95);
+}
+
+.crt-assist-draft-details summary {
+  cursor: pointer;
+  margin-bottom: 0.2rem;
+}
+
+.crt-assist-draft-pre {
+  margin: 0;
+  padding: 0.35rem 0.45rem;
+  max-height: 10rem;
+  overflow: auto;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.52rem;
+  line-height: 1.38;
+  letter-spacing: 0.02em;
+  color: rgba(130, 150, 128, 0.98);
+  background: rgba(10, 14, 12, 0.88);
+  border: 1px solid rgba(50, 65, 55, 0.55);
+  border-radius: 4px;
+  white-space: pre-wrap;
 }
 
 .crt-visually-hidden {

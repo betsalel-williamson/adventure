@@ -1,0 +1,17 @@
+{
+  "storagePrefix": "adventure-v3-flag-",
+  "defaults": {
+    "explorationMap": true,
+    "assistPanels": false,
+    "mapProbe": false,
+    "mapInspectors": false,
+    "locationAgent": true
+  },
+  "envKeys": {
+    "explorationMap": "VITE_V3_EXPLORATION_MAP",
+    "assistPanels": "VITE_V3_ASSIST_PANELS",
+    "mapProbe": "VITE_V3_MAP_PROBE",
+    "mapInspectors": "VITE_V3_MAP_INSPECTORS",
+    "locationAgent": "VITE_V3_LOCATION_AGENT"
+  }
+}

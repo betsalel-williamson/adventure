@@ -8,7 +8,7 @@ TypeScript tooling for Colossal Cave Adventure: parses unchanged `adventure.dat`
 
 ## Requirements
 
-- Node 20+
+- Node 24+
 - GNU Fortran build of `../adventure` (from repo root: `make`) for oracle tests and scripted play
 - Optional: `GEMINI_API_KEY` for natural-language first line before scripted play
 
