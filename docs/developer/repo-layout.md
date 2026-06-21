@@ -12,6 +12,7 @@ The repository combines a Fortran game engine with optional TypeScript tooling a
 | `adventure-v2/` | HTTP + SSE game API, cognition stubs, wire tests |
 | `adventure-langgraph/` | CRT-first web shell + LangGraph assist server |
 | `adventure-ag2/` | AG2 multi-agent handoff stub (Python bridge planned) |
+| `adventure-webclient/` | Unified frontend shell — migrate NL + langgraph UI behind flags |
 | `docs/` | Architecture ADRs, mdcp sharded guides |
 | `.work-items/` | Feature planning (migrating into mdcp shards) |
 | `guidelines/` | Lessons learned |
@@ -34,6 +35,15 @@ adventure-langgraph depends on adventure-v2 at dev time (`npm start` runs v2 `de
 | `packages/ag2-bridge` | AG2 handoff contract, heuristic adapter, multi-agent turn orchestration |
 
 adventure-ag2 reuses `@adventure-langgraph/map-core` for draft map logic. Real [AG2](https://github.com/ag2ai/ag2) integration will route `Ag2LlmAdapter` through a Python subprocess bridge.
+
+## adventure-webclient
+
+| Path | Role |
+| ---- | ---- |
+| `apps/web/` | Vite shell — panel placeholders + unified feature flags |
+| `apps/web/src/backends/` | Game / assist / agent adapter config (env-driven) |
+
+See [`docs/features/webclient/`](../features/webclient/index.md) for the feature catalog and migration status. Default dev port **5175**.
 
 ## Documentation tiers
 

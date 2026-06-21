@@ -32,6 +32,7 @@ Include:
   - `npm run lint` (if you touched JS/TS)
 - **adventure-langgraph/:** `npm run verify` when you change the CRT shell or assist packages
 - **adventure-ag2/:** `npm test` when you change the AG2 handoff stub
+- **adventure-webclient/:** `npm test` when you change the unified frontend shell or feature flags
 - **Documentation shards (`docs/glossary/`, `docs/features/`, `docs/developer/`, `docs/client/`):** from `docs/` run `npm run docs:check` (or `make docs-check` from repo root)
 - **Fortran:** `make` from the repository root should succeed with no new
   warnings you can reasonably fix.

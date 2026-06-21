@@ -11,3 +11,4 @@ Shared terms: [Glossary](../glossary/index.md).
 - [Exploration map column](exploration-map-column.md)
 - [Assist runtime](assist-runtime.md)
 - [Cartographer fixtures](cartographer-fixtures.md)
+- [Webclient (unified frontend)](webclient/index.md)

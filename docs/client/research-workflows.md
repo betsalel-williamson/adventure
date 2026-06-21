@@ -35,6 +35,10 @@ Probe sends assist-backed moves — label runs as **scripted probe**, not autono
 
 **AG2 stub:** [`adventure-ag2/`](../../adventure-ag2/README.md) defines a multi-agent handoff contract (cartographer → navigator → reviewer) with a heuristic adapter for CI. Real AG2 ([ag2ai/ag2](https://github.com/ag2ai/ag2)) Python orchestration is planned via subprocess bridge; set `AG2_PYTHON` and `OAI_CONFIG_LIST` when that adapter lands.
 
+## Unified frontend (webclient)
+
+For UI experiments decoupled from a specific backend, use [`adventure-webclient/`](../../adventure-webclient/README.md): enable panels via feature flags and point at LangGraph assist, AG2, v2 game API, or NL dashboard with env vars. Catalog: [Webclient feature catalog](../features/webclient/feature-catalog.md).
+
 ## Work items for agents
 
 When driving doc or code tasks from issues, set `WORK_ITEM_LOOKUP` to `docs/developer/agent-work-item-tracking.md`.

@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "resolveJsonModule": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["vite/client"],
+    "paths": {
+      "@contracts": ["../adventure-v2/packages/contracts/src/index.ts"]
+    }
+  },
+  "include": [
+    "apps/web/src/**/*.ts",
+    "apps/web/webclient-feature-flags.json",
+    "vite.config.ts",
+    "vitest.config.ts"
+  ]
+}

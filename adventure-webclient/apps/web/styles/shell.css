@@ -1,0 +1,86 @@
+:root {
+  color-scheme: dark;
+  --bg: #0a0f0a;
+  --panel: #121a12;
+  --text: #b8ffb8;
+  --muted: #6a8f6a;
+  --border: #2a4a2a;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.page-main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.shell-brand-heading {
+  margin: 0 0 0.25rem;
+  font-family: "VT323", monospace;
+  font-size: 2rem;
+  letter-spacing: 0.04em;
+}
+
+.webclient-muted {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.status-strip {
+  margin: 0.5rem 0 1rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.layout-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  gap: 1rem;
+}
+
+.panel {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  padding: 0.75rem 1rem;
+}
+
+.panel-hero {
+  min-height: 24rem;
+}
+
+.panel-heading {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.crt-transcript {
+  margin: 0;
+  min-height: 20rem;
+  white-space: pre-wrap;
+  font-family: "VT323", monospace;
+  font-size: 1.25rem;
+  line-height: 1.2;
+}
+
+.panel-dev ul {
+  margin: 0.5rem 0;
+  padding-left: 1.25rem;
+}
+
+@media (max-width: 900px) {
+  .layout-shell {
+    grid-template-columns: 1fr;
+  }
+}

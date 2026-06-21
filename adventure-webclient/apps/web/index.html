@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ADVENTURE — Webclient</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=VT323&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles/shell.css" />
+  </head>
+  <body>
+    <main class="page-main">
+      <header class="shell-brand">
+        <h1 class="shell-brand-heading">Adventure Webclient</h1>
+        <p id="backend-summary" class="webclient-muted" aria-live="polite"></p>
+      </header>
+
+      <p id="status-strip" class="status-strip" role="status" aria-live="polite"></p>
+
+      <div class="layout-shell">
+        <section id="crt-transcript-panel" class="panel panel-hero">
+          <h2 class="panel-heading">CRT transcript</h2>
+          <pre id="crt-transcript" class="crt-transcript" aria-live="polite"></pre>
+        </section>
+
+        <aside class="side-column" aria-label="Optional panels">
+          <section
+            id="exploration-map-mermaid-panel"
+            class="panel"
+            hidden
+            aria-hidden="true"
+          >
+            <h2 class="panel-heading">Exploration map (Mermaid)</h2>
+            <p class="webclient-muted">Migrate from adventure-langgraph.</p>
+          </section>
+
+          <section
+            id="exploration-map-grid-panel"
+            class="panel"
+            hidden
+            aria-hidden="true"
+          >
+            <h2 class="panel-heading">Exploration map (3D grid)</h2>
+            <p class="webclient-muted">Migrate from adventure-nl mapView.js.</p>
+          </section>
+
+          <section
+            id="legacy-assist-panels"
+            class="panel"
+            hidden
+            aria-hidden="true"
+          >
+            <h2 class="panel-heading">Assist panels</h2>
+            <div id="assistance-posture-panel" hidden aria-hidden="true">
+              <h3>Assistance posture</h3>
+            </div>
+            <div id="session-signals-panel" hidden aria-hidden="true">
+              <h3>Session signals</h3>
+            </div>
+            <div data-panel="map-probe" hidden aria-hidden="true">
+              <h3>Map probe</h3>
+            </div>
+            <div data-panel="map-inspectors" hidden aria-hidden="true">
+              <h3>Map inspectors</h3>
+            </div>
+          </section>
+
+          <section
+            id="prompt-lab-panel"
+            class="panel"
+            hidden
+            aria-hidden="true"
+          >
+            <h2 class="panel-heading">Prompt lab</h2>
+            <p class="webclient-muted">Migrate from adventure-nl promptLab.js.</p>
+          </section>
+
+          <section
+            id="autoplay-controls-panel"
+            class="panel"
+            hidden
+            aria-hidden="true"
+          >
+            <h2 class="panel-heading">Autoplay controls</h2>
+            <p class="webclient-muted">Migrate from adventure-nl app.js CRT deck.</p>
+          </section>
+
+          <section id="session-fsm-panel" class="panel" hidden aria-hidden="true">
+            <h2 class="panel-heading">Session FSM (Mermaid)</h2>
+          </section>
+
+          <section
+            id="cognition-orchestration-panel"
+            class="panel"
+            hidden
+            aria-hidden="true"
+          >
+            <h2 class="panel-heading">Cognition orchestration</h2>
+          </section>
+
+          <section
+            id="stately-inspect-panel"
+            class="panel"
+            hidden
+            aria-hidden="true"
+          >
+            <h2 class="panel-heading">Stately Inspect</h2>
+          </section>
+
+          <section id="leaderboard-panel" class="panel" hidden aria-hidden="true">
+            <h2 class="panel-heading">Benchmark leaderboard</h2>
+          </section>
+
+          <section id="feature-flag-dev-panel" class="panel panel-dev">
+            <h2 class="panel-heading">Feature flags</h2>
+            <div id="feature-flag-dev-panel-body"></div>
+          </section>
+        </aside>
+      </div>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

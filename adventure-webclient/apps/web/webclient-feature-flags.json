@@ -1,0 +1,39 @@
+{
+  "storagePrefix": "adventure-webclient-flag-",
+  "defaults": {
+    "crtTranscript": true,
+    "statusStrip": true,
+    "explorationMapMermaid": false,
+    "explorationMapGrid": false,
+    "assistPanels": false,
+    "mapProbe": false,
+    "mapInspectors": false,
+    "sessionSignals": false,
+    "assistancePosture": false,
+    "promptLab": false,
+    "autoplayControls": false,
+    "sessionFsmMermaid": false,
+    "cognitionOrchestration": false,
+    "statelyInspect": false,
+    "leaderboard": false,
+    "featureFlagDevPanel": true
+  },
+  "envKeys": {
+    "crtTranscript": "VITE_WEBCLIENT_CRT_TRANSCRIPT",
+    "statusStrip": "VITE_WEBCLIENT_STATUS_STRIP",
+    "explorationMapMermaid": "VITE_WEBCLIENT_EXPLORATION_MAP_MERMAID",
+    "explorationMapGrid": "VITE_WEBCLIENT_EXPLORATION_MAP_GRID",
+    "assistPanels": "VITE_WEBCLIENT_ASSIST_PANELS",
+    "mapProbe": "VITE_WEBCLIENT_MAP_PROBE",
+    "mapInspectors": "VITE_WEBCLIENT_MAP_INSPECTORS",
+    "sessionSignals": "VITE_WEBCLIENT_SESSION_SIGNALS",
+    "assistancePosture": "VITE_WEBCLIENT_ASSISTANCE_POSTURE",
+    "promptLab": "VITE_WEBCLIENT_PROMPT_LAB",
+    "autoplayControls": "VITE_WEBCLIENT_AUTOPLAY_CONTROLS",
+    "sessionFsmMermaid": "VITE_WEBCLIENT_SESSION_FSM_MERMAID",
+    "cognitionOrchestration": "VITE_WEBCLIENT_COGNITION_ORCHESTRATION",
+    "statelyInspect": "VITE_WEBCLIENT_STATELY_INSPECT",
+    "leaderboard": "VITE_WEBCLIENT_LEADERBOARD",
+    "featureFlagDevPanel": "VITE_WEBCLIENT_FEATURE_FLAG_DEV_PANEL"
+  }
+}

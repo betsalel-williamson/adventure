@@ -117,6 +117,32 @@ jobs:
         working-directory: adventure-ag2
         run: npm test
 
+  adventure-webclient:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: adventure-webclient/package-lock.json
+
+      - name: Install dependencies (adventure-webclient)
+        working-directory: adventure-webclient
+        run: npm ci
+
+      - name: Unit tests
+        working-directory: adventure-webclient
+        run: npm test
+
+      - name: Production build
+        working-directory: adventure-webclient
+        run: npm run build
+
   docs-check:
     runs-on: ubuntu-latest
 

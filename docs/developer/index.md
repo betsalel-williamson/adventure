@@ -7,6 +7,7 @@ Shared terms: [Glossary](../glossary/index.md).
 ## Sections
 
 - [Repository layout](repo-layout.md)
+- [Webclient dev setup](webclient-dev-setup.md)
 - [v3 dev setup](v3-dev-setup.md)
 - [v3 testing](v3-testing.md)
 - [mdcp workflow](mdcp-workflow.md)
