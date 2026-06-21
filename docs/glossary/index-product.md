@@ -13,3 +13,4 @@ Terms for the CRT shell, assist server, and draft exploration map.
 - [Navigator](navigator.md)
 - [Heuristic adapter](heuristic-adapter.md)
 - [Assist server](assist-server.md)
+- [Webclient](webclient.md)

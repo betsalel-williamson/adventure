@@ -12,6 +12,7 @@ Browse by group: [Product terms (v3)](index-product.md).
 - [Draft assistance](draft-assistance.md)
 - [CRT transcript](crt-transcript.md)
 - [Exploration map](exploration-map.md)
+- [Webclient](webclient.md)
 - [Cartographer](cartographer.md)
 - [Navigator](navigator.md)
 - [Heuristic adapter](heuristic-adapter.md)
