@@ -71,3 +71,25 @@ export type {
   InferenceResponse,
 } from "./inference/contract.js";
 
+export {
+  createSessionResponseSchema,
+  issuePairingCodeResponseSchema,
+  pairingCodeSchema,
+  redeemPairingCodeRequestSchema,
+  redeemPairingCodeResponseSchema,
+  registeredDeviceSchema,
+  sessionIdSchema,
+  unauthorizedErrorSchema,
+} from "./session/contract.js";
+
+export type {
+  CreateSessionResponse,
+  IssuePairingCodeResponse,
+  PairingCode,
+  RedeemPairingCodeRequest,
+  RedeemPairingCodeResponse,
+  RegisteredDevice,
+  SessionId,
+  UnauthorizedError,
+} from "./session/contract.js";
+

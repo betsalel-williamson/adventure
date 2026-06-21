@@ -55,6 +55,7 @@ Shared shards: `docs/client/readme-shards/`, `docs/developer/readme-shards/`.
 
 ## Test and CI
 
+- [QA verification report](qa-verification-report.md) — local evidence pack before PR (`.caches/qa-reports/`, gitignored)
 - [v3 testing](v3-testing.md) — langgraph verify gate
 - `make docs-check` — mdcp compile, links, markdownlint
 

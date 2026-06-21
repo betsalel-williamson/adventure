@@ -11,14 +11,19 @@ import { z } from "zod";
 import {
   createRunRequestSchema,
   createRunResponseSchema,
+  createSessionResponseSchema,
   inferenceCapabilitiesResponseSchema,
   inferenceRequestSchema,
   inferenceResponseSchema,
+  issuePairingCodeResponseSchema,
   listCheckpointsResponseSchema,
   postReplayRequestSchema,
   postReplayResponseSchema,
   postTurnRequestSchema,
+  redeemPairingCodeRequestSchema,
+  redeemPairingCodeResponseSchema,
   sseWireEventSchema,
+  unauthorizedErrorSchema,
 } from "../packages/contracts/src/index.js";
 
 extendZodWithOpenApi(z);
@@ -152,6 +157,58 @@ registry.registerPath({
   },
 });
 
+const unauthorizedSchema = registry.register(
+  "Unauthorized",
+  unauthorizedErrorSchema,
+);
+
+registry.registerPath({
+  method: "post",
+  path: "/session",
+  summary: "Create session principal and issue HttpOnly cookie",
+  responses: {
+    201: {
+      description: "Session created",
+      content: { "application/json": { schema: createSessionResponseSchema } },
+    },
+  },
+});
+
+registry.registerPath({
+  method: "post",
+  path: "/pairing/codes",
+  summary: "Issue short-lived pairing code for desktop agent bootstrap",
+  responses: {
+    201: {
+      description: "Pairing code issued (single use, ~5 min TTL)",
+      content: { "application/json": { schema: issuePairingCodeResponseSchema } },
+    },
+    401: {
+      description: "Missing or invalid session cookie",
+      content: { "application/json": { schema: unauthorizedSchema } },
+    },
+  },
+});
+
+registry.registerPath({
+  method: "post",
+  path: "/pairing/redeem",
+  summary: "Redeem pairing code and register desktop device token",
+  request: {
+    body: {
+      content: { "application/json": { schema: redeemPairingCodeRequestSchema } },
+    },
+  },
+  responses: {
+    200: {
+      description: "Device registered; store deviceToken in OS keychain only",
+      content: { "application/json": { schema: redeemPairingCodeResponseSchema } },
+    },
+    404: { description: "Unknown pairing code" },
+    410: { description: "Expired or already redeemed pairing code" },
+  },
+});
+
 registry.registerPath({
   method: "post",
   path: "/inference/plan",
@@ -165,6 +222,10 @@ registry.registerPath({
     200: {
       description: "Planner JSON result",
       content: { "application/json": { schema: inferenceResponseSchema } },
+    },
+    401: {
+      description: "Missing or invalid session cookie",
+      content: { "application/json": { schema: unauthorizedSchema } },
     },
   },
 });
@@ -183,6 +244,10 @@ registry.registerPath({
       description: "Navigator JSON result",
       content: { "application/json": { schema: inferenceResponseSchema } },
     },
+    401: {
+      description: "Missing or invalid session cookie",
+      content: { "application/json": { schema: unauthorizedSchema } },
+    },
   },
 });
 
@@ -196,6 +261,10 @@ registry.registerPath({
       content: {
         "application/json": { schema: inferenceCapabilitiesResponseSchema },
       },
+    },
+    401: {
+      description: "Missing or invalid session cookie",
+      content: { "application/json": { schema: unauthorizedSchema } },
     },
   },
 });

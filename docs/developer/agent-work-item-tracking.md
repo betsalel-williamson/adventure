@@ -32,6 +32,8 @@ Agents load issue body and acceptance criteria via:
 
 Red → Green → Refactor tied to issue pick-up, branches, PRs, and project Status: [TDD + GitHub workflow](tdd-and-github-workflow.md).
 
+Before opening a PR, produce a local [QA verification report](qa-verification-report.md) in `.caches/qa-reports/` — targeted tests, regression output, live HTTP evidence when applicable, and a table mapping each acceptance criterion to proof. Paste the executive summary into the PR **Test plan**; do not commit the report.
+
 Issue classification and MVP filter: [issue triage catalog](work-registry/issue-triage.md).
 
 ## Cloud deploy MVP epic
@@ -47,6 +49,7 @@ Multi-issue program: epic [#3](https://github.com/betsalel-williamson/adventure/
 | PR template | [`.github/pull_request_template.md`](../../.github/pull_request_template.md) |
 | Project guide | [work-registry/github-project.md](work-registry/github-project.md) |
 | TDD workflow | [tdd-and-github-workflow.md](tdd-and-github-workflow.md) |
+| QA verification report | [qa-verification-report.md](qa-verification-report.md) |
 | Branch policy | [branch-policy.md](branch-policy.md) |
 | Issue triage | [work-registry/issue-triage.md](work-registry/issue-triage.md) |
 | Work registry | [work-registry/index.md](work-registry/index.md) |

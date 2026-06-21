@@ -22,4 +22,11 @@ export {
   resolveOracleStartupConfig
 } from "./oracle/oracleStartupConfig.js";
 export type { WireStreamItem } from "./http/wireStream.js";
-
+export {
+  ADV_V2_INSECURE_HTTP_ENV,
+  SessionStore,
+  SESSION_COOKIE_NAME,
+  formatSessionCookie,
+  parseSessionCookie,
+  sessionCookieFlags
+} from "./session/sessionStore.js";

@@ -68,4 +68,4 @@ Distinct from:
 ## Previous / next
 
 - Previous: [inference contract](./inference-contract.md)
-- Next: [MVP scope](./mvp-scope.md)
+- Next: [security and session](./security-and-session.md)

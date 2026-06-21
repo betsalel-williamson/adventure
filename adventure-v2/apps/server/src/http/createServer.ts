@@ -7,16 +7,26 @@ import {
 import {
   createRunRequestSchema,
   createRunResponseSchema,
+  createSessionResponseSchema,
+  inferenceRequestSchema,
+  issuePairingCodeResponseSchema,
   listCheckpointsResponseSchema,
   postReplayRequestSchema,
   postReplayResponseSchema,
   postTurnRequestSchema,
+  redeemPairingCodeRequestSchema,
+  redeemPairingCodeResponseSchema,
   sseWireEventSchema,
   type CreateRunResponse,
   type SseWireEvent
 } from "../../../../packages/contracts/src/index.js";
 import { healthOracleWireFields } from "../oracle/oracleStartupConfig.js";
 import type { RunCoordinator } from "../run/runCoordinator.js";
+import {
+  SessionStore,
+  formatSessionCookie,
+  parseSessionCookie
+} from "../session/sessionStore.js";
 import type { WireStreamItem } from "./wireStream.js";
 
 /** Maximum bytes read for JSON request bodies (`POST` routes using `readJsonBody`). */
@@ -124,6 +134,12 @@ const writeSse = (res: ServerResponse, wire: SseWireEvent): void => {
 
 type Route =
   | { kind: "get-health" }
+  | { kind: "post-session" }
+  | { kind: "post-pairing-codes" }
+  | { kind: "post-pairing-redeem" }
+  | { kind: "post-inference-plan" }
+  | { kind: "post-inference-navigator" }
+  | { kind: "get-inference-capabilities" }
   | { kind: "post-runs" }
   | { kind: "post-turn"; runId: string }
   | { kind: "get-events"; runId: string }
@@ -135,6 +151,24 @@ const parseRoute = (pathname: string, method: string): Route => {
   const path = pathname.endsWith("/") && pathname.length > 1 ? pathname.slice(0, -1) : pathname;
   if (method === "GET" && path === "/health") {
     return { kind: "get-health" };
+  }
+  if (method === "POST" && path === "/session") {
+    return { kind: "post-session" };
+  }
+  if (method === "POST" && path === "/pairing/codes") {
+    return { kind: "post-pairing-codes" };
+  }
+  if (method === "POST" && path === "/pairing/redeem") {
+    return { kind: "post-pairing-redeem" };
+  }
+  if (method === "POST" && path === "/inference/plan") {
+    return { kind: "post-inference-plan" };
+  }
+  if (method === "POST" && path === "/inference/navigator") {
+    return { kind: "post-inference-navigator" };
+  }
+  if (method === "GET" && path === "/inference/capabilities") {
+    return { kind: "get-inference-capabilities" };
   }
   if (method === "POST" && path === "/runs") {
     return { kind: "post-runs" };
@@ -164,14 +198,34 @@ const isUnknownRunError = (err: unknown): boolean =>
 const isUnknownCheckpointError = (err: unknown): boolean =>
   err instanceof Error && err.message.startsWith("Unknown checkpoint:");
 
-export const createAdventureHttpServer = (coordinator: RunCoordinator): Server => {
+export const createAdventureHttpServer = (
+  coordinator: RunCoordinator,
+  sessions: SessionStore = new SessionStore()
+): Server => {
   return createServer((req, res) => {
-    void handleHttp(coordinator, req, res);
+    void handleHttp(coordinator, sessions, req, res);
   });
+};
+
+const requireSession = (
+  req: IncomingMessage,
+  res: ServerResponse,
+  sessions: SessionStore
+): string | null => {
+  const sessionId = parseSessionCookie(req.headers.cookie);
+  if (!sessionId || !sessions.hasSession(sessionId)) {
+    sendJson(req, res, 401, {
+      error: "unauthorized",
+      message: "Valid session cookie required"
+    });
+    return null;
+  }
+  return sessionId;
 };
 
 const handleHttp = async (
   coordinator: RunCoordinator,
+  sessions: SessionStore,
   req: IncomingMessage,
   res: ServerResponse
 ): Promise<void> => {
@@ -193,6 +247,77 @@ const handleHttp = async (
         status: "ok",
         service: "adventure-v2",
         ...healthOracleWireFields()
+      });
+      return;
+    }
+
+    if (route.kind === "post-session") {
+      const sessionId = sessions.createSession();
+      sendJson(
+        req,
+        res,
+        201,
+        createSessionResponseSchema.parse({ sessionId }),
+        { "Set-Cookie": formatSessionCookie(sessionId) }
+      );
+      return;
+    }
+
+    if (route.kind === "post-pairing-codes") {
+      const sessionId = requireSession(req, res, sessions);
+      if (!sessionId) {
+        return;
+      }
+      const issued = sessions.issuePairingCode(sessionId);
+      sendJson(req, res, 201, issuePairingCodeResponseSchema.parse(issued));
+      return;
+    }
+
+    if (route.kind === "post-pairing-redeem") {
+      const raw = await readJsonBody(req);
+      let body;
+      try {
+        body = redeemPairingCodeRequestSchema.parse(raw);
+      } catch {
+        sendJson(req, res, 400, { error: "bad_request", message: "Invalid pairing redeem body" });
+        return;
+      }
+      const result = sessions.redeemPairingCode(body.code, body.deviceLabel);
+      if (result === "unknown") {
+        sendJson(req, res, 404, { error: "not_found", message: "Unknown pairing code" });
+        return;
+      }
+      if (result === "expired" || result === "consumed") {
+        sendJson(req, res, 410, {
+          error: "pairing_code_unavailable",
+          message: result === "expired" ? "Pairing code expired" : "Pairing code already used"
+        });
+        return;
+      }
+      sendJson(req, res, 200, redeemPairingCodeResponseSchema.parse(result));
+      return;
+    }
+
+    if (route.kind === "post-inference-plan" || route.kind === "post-inference-navigator") {
+      if (!requireSession(req, res, sessions)) {
+        return;
+      }
+      const raw = await readJsonBody(req);
+      inferenceRequestSchema.parse(raw);
+      sendJson(req, res, 501, {
+        error: "not_implemented",
+        message: "Inference relay not wired yet (see I4)"
+      });
+      return;
+    }
+
+    if (route.kind === "get-inference-capabilities") {
+      if (!requireSession(req, res, sessions)) {
+        return;
+      }
+      sendJson(req, res, 501, {
+        error: "not_implemented",
+        message: "Inference capabilities not wired yet (see I4)"
       });
       return;
     }
@@ -303,9 +428,10 @@ const handleHttp = async (
 export const listenAdventureServer = (
   coordinator: RunCoordinator,
   port: number,
-  host: string = "127.0.0.1"
+  host: string = "127.0.0.1",
+  sessions: SessionStore = new SessionStore()
 ): Promise<{ server: Server; port: number; baseUrl: string }> => {
-  const server = createAdventureHttpServer(coordinator);
+  const server = createAdventureHttpServer(coordinator, sessions);
   return new Promise((resolve, reject) => {
     server.listen(port, host, () => {
       const address = server.address();
