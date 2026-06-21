@@ -40,6 +40,19 @@ components:
             - payload_too_large
       required:
         - error
+    Unauthorized:
+      type: object
+      properties:
+        error:
+          type: string
+          enum:
+            - unauthorized
+        message:
+          type: string
+          minLength: 1
+      required:
+        - error
+        - message
   parameters: {}
 paths:
   /health:
@@ -457,6 +470,93 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PayloadTooLarge"
+  /session:
+    post:
+      summary: Create session principal and issue HttpOnly cookie
+      responses:
+        "201":
+          description: Session created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessionId:
+                    type: string
+                    format: uuid
+                required:
+                  - sessionId
+  /pairing/codes:
+    post:
+      summary: Issue short-lived pairing code for desktop agent bootstrap
+      responses:
+        "201":
+          description: Pairing code issued (single use, ~5 min TTL)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    pattern: ^[A-Z2-9]{6,8}$
+                  expiresAt:
+                    type: string
+                    format: date-time
+                required:
+                  - code
+                  - expiresAt
+        "401":
+          description: Missing or invalid session cookie
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Unauthorized"
+  /pairing/redeem:
+    post:
+      summary: Redeem pairing code and register desktop device token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+                  pattern: ^[A-Z2-9]{6,8}$
+                deviceLabel:
+                  type: string
+                  minLength: 1
+                  maxLength: 128
+              required:
+                - code
+      responses:
+        "200":
+          description: Device registered; store deviceToken in OS keychain only
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deviceId:
+                    type: string
+                    format: uuid
+                  deviceToken:
+                    type: string
+                    minLength: 32
+                  sessionId:
+                    type: string
+                    format: uuid
+                required:
+                  - deviceId
+                  - deviceToken
+                  - sessionId
+        "404":
+          description: Unknown pairing code
+        "410":
+          description: Expired or already redeemed pairing code
+        "429":
+          description: Too many redeem attempts (rate limited)
   /inference/plan:
     post:
       summary: Planner inference (stateless system + user)
@@ -564,6 +664,12 @@ paths:
                       - ok
                       - code
                       - message
+        "401":
+          description: Missing or invalid session cookie
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Unauthorized"
   /inference/navigator:
     post:
       summary: Assist navigator inference (stateless system + user)
@@ -662,6 +768,12 @@ paths:
                       - ok
                       - code
                       - message
+        "401":
+          description: Missing or invalid session cookie
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Unauthorized"
   /inference/capabilities:
     get:
       summary: List inference providers available for the session
@@ -700,3 +812,9 @@ paths:
                         - label
                 required:
                   - capabilities
+        "401":
+          description: Missing or invalid session cookie
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Unauthorized"

@@ -30,8 +30,9 @@ See [work registry — GraphQL fallback](work-registry/index.md#graphql-quota-fa
 4. **Red** — Failing test(s) for acceptance criteria (package-level Vitest/integration per area).
 5. **Green** — Minimal implementation.
 6. **Refactor** — Only with tests green; separate structural vs behavioral commits.
-7. **PR** — Open against **`feature/adventure-llm`**; fill [`.github/pull_request_template.md`](../../.github/pull_request_template.md) (GitHub pre-populates it).
-8. **Board** — Project Status **In progress** → **Done** on merge; run targeted tests from issue test strategy.
+7. **Verify** — Produce a local [QA verification report](qa-verification-report.md) in `.caches/qa-reports/` (gitignored): targeted tests, regression, live demo when API behavior matters, acceptance-criteria traceability. For auth/session/crypto changes, also write a committed [security review](security-review-workflow.md).
+8. **PR** — Open against **`feature/adventure-llm`**; fill [`.github/pull_request_template.md`](../../.github/pull_request_template.md) (GitHub pre-populates it). Paste the report executive summary into **Test plan**.
+9. **Board** — Project Status **In progress** → **Done** on merge; run targeted tests from issue test strategy.
 
 ```mermaid
 flowchart TD
@@ -40,9 +41,10 @@ flowchart TD
   red[Write failing test]
   green[Minimal fix]
   refactor[Refactor if green]
+  verify[QA report in .caches/qa-reports]
   pr[PR Closes issue]
   board[Project Status Done]
-  pick --> branch --> red --> green --> refactor --> pr --> board
+  pick --> branch --> red --> green --> refactor --> verify --> pr --> board
 ```
 
 ## Branch and PR conventions
@@ -97,6 +99,8 @@ Never create new trackable epic/story files under `.work-items/` for cloud-deplo
 
 ## Related
 
+- [Security review workflow](security-review-workflow.md)
+- [QA verification report](qa-verification-report.md)
 - [Branch policy](#branch-policy)
 - [Issue triage catalog](work-registry/issue-triage.md)
 - [GitHub Project management](work-registry/github-project.md)

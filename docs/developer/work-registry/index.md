@@ -78,6 +78,8 @@ Backward-compatible wrapper for cloud deploy only:
 ./scripts/work-registry/verify.sh
 ```
 
+For implementation branches, also produce a local [QA verification report](../qa-verification-report.md) (`.caches/qa-reports/`, gitignored) before opening a PR — see [TDD workflow](../tdd-and-github-workflow.md).
+
 ### 5. Audit project (read-only)
 
 ```bash

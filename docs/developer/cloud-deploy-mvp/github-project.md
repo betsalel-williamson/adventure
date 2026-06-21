@@ -51,7 +51,7 @@ Set `WORK_ITEM=#5` (or issue URL) in agent prompts — see [agent work-item trac
 - **One issue per PR** when possible (small batch).
 - **Base branch:** `feature/adventure-llm` ([branch policy](#branch-policy))
 - **Title:** `cloud-deploy (I1): unified inference OpenAPI` (work key + short slug)
-- **Body:** [`.github/pull_request_template.md`](../../../.github/pull_request_template.md) — canonical template; GitHub pre-populates it on new PRs. Use **Closes #N** only when acceptance criteria are fully met.
+- **Body:** [`.github/pull_request_template.md`](../../../.github/pull_request_template.md) — canonical template; GitHub pre-populates it on new PRs. Use **Closes #N** only when acceptance criteria are fully met. Paste the [QA report](../qa-verification-report.md) executive summary into **Test plan** (report stays in `.caches/qa-reports/`, gitignored).
 
 ### Status updates
 

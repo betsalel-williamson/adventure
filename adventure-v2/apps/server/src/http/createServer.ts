@@ -7,29 +7,39 @@ import {
 import {
   createRunRequestSchema,
   createRunResponseSchema,
+  createSessionResponseSchema,
+  inferenceRequestSchema,
+  issuePairingCodeResponseSchema,
   listCheckpointsResponseSchema,
   postReplayRequestSchema,
   postReplayResponseSchema,
   postTurnRequestSchema,
+  redeemPairingCodeRequestSchema,
+  redeemPairingCodeResponseSchema,
   sseWireEventSchema,
   type CreateRunResponse,
   type SseWireEvent
 } from "../../../../packages/contracts/src/index.js";
 import { healthOracleWireFields } from "../oracle/oracleStartupConfig.js";
 import type { RunCoordinator } from "../run/runCoordinator.js";
+import {
+  SessionStore,
+  formatSessionCookie,
+  parseSessionCookie
+} from "../session/sessionStore.js";
+import {
+  PairingRedeemRateLimiter,
+  clientRateLimitKey
+} from "../session/pairingRateLimit.js";
+import { requireAllowedBrowserOrigin } from "../session/sessionOriginPolicy.js";
+import { ADV_V2_CORS_ORIGINS_ENV, corsHeadersForRequest } from "./corsPolicy.js";
 import type { WireStreamItem } from "./wireStream.js";
 
 /** Maximum bytes read for JSON request bodies (`POST` routes using `readJsonBody`). */
 export const HTTP_MAX_JSON_BODY_BYTES = 256 * 1024;
 
 export { healthOracleWireFields };
-
-/**
- * Comma-separated list of allowed browser `Origin` values. When unset or blank,
- * responses use `Access-Control-Allow-Origin: *`. When set, only matching
- * origins receive a reflected `Access-Control-Allow-Origin`; others omit it.
- */
-export const ADV_V2_CORS_ORIGINS_ENV = "ADV_V2_CORS_ORIGINS";
+export { ADV_V2_CORS_ORIGINS_ENV, corsHeadersForRequest };
 
 class JsonBodyTooLargeError extends Error {
   constructor() {
@@ -37,32 +47,6 @@ class JsonBodyTooLargeError extends Error {
     this.name = "JsonBodyTooLargeError";
   }
 }
-
-const parseCorsAllowlist = (): readonly string[] | null => {
-  const raw = process.env[ADV_V2_CORS_ORIGINS_ENV];
-  if (raw === undefined || raw.trim() === "") {
-    return null;
-  }
-  const parts = raw.split(",").map((s) => s.trim()).filter((s) => s.length > 0);
-  return parts.length === 0 ? null : parts;
-};
-
-/** CORS headers for a request; reads `ADV_V2_CORS_ORIGINS` per request for tests and runtime env changes. */
-export const corsHeadersForRequest = (req: IncomingMessage): Record<string, string> => {
-  const base: Record<string, string> = {
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type"
-  };
-  const allowlist = parseCorsAllowlist();
-  if (allowlist === null) {
-    return { ...base, "Access-Control-Allow-Origin": "*" };
-  }
-  const origin = req.headers.origin;
-  if (typeof origin === "string" && allowlist.includes(origin)) {
-    return { ...base, "Access-Control-Allow-Origin": origin };
-  }
-  return base;
-};
 
 const readJsonBody = async (req: IncomingMessage): Promise<unknown> => {
   const chunks: Buffer[] = [];
@@ -124,6 +108,12 @@ const writeSse = (res: ServerResponse, wire: SseWireEvent): void => {
 
 type Route =
   | { kind: "get-health" }
+  | { kind: "post-session" }
+  | { kind: "post-pairing-codes" }
+  | { kind: "post-pairing-redeem" }
+  | { kind: "post-inference-plan" }
+  | { kind: "post-inference-navigator" }
+  | { kind: "get-inference-capabilities" }
   | { kind: "post-runs" }
   | { kind: "post-turn"; runId: string }
   | { kind: "get-events"; runId: string }
@@ -135,6 +125,24 @@ const parseRoute = (pathname: string, method: string): Route => {
   const path = pathname.endsWith("/") && pathname.length > 1 ? pathname.slice(0, -1) : pathname;
   if (method === "GET" && path === "/health") {
     return { kind: "get-health" };
+  }
+  if (method === "POST" && path === "/session") {
+    return { kind: "post-session" };
+  }
+  if (method === "POST" && path === "/pairing/codes") {
+    return { kind: "post-pairing-codes" };
+  }
+  if (method === "POST" && path === "/pairing/redeem") {
+    return { kind: "post-pairing-redeem" };
+  }
+  if (method === "POST" && path === "/inference/plan") {
+    return { kind: "post-inference-plan" };
+  }
+  if (method === "POST" && path === "/inference/navigator") {
+    return { kind: "post-inference-navigator" };
+  }
+  if (method === "GET" && path === "/inference/capabilities") {
+    return { kind: "get-inference-capabilities" };
   }
   if (method === "POST" && path === "/runs") {
     return { kind: "post-runs" };
@@ -164,14 +172,36 @@ const isUnknownRunError = (err: unknown): boolean =>
 const isUnknownCheckpointError = (err: unknown): boolean =>
   err instanceof Error && err.message.startsWith("Unknown checkpoint:");
 
-export const createAdventureHttpServer = (coordinator: RunCoordinator): Server => {
+export const createAdventureHttpServer = (
+  coordinator: RunCoordinator,
+  sessions: SessionStore = new SessionStore(),
+  pairingRedeemLimiter: PairingRedeemRateLimiter = new PairingRedeemRateLimiter()
+): Server => {
   return createServer((req, res) => {
-    void handleHttp(coordinator, req, res);
+    void handleHttp(coordinator, sessions, pairingRedeemLimiter, req, res);
   });
+};
+
+const requireSession = (
+  req: IncomingMessage,
+  res: ServerResponse,
+  sessions: SessionStore
+): string | null => {
+  const sessionId = parseSessionCookie(req.headers.cookie);
+  if (!sessionId || !sessions.requireActiveSession(sessionId)) {
+    sendJson(req, res, 401, {
+      error: "unauthorized",
+      message: "Valid session cookie required"
+    });
+    return null;
+  }
+  return sessionId;
 };
 
 const handleHttp = async (
   coordinator: RunCoordinator,
+  sessions: SessionStore,
+  pairingRedeemLimiter: PairingRedeemRateLimiter,
   req: IncomingMessage,
   res: ServerResponse
 ): Promise<void> => {
@@ -193,6 +223,94 @@ const handleHttp = async (
         status: "ok",
         service: "adventure-v2",
         ...healthOracleWireFields()
+      });
+      return;
+    }
+
+    if (route.kind === "post-session") {
+      if (!requireAllowedBrowserOrigin(req, res, sendJson)) {
+        return;
+      }
+      const sessionId = sessions.createSession();
+      sendJson(
+        req,
+        res,
+        201,
+        createSessionResponseSchema.parse({ sessionId }),
+        { "Set-Cookie": formatSessionCookie(sessionId) }
+      );
+      return;
+    }
+
+    if (route.kind === "post-pairing-codes") {
+      if (!requireAllowedBrowserOrigin(req, res, sendJson)) {
+        return;
+      }
+      const sessionId = requireSession(req, res, sessions);
+      if (!sessionId) {
+        return;
+      }
+      const issued = sessions.issuePairingCode(sessionId);
+      sendJson(req, res, 201, issuePairingCodeResponseSchema.parse(issued));
+      return;
+    }
+
+    if (route.kind === "post-pairing-redeem") {
+      const rateKey = clientRateLimitKey(req.socket.remoteAddress ?? undefined);
+      if (!pairingRedeemLimiter.allow(rateKey)) {
+        sendJson(req, res, 429, {
+          error: "too_many_requests",
+          message: "Too many pairing redeem attempts; try again later"
+        });
+        return;
+      }
+      const raw = await readJsonBody(req);
+      let body;
+      try {
+        body = redeemPairingCodeRequestSchema.parse(raw);
+      } catch {
+        sendJson(req, res, 400, { error: "bad_request", message: "Invalid pairing redeem body" });
+        return;
+      }
+      const result = sessions.redeemPairingCode(body.code, body.deviceLabel);
+      if (result === "unknown") {
+        sendJson(req, res, 404, { error: "not_found", message: "Unknown pairing code" });
+        return;
+      }
+      if (result === "expired" || result === "consumed") {
+        sendJson(req, res, 410, {
+          error: "pairing_code_unavailable",
+          message: result === "expired" ? "Pairing code expired" : "Pairing code already used"
+        });
+        return;
+      }
+      sendJson(req, res, 200, redeemPairingCodeResponseSchema.parse(result));
+      return;
+    }
+
+    if (route.kind === "post-inference-plan" || route.kind === "post-inference-navigator") {
+      if (!requireAllowedBrowserOrigin(req, res, sendJson)) {
+        return;
+      }
+      if (!requireSession(req, res, sessions)) {
+        return;
+      }
+      const raw = await readJsonBody(req);
+      inferenceRequestSchema.parse(raw);
+      sendJson(req, res, 501, {
+        error: "not_implemented",
+        message: "Inference relay not wired yet (see I4)"
+      });
+      return;
+    }
+
+    if (route.kind === "get-inference-capabilities") {
+      if (!requireSession(req, res, sessions)) {
+        return;
+      }
+      sendJson(req, res, 501, {
+        error: "not_implemented",
+        message: "Inference capabilities not wired yet (see I4)"
       });
       return;
     }
@@ -303,9 +421,11 @@ const handleHttp = async (
 export const listenAdventureServer = (
   coordinator: RunCoordinator,
   port: number,
-  host: string = "127.0.0.1"
+  host: string = "127.0.0.1",
+  sessions: SessionStore = new SessionStore(),
+  pairingRedeemLimiter: PairingRedeemRateLimiter = new PairingRedeemRateLimiter()
 ): Promise<{ server: Server; port: number; baseUrl: string }> => {
-  const server = createAdventureHttpServer(coordinator);
+  const server = createAdventureHttpServer(coordinator, sessions, pairingRedeemLimiter);
   return new Promise((resolve, reject) => {
     server.listen(port, host, () => {
       const address = server.address();
