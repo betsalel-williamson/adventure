@@ -13,8 +13,8 @@ Product goal for the first cloud slice:
 
 Forces:
 
-- [ADR0004](ADR0004-backend-llm-packaging-and-discovery.md) defines logical `system` / `user` requests; [ADR0015](ADR0015-deprecate-server-forward-nl-cognition.md) makes browser-direct vendors the NL dashboard default — **unsafe for public deploy**.
-- [ADR0016](ADR0016-cognition-glue-mcp-and-execution-mcp-surfaces.md) separates **Mind (glue)** vs **Body (execution)**; cloud MVP adds **Inference (local or hosted compute)** as a third leg.
+- [ADR0004](../decisions/ADR0004-backend-llm-packaging-and-discovery.md) defines logical `system` / `user` requests; [ADR0015](../decisions/ADR0015-deprecate-server-forward-nl-cognition.md) makes browser-direct vendors the NL dashboard default — **unsafe for public deploy**.
+- [ADR0016](../decisions/ADR0016-cognition-glue-mcp-and-execution-mcp-surfaces.md) separates **Mind (glue)** vs **Body (execution)**; cloud MVP adds **Inference (local or hosted compute)** as a third leg.
 - adventure-v2 [security-and-ops](../architecture/adventure-v2/security-and-ops.md) already describes session principals, HTTPS, and CSRF baselines — cloud deploy must extend, not bypass, these.
 
 ## Decision
@@ -70,6 +70,6 @@ Proposed
 
 - [Cloud deploy MVP — overview](../architecture/cloud-deploy-mvp/overview.md)
 - [Cloud deploy MVP — work graph](../architecture/cloud-deploy-mvp/work-graph.md)
-- [ADR0004](ADR0004-backend-llm-packaging-and-discovery.md) · [ADR0015](ADR0015-deprecate-server-forward-nl-cognition.md) · [ADR0016](ADR0016-cognition-glue-mcp-and-execution-mcp-surfaces.md)
+- [ADR0004](../decisions/ADR0004-backend-llm-packaging-and-discovery.md) · [ADR0015](../decisions/ADR0015-deprecate-server-forward-nl-cognition.md) · [ADR0016](../decisions/ADR0016-cognition-glue-mcp-and-execution-mcp-surfaces.md)
 - [adventure-v2 security and ops](../architecture/adventure-v2/security-and-ops.md)
 - [Webclient backend adapters](../features/webclient/backend-adapters.md)
