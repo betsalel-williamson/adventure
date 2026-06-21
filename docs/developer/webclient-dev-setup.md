@@ -109,4 +109,4 @@ cd adventure-webclient && npm test
 - [Features — webclient](../features/webclient/index.md)
 - [Migration catalog](webclient-migration-catalog.md)
 - [Repository layout](repo-layout.md)
-- [`.work-items/adventure-webclient/`](../../.work-items/adventure-webclient/index.md)
+- [Migration catalog](webclient-migration-catalog.md) — track panel migration status

@@ -22,8 +22,17 @@ ADRs use the `ADR####-kebab-case.md` naming convention under `docs/decisions/`.
 
 New product documentation belongs in mdcp guides (`docs/features/`, `docs/client/`). Migrate legacy prose incrementally with `doc-only-task.prompt.md` — do not duplicate entire ADRs into shards.
 
+## Package READMEs (compiled)
+
+Each `adventure-*/README.md` is generated from mdcp readme guides under `docs/readme-adventure-*/`. Edit shards, then `npm run docs:compile`.
+
+- [adventure-langgraph/README.md](../../adventure-langgraph/README.md)
+- [adventure-v2/README.md](../../adventure-v2/README.md)
+- [adventure-nl/README.md](../../adventure-nl/README.md)
+- [adventure-webclient/README.md](../../adventure-webclient/README.md)
+- [adventure-ag2/README.md](../../adventure-ag2/README.md)
+
 ## Other maintainer docs
 
 - Root [README.md](../../README.md), [CONTRIBUTING.md](../../CONTRIBUTING.md)
-- [adventure-langgraph/README.md](../../adventure-langgraph/README.md) — package quick reference
-- `.work-items/adventure-langgraph/` — planning hub (pre-shard)
+- Work tracking: [Agent work-item tracking](agent-work-item-tracking.md) (GitHub Issues)

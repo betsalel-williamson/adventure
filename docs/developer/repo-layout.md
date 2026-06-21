@@ -13,8 +13,8 @@ The repository combines a Fortran game engine with optional TypeScript tooling a
 | `adventure-langgraph/` | CRT-first web shell + LangGraph assist server |
 | `adventure-ag2/` | AG2 multi-agent handoff stub (Python bridge planned) |
 | `adventure-webclient/` | Unified frontend shell — migrate NL + langgraph UI behind flags |
-| `docs/` | Architecture ADRs, mdcp sharded guides |
-| `.work-items/` | Feature planning (migrating into mdcp shards) |
+| `docs/` | Architecture ADRs, mdcp sharded guides, readme guide shards |
+| `.work-items/` | Legacy planning files (historical; new work uses GitHub Issues) |
 | `guidelines/` | Lessons learned |
 
 ## adventure-langgraph packages
@@ -51,6 +51,20 @@ adventure-ag2 reuses `@adventure-langgraph/map-core` for draft map logic. Real [
 | Product capabilities | [`docs/features/webclient/`](../features/webclient/index.md) |
 | Migration + flags | [`webclient-migration-catalog.md`](webclient-migration-catalog.md), [`webclient-feature-flags.md`](webclient-feature-flags.md) |
 
+## Package README guides
+
+Compiled package entry points (edit shards under `docs/readme-adventure-*/`, not README files directly):
+
+| Package | Readme guide |
+| --- | --- |
+| adventure-langgraph | `docs/readme-adventure-langgraph/` |
+| adventure-v2 | `docs/readme-adventure-v2/` |
+| adventure-nl | `docs/readme-adventure-nl/` |
+| adventure-webclient | `docs/readme-adventure-webclient/` |
+| adventure-ag2 | `docs/readme-adventure-ag2/` |
+
+Shared shards: `docs/readme-shards/`. See [mdcp workflow](mdcp-workflow.md).
+
 ## Documentation tiers
 
 | Directory | Audience |
@@ -59,4 +73,5 @@ adventure-ag2 reuses `@adventure-langgraph/map-core` for draft map logic. Real [
 | `docs/developer/` | How to work on the repo (this guide) |
 | `docs/client/` | End-user and researcher play guides |
 | `docs/glossary/` | Shared term definitions |
+| `docs/readme-shards/` | Shared prose for compiled package READMEs |
 | `docs/architecture/`, `docs/decisions/` | Legacy flat docs (outside mdcp compile) |

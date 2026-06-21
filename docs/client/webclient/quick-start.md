@@ -18,7 +18,7 @@ npm run dev
 
 Open `http://127.0.0.1:5175`.
 
-The stub shell shows enabled feature flags and backend summary. Full play wiring lands incrementally — until CRT migration completes, use [langgraph quick start](../quick-start.md) or [adventure-nl README](../../../adventure-nl/README.md) for production play.
+The stub shell shows enabled feature flags and backend summary. Full play wiring lands incrementally — until CRT migration completes, use [langgraph quick start](../quick-start.md) or [adventure-nl README](../../adventure-nl/README.md) for production play.
 
 ## Enable panels for your persona
 
