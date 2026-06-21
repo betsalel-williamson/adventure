@@ -39,3 +39,7 @@ HTTP + SSE game API, cognition stubs, wire tests — package: `adventure-v2/READ
 ## adventure-ag2
 
 Multi-agent handoff stub — package: `adventure-ag2/README.md` · maintainer shards: `docs/developer/readme-adventure-ag2/`.
+
+## Cloud deploy MVP
+
+Hosted backend + webclient + optional desktop SLM bridge — [Cloud deploy MVP](cloud-deploy-mvp.md) · architecture: `docs/architecture/cloud-deploy-mvp/` · [ADR0017](../decisions/ADR0017-cloud-deploy-and-desktop-inference-bridge.md).

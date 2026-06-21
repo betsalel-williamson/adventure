@@ -17,3 +17,4 @@ Browse by group: [Product terms (v3)](index-product.md).
 - [Navigator](navigator.md)
 - [Heuristic adapter](heuristic-adapter.md)
 - [Assist server](assist-server.md)
+- [Desktop inference agent](desktop-inference-agent.md)

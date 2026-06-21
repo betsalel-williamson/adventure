@@ -36,6 +36,7 @@ Runs NL autoplay / planner loops (research mode).
 | `none` | No agent loop (default) |
 | `nl-glue-browser` | In-browser NL glue + vendor APIs |
 | `nl-glue-server` | Server-orchestrated NL glue (MLX path) |
+| `inference-relay` | **Planned (cloud MVP)** — server `/inference/*`; optional paired desktop SLM |
 
 Env: `VITE_WEBCLIENT_AGENT_BACKEND`
 
