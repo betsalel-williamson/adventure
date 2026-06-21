@@ -16,21 +16,25 @@ Both processes run in one container via [`scripts/cloud-deploy/container-entrypo
 ## Build and run
 
 ```bash
-# Single platform (local / CI)
-docker build -t adventure-cloud .
+# Single platform (local / CI) — bake git SHA into /health for smoke validation
+docker build $(./scripts/cloud-deploy/docker-build-args.sh) -t adventure-cloud .
 
 docker run --rm -p 8787:8787 -p 8790:8790 adventure-cloud
 
 # Multi-arch (linux/amd64 + linux/arm64)
-docker buildx build --platform linux/amd64,linux/arm64 -t adventure-cloud .
+docker buildx build $(./scripts/cloud-deploy/docker-build-args.sh) --platform linux/amd64,linux/arm64 -t adventure-cloud .
 ```
+
+`GET /health` and `GET /assist/health` include build metadata: `version`, `gitSha`, `imageTag`, and `builtAt`. CI and deploy smoke tests assert `imageTag` matches the git SHA used to build the image.
 
 Smoke test against a running container:
 
 ```bash
 ./scripts/cloud-deploy/container-smoke.sh
-# or custom bases:
-./scripts/cloud-deploy/container-smoke.sh http://127.0.0.1:8787 http://127.0.0.1:8790
+# verify deployed tag matches a known SHA:
+ADV_EXPECTED_IMAGE_TAG="$(git rev-parse HEAD)" ./scripts/cloud-deploy/container-smoke.sh
+# or custom bases + expected tag:
+./scripts/cloud-deploy/container-smoke.sh http://127.0.0.1:8787 http://127.0.0.1:8790 "$(git rev-parse HEAD)"
 ```
 
 ## Environment variables
@@ -45,6 +49,9 @@ Smoke test against a running container:
 | `ASSIST_PROBE_ENABLED` | assist-server | `false` | Allow `advance: true` on `/assist/step` |
 | `ADV_V2_DISABLE_AUTO_FORTRAN_ORACLE` | adventure-v2 | *(unset)* | Set to `1` to force synthetic oracle (dev/test only) |
 | `ADV_V2_PROCESS_ORACLE_SCRIPT` | adventure-v2 | *(unset)* | Explicit process oracle script path |
+| `ADV_BUILD_GIT_SHA` | both | `dev` | Git commit baked at image build (see `docker-build-args.sh`) |
+| `ADV_BUILD_IMAGE_TAG` | both | same as `ADV_BUILD_GIT_SHA` | Deploy tag / SHA echoed in `/health` |
+| `ADV_BUILD_TIME` | both | *(unset)* | UTC ISO timestamp when the image was built |
 
 Production cloud deploy must **not** set `ADV_V2_DISABLE_AUTO_FORTRAN_ORACLE=1` — the image builds `./adventure` so Fortran mode is the default.
 

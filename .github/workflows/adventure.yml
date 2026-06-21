@@ -224,9 +224,14 @@ jobs:
         uses: ./.github/actions/merge-default-branch
 
       - name: Build C1 container image
-        run: docker build -t adventure-cloud:c1 .
+        run: |
+          BUILD_ARGS=$(./scripts/cloud-deploy/docker-build-args.sh "${{ github.sha }}")
+          # shellcheck disable=SC2086
+          docker build $BUILD_ARGS -t adventure-cloud:c1 .
 
       - name: Run container smoke test
+        env:
+          ADV_EXPECTED_IMAGE_TAG: ${{ github.sha }}
         run: |
           docker run -d --name adventure-c1 \
             -p 8787:8787 -p 8790:8790 \

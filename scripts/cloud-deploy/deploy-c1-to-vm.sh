@@ -111,7 +111,9 @@ ensure_vm_swap
 
 echo "=== Build image (repo root; secrets excluded via .dockerignore) ==="
 echo "Note: linux/amd64 on Apple Silicon uses QEMU — first build may take several minutes."
-docker build --platform "${PLATFORM}" -t adventure-cloud:local "${REPO_ROOT}"
+GIT_SHA="$(git -C "$REPO_ROOT" rev-parse HEAD)"
+# shellcheck disable=SC2046
+docker build --platform "${PLATFORM}" $( "${REPO_ROOT}/scripts/cloud-deploy/docker-build-args.sh" "$GIT_SHA" "$GIT_SHA" ) -t adventure-cloud:local "${REPO_ROOT}"
 
 ARCH="$(docker image inspect adventure-cloud:local --format '{{.Architecture}}')"
 echo "Built image architecture: ${ARCH}"
@@ -137,7 +139,7 @@ ssh "${SSH_OPTS[@]}" \
 
 echo "=== Smoke test ==="
 sleep 5
-"${REPO_ROOT}/scripts/cloud-deploy/container-smoke.sh" \
+ADV_EXPECTED_IMAGE_TAG="$GIT_SHA" "${REPO_ROOT}/scripts/cloud-deploy/container-smoke.sh" \
   "http://${HOST}:8787" "http://${HOST}:8790"
 
 echo "Deploy OK · http://${HOST}:8787/health"

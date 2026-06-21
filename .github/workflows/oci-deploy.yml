@@ -45,9 +45,12 @@ jobs:
           TAG: ${{ steps.tag.outputs.value }}
         run: |
           IMAGE="$REGISTRY/$NAMESPACE/adventure-cloud:$TAG"
-          docker build -t "$IMAGE" .
+          BUILD_ARGS=$(./scripts/cloud-deploy/docker-build-args.sh "$TAG" "$TAG")
+          # shellcheck disable=SC2086
+          docker build $BUILD_ARGS -t "$IMAGE" .
           docker push "$IMAGE"
           echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+          echo "IMAGE_TAG=$TAG" >> "$GITHUB_ENV"
 
       - name: Deploy on VM via SSH
         env:
@@ -66,6 +69,11 @@ jobs:
       - name: Smoke test (remote)
         env:
           SSH_HOST: ${{ secrets.OCI_DEPLOY_HOST }}
+          IMAGE_TAG: ${{ steps.tag.outputs.value }}
         run: |
-          curl -sf "http://$SSH_HOST:8787/health" | jq -e '.oracleMode == "process"'
-          curl -sf "http://$SSH_HOST:8790/assist/health" | jq -e '.status == "ok"'
+          curl -sf "http://$SSH_HOST:8787/health" | jq -e --arg tag "$IMAGE_TAG" '
+            .oracleMode == "process" and .imageTag == $tag and .gitSha == $tag
+          '
+          curl -sf "http://$SSH_HOST:8790/assist/health" | jq -e --arg tag "$IMAGE_TAG" '
+            .status == "ok" and .imageTag == $tag and .gitSha == $tag
+          '
