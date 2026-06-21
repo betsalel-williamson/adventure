@@ -30,7 +30,7 @@ Play today: `docs/client/`. Build and migrate: `docs/developer/`.
 
 ## NL autoplay
 
-Natural-language play and autoplay dashboard — client guide: `docs/client/nl/quick-start.md` · package: `adventure-nl/README.md` · HTTP/SSE: `API_DOCUMENTATION.md`.
+Natural-language play and autoplay dashboard — client guide: `docs/client/nl/quick-start.md` · package: `adventure-nl/README.md` · HTTP/SSE: `adventure-nl/openapi.yaml`.
 
 ## adventure-v2 capabilities
 

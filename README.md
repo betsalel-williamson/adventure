@@ -79,7 +79,7 @@ Use langgraph or NL for full play today; the webclient shell is migrating panels
 | [`docs/index.md`](docs/index.md) | **Start here** — play paths, doc tiers, contribute |
 | [`docs/community.md`](docs/community.md) | Bugs, doc edits, code checks, agents |
 | [`DEMO.md`](DEMO.md) | Step-by-step demo script |
-| [`API_DOCUMENTATION.md`](API_DOCUMENTATION.md) | Dashboard HTTP + SSE |
+| [`API_DOCUMENTATION.md`](API_DOCUMENTATION.md) | Dashboard API overview (routes in [`adventure-nl/openapi.yaml`](adventure-nl/openapi.yaml)) |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | How to contribute, PR checks |
 | [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) | Contributor Covenant |
 | [`ROADMAP.md`](ROADMAP.md) | Near- and long-term direction |
