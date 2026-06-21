@@ -95,6 +95,28 @@ jobs:
         working-directory: adventure-langgraph
         run: npm run build
 
+  adventure-ag2:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: adventure-ag2/package-lock.json
+
+      - name: Install dependencies (adventure-ag2)
+        working-directory: adventure-ag2
+        run: npm ci
+
+      - name: Unit tests
+        working-directory: adventure-ag2
+        run: npm test
+
   docs-check:
     runs-on: ubuntu-latest
 

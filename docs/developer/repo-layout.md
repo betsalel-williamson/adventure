@@ -11,6 +11,7 @@ The repository combines a Fortran game engine with optional TypeScript tooling a
 | `adventure-nl/` | Natural-language CLI, autoplay dashboard, MCP glue |
 | `adventure-v2/` | HTTP + SSE game API, cognition stubs, wire tests |
 | `adventure-langgraph/` | CRT-first web shell + LangGraph assist server |
+| `adventure-ag2/` | AG2 multi-agent handoff stub (Python bridge planned) |
 | `docs/` | Architecture ADRs, mdcp sharded guides |
 | `.work-items/` | Feature planning (migrating into mdcp shards) |
 | `guidelines/` | Lessons learned |
@@ -25,6 +26,14 @@ The repository combines a Fortran game engine with optional TypeScript tooling a
 | `packages/cartographer-fixtures` | Eval fixtures for ingest benchmarks |
 
 adventure-langgraph depends on adventure-v2 at dev time (`npm start` runs v2 `dev:server`).
+
+## adventure-ag2 packages
+
+| Package | Role |
+| --- | --- |
+| `packages/ag2-bridge` | AG2 handoff contract, heuristic adapter, multi-agent turn orchestration |
+
+adventure-ag2 reuses `@adventure-langgraph/map-core` for draft map logic. Real [AG2](https://github.com/ag2ai/ag2) integration will route `Ag2LlmAdapter` through a Python subprocess bridge.
 
 ## Documentation tiers
 

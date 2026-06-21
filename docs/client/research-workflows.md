@@ -33,7 +33,7 @@ Probe sends assist-backed moves — label runs as **scripted probe**, not autono
 
 **Current path:** HTTP + LangGraph assist in [`adventure-langgraph/`](../../adventure-langgraph/README.md) (`packages/assist-server`).
 
-AG2 ([ag2ai/ag2](https://github.com/ag2ai/ag2)) integration for multi-agent game solving is planned; this guide documents the **current** HTTP + LangGraph assist path.
+**AG2 stub:** [`adventure-ag2/`](../../adventure-ag2/README.md) defines a multi-agent handoff contract (cartographer → navigator → reviewer) with a heuristic adapter for CI. Real AG2 ([ag2ai/ag2](https://github.com/ag2ai/ag2)) Python orchestration is planned via subprocess bridge; set `AG2_PYTHON` and `OAI_CONFIG_LIST` when that adapter lands.
 
 ## Work items for agents
 

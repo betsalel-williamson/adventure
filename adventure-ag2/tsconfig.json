@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "resolveJsonModule": true,
+    "lib": ["ES2022"],
+    "types": ["node"],
+    "paths": {
+      "@adventure-langgraph/map-core": [
+        "../adventure-langgraph/packages/map-core/src/index.ts"
+      ]
+    }
+  },
+  "include": ["packages/ag2-bridge/src/**/*.ts", "vitest.config.ts"]
+}
