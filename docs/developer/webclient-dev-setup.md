@@ -84,7 +84,7 @@ npm run dev
 | `VITE_ASSIST_URL` | `http://127.0.0.1:8790` | Assist server base |
 | `VITE_NL_DASHBOARD_URL` | `https://127.0.0.1:8787` | NL dashboard when using `nl-dashboard` game backend |
 
-Feature flags use the `VITE_WEBCLIENT_*` prefix — see [`webclient-feature-flags.json`](../../adventure-webclient/apps/web/webclient-feature-flags.json).
+Feature flags: [Webclient feature flags](webclient-feature-flags.md) · JSON source [`webclient-feature-flags.json`](../../adventure-webclient/apps/web/webclient-feature-flags.json)
 
 ## Feature flag overrides (local)
 
@@ -105,6 +105,8 @@ cd adventure-webclient && npm test
 
 ## Related docs
 
-- [Webclient feature catalog](../features/webclient/feature-catalog.md)
+- [Client guide — webclient](../client/webclient/index.md)
+- [Features — webclient](../features/webclient/index.md)
+- [Migration catalog](webclient-migration-catalog.md)
 - [Repository layout](repo-layout.md)
 - [`.work-items/adventure-webclient/`](../../.work-items/adventure-webclient/index.md)

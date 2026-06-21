@@ -8,6 +8,8 @@ Shared terms: [Glossary](../glossary/index.md).
 
 - [Repository layout](repo-layout.md)
 - [Webclient dev setup](webclient-dev-setup.md)
+- [Webclient feature flags](webclient-feature-flags.md)
+- [Webclient migration catalog](webclient-migration-catalog.md)
 - [v3 dev setup](v3-dev-setup.md)
 - [v3 testing](v3-testing.md)
 - [mdcp workflow](mdcp-workflow.md)

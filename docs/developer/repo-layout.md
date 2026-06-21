@@ -43,7 +43,13 @@ adventure-ag2 reuses `@adventure-langgraph/map-core` for draft map logic. Real [
 | `apps/web/` | Vite shell — panel placeholders + unified feature flags |
 | `apps/web/src/backends/` | Game / assist / agent adapter config (env-driven) |
 
-See [`docs/features/webclient/`](../features/webclient/index.md) for the feature catalog and migration status. Default dev port **5175**.
+## Feature documentation (mdcp shards)
+
+| Guide | Path |
+| ----- | ---- |
+| Client personas | [`docs/client/webclient/`](../client/webclient/index.md) |
+| Product capabilities | [`docs/features/webclient/`](../features/webclient/index.md) |
+| Migration + flags | [`webclient-migration-catalog.md`](webclient-migration-catalog.md), [`webclient-feature-flags.md`](webclient-feature-flags.md) |
 
 ## Documentation tiers
 
