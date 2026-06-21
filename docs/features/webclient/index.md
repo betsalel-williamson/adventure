@@ -1,55 +1,41 @@
-# Webclient — unified frontend
+# Webclient — product overview
 
-The **adventure-webclient** package consolidates UI work from [`adventure-nl`](../../adventure-nl/README.md) (v1 autoplay dashboard) and [`adventure-langgraph`](../../adventure-langgraph/README.md) (CRT + exploration map) into one **backend-agnostic shell**.
+The **adventure-webclient** package is the unified browser shell for Colossal Cave — one frontend that can mount CRT play, draft exploration maps, and research panels behind feature flags while swapping game, assist, and agent backends.
 
-## Goal
+End-user personas and outcomes: [Client guide — webclient](../../client/webclient/index.md).
 
-- **Preserve** existing frontend investments without losing them in package-specific silos
-- **Document** each panel and visual one feature at a time (see [feature catalog](feature-catalog.md))
-- **Rebuild** incrementally behind feature flags in `adventure-webclient/`
-- **Decouple** UI development from backend choice so you can test LangGraph, AG2, or NL glue against the same chrome
+## Authority model
 
-## Personas
+| Layer | Role |
+| ----- | ---- |
+| **Fortran oracle** | Simulation of truth |
+| **Game backend** | v2 HTTP+SSE or NL dashboard — delivers oracle text to the CRT |
+| **Assist backend** | LangGraph assist, AG2 handoff, or local map-core — draft graph and hints |
+| **Agent backend** | NL glue (browser or server) — autoplay and planner loops |
+| **Webclient** | Renders transcript and optional panels — never canonical game text |
 
-| Persona | Default surface | Typical flags |
-| ------- | --------------- | ------------- |
-| **Player** | CRT transcript + command line | `crtTranscript`, `statusStrip` |
-| **Map explorer** | Beside-column draft map | `explorationMapMermaid` or `explorationMapGrid` |
-| **Agent researcher** | Prompt lab, autoplay, cognition | `promptLab`, `autoplayControls`, `cognitionOrchestration` |
-| **Operator / dev** | Feature flag panel | `featureFlagDevPanel` |
+Map and assist features consume **user-visible** transcript streams and produce **draft assistance** only.
 
-## Authority model (unchanged)
+## Default runtime (stub)
 
-Fortran oracle text is **world truth**. Draft maps, hints, and agent output are **assistance** — label runs honestly when testing backends (see [Glossary: draft assistance](../glossary/draft-assistance.md)).
+| Service | Default URL |
+| ------- | ----------- |
+| Webclient shell | `http://127.0.0.1:5175` |
+| Game API (when `v2-http`) | `http://127.0.0.1:8787` |
+| Assist server (when `langgraph`) | `http://127.0.0.1:8790` |
 
-## Backend adapters
+Production CRT + map today: `adventure-langgraph/` (`npm start`, port **5174**).
 
-The webclient selects backends via env (not hard-coded package coupling):
+## Feature flags
 
-| Adapter | Values | Used for |
-| ------- | ------ | -------- |
-| Game | `v2-http`, `nl-dashboard`, `mock` | Transcript + parser commands |
-| Assist | `langgraph`, `ag2`, `local-map-core`, `mock` | Draft map + navigator hints |
-| Agent | `nl-glue-browser`, `nl-glue-server`, `none` | Autoplay / planner loops |
-
-Setup: [Webclient dev setup](../developer/webclient-dev-setup.md).
+Build defaults: `adventure-webclient/apps/web/webclient-feature-flags.json`. Query, sessionStorage, and Vite env overrides apply for local regression. Operator reference: [Developer — webclient feature flags](../../developer/webclient-feature-flags.md).
 
 ## Sections
 
-- [Feature catalog](feature-catalog.md) — master inventory and migration status
-- [CRT transcript panel](crt-transcript-panel.md)
+- [CRT transcript](crt-transcript.md)
 - [Exploration map — Mermaid](exploration-map-mermaid.md)
-- [NL autoplay dashboard (source)](nl-autoplay-dashboard.md)
+- [Exploration map — 3D grid](exploration-map-grid.md)
+- [Backend adapters](backend-adapters.md)
+- [NL dashboard lineage](nl-dashboard-lineage.md)
 
-## Related packages (source of truth today)
-
-| Package | Role until migration completes |
-| ------- | ------------------------------ |
-| `adventure-langgraph/apps/web` | Production CRT + default exploration map |
-| `adventure-nl/public/` | Full autoplay research dashboard |
-| `adventure-v2` | Game HTTP + SSE API |
-| `adventure-ag2` | AG2 handoff stub (assist backend candidate) |
-
-## Work tracking
-
-[`.work-items/adventure-webclient/`](../../.work-items/adventure-webclient/index.md)
+Migration status: [Developer — migration catalog](../../developer/webclient-migration-catalog.md)

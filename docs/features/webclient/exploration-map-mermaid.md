@@ -1,47 +1,30 @@
-# Exploration map — Mermaid (langgraph)
+# Exploration map — Mermaid
 
 The **Mermaid exploration map** is a beside-CRT panel showing a **draft** directed graph of inferred places and compass moves from the visible transcript.
 
-## Source implementation
+## Data flow
 
-| Aspect | Detail |
-| ------ | ------ |
-| **Package** | adventure-langgraph |
-| **Paths** | `apps/web/src/assist/explorationMapUpdate.ts`, `draftMapMermaidRender.ts`, `draftMapCopy.ts`, `shell/wireExplorationMapControls.ts` |
-| **Map logic** | `@adventure-langgraph/map-core` — `mergeGraphFromTranscript`, `directedGraphToMermaidFlowchart` |
-| **Assist API** | `POST /assist/ingest` when `locationAgent` flag on; local merge fallback when assist unreachable |
-| **Feature flags (langgraph)** | `explorationMap`, `locationAgent` |
-| **Feature flag (webclient)** | `explorationMapMermaid` (default **off** until migrated) |
+1. Client accumulates transcript text from oracle output.
+2. Transcript cues merge into a directed graph (`@adventure-langgraph/map-core`).
+3. Mermaid serialization renders beside the CRT.
+4. Assist backend (`langgraph`, `ag2`, `local-map-core`, or `mock`) may participate in merge — output remains draft.
 
-Copy actions include an explicit **draft / Fortran is truth** disclaimer.
+When assist is unreachable, the client may fall back to in-browser merge or show last-good diagram.
 
-## Backend options (webclient)
+## Graph semantics
 
-| `VITE_WEBCLIENT_ASSIST_BACKEND` | Behavior |
-| ------------------------------- | -------- |
-| `langgraph` | `POST {VITE_ASSIST_URL}/assist/ingest` |
-| `ag2` | Future AG2 handoff service (see [`adventure-ag2`](../../adventure-ag2/README.md)) |
-| `local-map-core` | Browser-only merge via map-core (no HTTP) |
-| `mock` | Frozen fixture graph for UI snapshots |
+Same as [Exploration map column](../exploration-map-column.md):
 
-## Contrast with NL 3D grid
+- **Place evidence** — `YOU ARE …` lines
+- **Committed edges** — compass echo paired with the next `YOU ARE` line
+- **Compass tokens** — N, E, S, W, U, D
 
-adventure-nl renders an **xyz grid** (`mapView.js`) from glue state — same assistance semantics, different visualization. Enable `explorationMapGrid` in webclient to compare both behind flags.
+Copy actions include a **draft / Fortran is truth** disclaimer.
 
-## Migration notes
+## Feature flag
 
-1. Port `explorationMapUpdate.ts` into webclient (or shared package later)
-2. Wire assist adapter interface — do not hard-code port 8790 in components
-3. Keep Mermaid render lazy-loaded (`optimizeDeps: mermaid`) as in langgraph Vite config
+`explorationMapMermaid` — default **off** in webclient until migrated.
 
-## Acceptance (when migrated)
+User guide: [Client — reading the exploration map](../../client/webclient/reading-the-exploration-map.md)
 
-- WHEN transcript lines arrive THEN I SHALL see the beside-column diagram update without hiding game text
-- WHEN assist is down THEN I SHALL still see a locally merged draft map OR a clear status message
-- WHEN I copy the diagram THEN the clipboard SHALL include the draft disclaimer
-
-## Related docs
-
-- [Exploration map column](../exploration-map-column.md)
-- [Assist runtime](../assist-runtime.md)
-- [Feature catalog](feature-catalog.md)
+Contrast: [Exploration map — 3D grid](exploration-map-grid.md)
