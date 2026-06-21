@@ -53,6 +53,24 @@ gh_seconds_until_reset() {
   echo "$wait_sec"
 }
 
+gh_print_quota_status() {
+  local remaining limit reset local_time wait_sec floor
+  remaining="$(gh_graphql_remaining)"
+  limit="$(gh_graphql_status | jq -r '.limit // 5000')"
+  reset="$(gh_graphql_reset_epoch)"
+  local_time="$(gh_format_reset_local "$reset")"
+  wait_sec="$(gh_seconds_until_reset)"
+  floor="${GH_GRAPHQL_FLOOR:-100}"
+  cat >&2 <<EOF
+GraphQL quota: ${remaining}/${limit} remaining · resets at (local): ${local_time} · ~${wait_sec}s
+EOF
+  if [[ "$remaining" -eq 0 ]]; then
+    echo "Quota exhausted. Safe to resume after: ${local_time}" >&2
+  elif [[ "$remaining" -lt "$floor" ]]; then
+    echo "Quota below floor (${floor}). Will pause until reset at: ${local_time}" >&2
+  fi
+}
+
 gh_print_rate_limit_resume() {
   local reset local_time wait_sec remaining
   reset="$(gh_graphql_reset_epoch)"
@@ -97,8 +115,11 @@ gh_handle_rate_limit_exhaustion() {
 
   case "$GH_RATE_LIMIT_POLICY" in
     wait)
-      echo "Policy=wait: sleeping until rate limit reset..." >&2
-      sleep "$(gh_seconds_until_reset)"
+      local_time="$(gh_format_reset_local)"
+      wait_sec="$(gh_seconds_until_reset)"
+      echo "Policy=wait: sleeping until ${local_time} (~${wait_sec}s)..." >&2
+      sleep "$wait_sec"
+      gh_print_quota_status
       return 0
       ;;
     quit)
@@ -115,8 +136,11 @@ gh_handle_rate_limit_exhaustion() {
         read -r -p "Wait until $(gh_format_reset_local) and continue? [Y/wait/quit] " choice
         case "${choice:-Y}" in
           Y|y|wait|w|"")
-            echo "Waiting until rate limit reset..." >&2
-            sleep "$(gh_seconds_until_reset)"
+            local_time="$(gh_format_reset_local)"
+            wait_sec="$(gh_seconds_until_reset)"
+            echo "Waiting until ${local_time} (~${wait_sec}s)..." >&2
+            sleep "$wait_sec"
+            gh_print_quota_status
             return 0
             ;;
           q|quit|Q|n|N)

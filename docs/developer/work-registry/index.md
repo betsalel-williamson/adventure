@@ -128,7 +128,8 @@ If a run stops (rate limit, Ctrl+C, error), re-run the **same command with `--re
 
 - Default **2s** delay between GraphQL mutations (`GH_SYNC_DELAY_SEC`).
 - Default **0.5s** between reads (`GH_SYNC_READ_DELAY_SEC`).
-- When quota is low, scripts wait until reset (prints **local time**).
+- When quota is low, scripts wait until reset (prints **local time** on every pause).
+- Sync and audit print quota at startup: `GraphQL quota: N/5000 remaining · resets at (local): …`
 - When quota is exhausted after retries:
   - **Interactive TTY (default):** prompt to wait until reset or quit
   - **`--auto-wait`:** sleep until reset and continue
@@ -145,7 +146,13 @@ If a run stops (rate limit, Ctrl+C, error), re-run the **same command with `--re
 ./scripts/work-registry/sync-github-project.sh --resume --quit-on-rate-limit
 ```
 
-Check quota:
+Check quota (local reset time):
+
+```bash
+source scripts/lib/gh-graphql.sh && gh_print_quota_status
+```
+
+Or raw API:
 
 ```bash
 gh api rate_limit --jq '.resources.graphql'

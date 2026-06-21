@@ -53,6 +53,8 @@ REPO_SLUG="$OWNER/$REPO"
 gh_require_project_scope
 ledger_init
 
+gh_print_quota_status
+
 ensure_project() {
   local current_title
   current_title="$(gh_retry read -- gh project view "$PROJECT_NUM" --owner "$OWNER" --format json | jq -r .title)"

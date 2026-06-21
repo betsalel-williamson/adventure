@@ -31,6 +31,9 @@ REPO_SLUG="$OWNER/$REPO"
 
 gh_require_project_scope
 ledger_init
+
+gh_print_quota_status
+
 load_project_id
 load_fields_cache
 load_items_cache
