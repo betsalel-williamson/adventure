@@ -12,15 +12,17 @@ The client connects to adventure-v2:
 
 The transcript renders oracle text in an 80×24 viewport. A status strip reports API and oracle health.
 
-## Feature flags (client)
+## Feature flags (defaults)
 
-| Flag | Env override | Default |
-| --- | --- | --- |
-| `explorationMap` | `VITE_LANGGRAPH_EXPLORATION_MAP` | on |
-| `locationAgent` | `VITE_LANGGRAPH_LOCATION_AGENT` | on |
-| `assistPanels` | `VITE_LANGGRAPH_ASSIST_PANELS` | off |
-| `mapProbe` | `VITE_LANGGRAPH_MAP_PROBE` | off |
-| `mapInspectors` | `VITE_LANGGRAPH_MAP_INSPECTORS` | off |
+| Flag | Default |
+| --- | --- |
+| `explorationMap` | on |
+| `locationAgent` | on |
+| `assistPanels` | off |
+| `mapProbe` | off |
+| `mapInspectors` | off |
+
+Operational overrides (env, `sessionStorage`, probe server flags): [Developer — LangGraph feature flags](../developer/langgraph-feature-flags.md).
 
 Override API origin: `VITE_API_URL`. Override assist origin: `VITE_ASSIST_URL`.
 

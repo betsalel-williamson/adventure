@@ -15,6 +15,7 @@ Doc checks: `make docs-check` from repo root · compile package READMEs: `make d
 - [Webclient feature flags](webclient-feature-flags.md)
 - [Webclient migration catalog](webclient-migration-catalog.md)
 - [v3 dev setup](v3-dev-setup.md)
+- [LangGraph feature flags](langgraph-feature-flags.md)
 - [v3 testing](v3-testing.md)
 - [mdcp workflow](mdcp-workflow.md)
 - [Agent work-item tracking](agent-work-item-tracking.md)
