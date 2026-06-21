@@ -298,3 +298,54 @@ jobs:
       - name: mdcp documentation check
         working-directory: docs
         run: npm run docs:check
+
+  ci:
+    name: ci
+    needs:
+      - merge-check
+      - adventure-v2
+      - adventure-langgraph
+      - adventure-ag2
+      - adventure-webclient
+      - cloud-deploy-c1
+      - changeset-check
+      - docs-check
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require all CI jobs to pass
+        env:
+          EVENT: ${{ github.event_name }}
+          MERGE_CHECK: ${{ needs.merge-check.result }}
+          ADVENTURE_V2: ${{ needs.adventure-v2.result }}
+          ADVENTURE_LANGGRAPH: ${{ needs.adventure-langgraph.result }}
+          ADVENTURE_AG2: ${{ needs.adventure-ag2.result }}
+          ADVENTURE_WEBCLIENT: ${{ needs.adventure-webclient.result }}
+          CLOUD_DEPLOY_C1: ${{ needs.cloud-deploy-c1.result }}
+          CHANGESET_CHECK: ${{ needs.changeset-check.result }}
+          DOCS_CHECK: ${{ needs.docs-check.result }}
+        run: |
+          set -euo pipefail
+          fail=0
+          require_success() {
+            local label="$1"
+            local result="$2"
+            if [ "$result" != "success" ]; then
+              echo "Required job $label: $result" >&2
+              fail=1
+            fi
+          }
+          for pair in \
+            "adventure-v2:$ADVENTURE_V2" \
+            "adventure-langgraph:$ADVENTURE_LANGGRAPH" \
+            "adventure-ag2:$ADVENTURE_AG2" \
+            "adventure-webclient:$ADVENTURE_WEBCLIENT" \
+            "cloud-deploy-c1:$CLOUD_DEPLOY_C1" \
+            "docs-check:$DOCS_CHECK"; do
+            require_success "${pair%%:*}" "${pair#*:}"
+          done
+          if [ "$EVENT" = "pull_request" ]; then
+            require_success "merge-check" "$MERGE_CHECK"
+            require_success "changeset-check" "$CHANGESET_CHECK"
+          fi
+          exit "$fail"
