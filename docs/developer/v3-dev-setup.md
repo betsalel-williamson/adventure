@@ -1,12 +1,12 @@
 # v3 dev setup
 
-Setup for adventure-langgraph local development.
+Maintainer setup for adventure-langgraph local development. **To play:** see [Client quick start](../client/quick-start.md).
 
 ## Prerequisites
 
-Shared [Prerequisites](../developer/readme-shards/prerequisites.md) and [Fortran oracle](../developer/readme-shards/fortran-oracle.md).
+Shared [Prerequisites](readme-shards/prerequisites.md) and [Fortran oracle](readme-shards/fortran-oracle.md).
 
-## Quick start
+## Start the stack
 
 From `adventure-langgraph/`:
 
@@ -15,19 +15,11 @@ npm install
 npm start
 ```
 
-Open the CRT shell at port **5174** (default Vite dev server). The start script runs adventure-v2 API, Vite CRT, and assist server together.
+Runs adventure-v2 API, Vite CRT, and assist server together. Default ports below.
 
-**Shell only** (API + assist already running):
+**Shell only** (API + assist already running): `npm run dev`
 
-```bash
-npm run dev
-```
-
-**Assist server only**:
-
-```bash
-npm run assist:dev
-```
+**Assist server only:** `npm run assist:dev`
 
 ## Ports and overrides
 
@@ -36,6 +28,12 @@ npm run assist:dev
 | CRT (Vite) | 5174 | Vite config |
 | Game API | 8787 | `VITE_API_URL` |
 | Assist | 8790 | `VITE_ASSIST_URL`, `ASSIST_SERVER_PORT` |
+
+Override API origin:
+
+```bash
+VITE_API_URL=http://127.0.0.1:8787 npm start
+```
 
 ## Optional Ollama
 
@@ -49,4 +47,4 @@ Without `OLLAMA_URL`, navigator uses the heuristic adapter only.
 
 ## Fortran oracle
 
-When `./adventure` exists at repo root, adventure-v2 auto-selects the persistent Fortran oracle. Details: [Fortran oracle](../developer/readme-shards/fortran-oracle.md).
+When `./adventure` exists at repo root, adventure-v2 auto-selects the persistent Fortran oracle. Details: [Fortran oracle](readme-shards/fortran-oracle.md).

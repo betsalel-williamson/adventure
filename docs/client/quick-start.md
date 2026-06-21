@@ -2,11 +2,7 @@
 
 Play Colossal Cave in the adventure-langgraph CRT shell.
 
-## Prerequisites
-
-Shared [Prerequisites](../developer/readme-shards/prerequisites.md) and [Fortran oracle](../developer/readme-shards/fortran-oracle.md). Package quick reference: [adventure-langgraph README](../../adventure-langgraph/README.md).
-
-## Start the stack
+## Run
 
 ```bash
 cd adventure-langgraph
@@ -15,6 +11,8 @@ npm start
 ```
 
 Open the CRT shell at port **5174**.
+
+**Needs:** Node.js 24+ (`node --version`). Optional: `make adventure` at repo root for real Fortran cave text.
 
 ## Play
 
@@ -31,3 +29,8 @@ The status strip reports API and oracle health. If the assist server is down, th
 - [Exploration map guide](exploration-map-guide.md) — how to read the draft graph
 - [SLM configuration](slm-configuration.md) — Ollama and honest labeling
 - [Research workflows](research-workflows.md) — fixtures and probe mode
+
+## Advanced setup
+
+- [Play prerequisites](readme-shards/play-prerequisites.md) — full prerequisite detail
+- [v3 dev setup](../developer/v3-dev-setup.md) — ports, split processes, Ollama overrides

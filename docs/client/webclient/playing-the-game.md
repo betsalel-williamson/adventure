@@ -27,6 +27,6 @@ Shared term: [CRT transcript](../../glossary/crt-transcript.md) · [Oracle](../.
 Until the webclient CRT is fully migrated, play on:
 
 - **adventure-langgraph** — [Quick start (langgraph)](../quick-start.md)
-- **adventure-nl dashboard** — autoplay layout with richer research chrome
+- **adventure-nl dashboard** — [NL quick start](../nl/quick-start.md)
 
 Product detail: [Features — CRT transcript](../../features/webclient/crt-transcript.md)
