@@ -63,6 +63,7 @@ See [`adventure-v2/README.md`](adventure-v2/README.md).
 
 | Doc | Purpose |
 | --- | ------- |
+| [`docs/index.md`](docs/index.md) | **Start here** — play paths, doc tiers, contribute |
 | [`DEMO.md`](DEMO.md) | Step-by-step demo script |
 | [`API_DOCUMENTATION.md`](API_DOCUMENTATION.md) | Dashboard HTTP + SSE |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | How to contribute, PR checks |

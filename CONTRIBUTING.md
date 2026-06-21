@@ -53,6 +53,7 @@ never in commits.
 
 ## Documentation
 
+- **Start here:** [`docs/index.md`](docs/index.md) — play paths, tiers, and doc checks
 - Root overview: [`README.md`](README.md)
 - Natural-language / dashboard tooling: [`adventure-nl/README.md`](adventure-nl/README.md)
 - adventure-langgraph sharded guides: [`docs/client/`](docs/client/index.md) (researcher), [`docs/features/`](docs/features/index.md), [`docs/developer/`](docs/developer/index.md)
