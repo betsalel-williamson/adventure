@@ -1,16 +1,45 @@
 name: adventure
 
 on:
-  push:
   pull_request:
+  push:
+    branches:
+      - feature/adventure-llm
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
+  merge-check:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Merge default branch into PR
+        if: github.event_name == 'pull_request'
+        uses: ./.github/actions/merge-default-branch
+
   adventure-v2:
+    needs: merge-check
+    if: always() && (github.event_name == 'push' || needs.merge-check.result == 'success')
     runs-on: ubuntu-latest
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Merge default branch into PR
+        if: github.event_name == 'pull_request'
+        uses: ./.github/actions/merge-default-branch
 
       - name: Install GNU Fortran
         run: sudo apt-get update && sudo apt-get install -y gfortran
@@ -50,11 +79,20 @@ jobs:
         run: npm run openapi:check
 
   adventure-langgraph:
+    needs: merge-check
+    if: always() && (github.event_name == 'push' || needs.merge-check.result == 'success')
     runs-on: ubuntu-latest
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Merge default branch into PR
+        if: github.event_name == 'pull_request'
+        uses: ./.github/actions/merge-default-branch
 
       - name: Install GNU Fortran
         run: sudo apt-get update && sudo apt-get install -y gfortran
@@ -104,11 +142,20 @@ jobs:
         run: npm run openapi:check
 
   adventure-ag2:
+    needs: merge-check
+    if: always() && (github.event_name == 'push' || needs.merge-check.result == 'success')
     runs-on: ubuntu-latest
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Merge default branch into PR
+        if: github.event_name == 'pull_request'
+        uses: ./.github/actions/merge-default-branch
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -126,11 +173,20 @@ jobs:
         run: npm test
 
   adventure-webclient:
+    needs: merge-check
+    if: always() && (github.event_name == 'push' || needs.merge-check.result == 'success')
     runs-on: ubuntu-latest
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Merge default branch into PR
+        if: github.event_name == 'pull_request'
+        uses: ./.github/actions/merge-default-branch
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -152,11 +208,20 @@ jobs:
         run: npm run build
 
   docs-check:
+    needs: merge-check
+    if: always() && (github.event_name == 'push' || needs.merge-check.result == 'success')
     runs-on: ubuntu-latest
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Merge default branch into PR
+        if: github.event_name == 'pull_request'
+        uses: ./.github/actions/merge-default-branch
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
