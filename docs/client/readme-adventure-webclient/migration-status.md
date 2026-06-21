@@ -6,6 +6,6 @@
 | adventure-nl dashboard panels | Documented; migration pending |
 | Backend wiring in this shell | Config + types only (stub) |
 
-Track migration in [`docs/developer/webclient-migration-catalog.md`](../developer/webclient-migration-catalog.md).
+Track migration in [`docs/developer/webclient-migration-catalog.md`](../../developer/webclient-migration-catalog.md).
 
 Until CRT migration completes, use [adventure-langgraph](../adventure-langgraph/README.md) or [adventure-nl](../adventure-nl/README.md) for production play.

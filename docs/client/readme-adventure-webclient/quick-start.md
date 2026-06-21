@@ -15,4 +15,4 @@ npm run build
 npm test
 ```
 
-Maintainer detail: [`docs/developer/webclient-dev-setup.md`](../developer/webclient-dev-setup.md).
+Maintainer detail: [`docs/developer/webclient-dev-setup.md`](../../developer/webclient-dev-setup.md).

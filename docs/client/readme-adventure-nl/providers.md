@@ -10,4 +10,4 @@ The Fortran game remains truth; the dashboard repeats **heuristic** location/inv
 
 See [Honest labeling](../readme-shards/honest-labeling.md).
 
-Architecture: [`docs/architecture/adventure-engine.md`](../architecture/adventure-engine.md).
+Architecture: [`docs/architecture/adventure-engine.md`](../../architecture/adventure-engine.md).

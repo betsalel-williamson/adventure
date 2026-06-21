@@ -11,4 +11,4 @@
 
 See [Honest labeling](../readme-shards/honest-labeling.md) — heuristic runs are not SLM-backed navigation.
 
-Full product detail: [Assist runtime](../features/assist-runtime.md).
+Full product detail: [Assist runtime](../../features/assist-runtime.md).

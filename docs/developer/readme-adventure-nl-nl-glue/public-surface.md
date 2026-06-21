@@ -9,4 +9,4 @@
 
 Package entry: [`packages/nl-glue/src/`](../../adventure-nl/packages/nl-glue/src/).
 
-ADRs: [ADR0014](../decisions/ADR0014-two-step-nl-glue-package-then-browser.md), [ADR0016](../decisions/ADR0016-cognition-glue-mcp-and-execution-mcp-surfaces.md).
+ADRs: [ADR0014](../../decisions/ADR0014-two-step-nl-glue-package-then-browser.md), [ADR0016](../../decisions/ADR0016-cognition-glue-mcp-and-execution-mcp-surfaces.md).

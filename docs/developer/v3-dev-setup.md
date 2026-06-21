@@ -4,7 +4,7 @@ Setup for adventure-langgraph local development.
 
 ## Prerequisites
 
-Shared [Prerequisites](../readme-shards/prerequisites.md) and [Fortran oracle](../readme-shards/fortran-oracle.md).
+Shared [Prerequisites](../developer/readme-shards/prerequisites.md) and [Fortran oracle](../developer/readme-shards/fortran-oracle.md).
 
 ## Quick start
 
@@ -49,4 +49,4 @@ Without `OLLAMA_URL`, navigator uses the heuristic adapter only.
 
 ## Fortran oracle
 
-When `./adventure` exists at repo root, adventure-v2 auto-selects the persistent Fortran oracle. Details: [Fortran oracle](../readme-shards/fortran-oracle.md).
+When `./adventure` exists at repo root, adventure-v2 auto-selects the persistent Fortran oracle. Details: [Fortran oracle](../developer/readme-shards/fortran-oracle.md).

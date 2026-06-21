@@ -31,7 +31,7 @@ make docs-publish-readmes   # alias for docs-compile
 
 ## Package README guides
 
-Readme guides live under `docs/readme-adventure-*/`. Shared shards: `docs/readme-shards/`.
+Readme guide shards live under **`docs/client/readme-adventure-*/`** (end-user personas) and **`docs/developer/readme-adventure-*/`** (maintainer personas). Shared shards: `docs/client/readme-shards/`, `docs/developer/readme-shards/`.
 
 Each readme guide publishes via `compile.outputFile` in `mdcp.config.json` (path relative to `docs/_build/`, for example `../../adventure-langgraph/README.md`).
 

@@ -16,14 +16,18 @@ node --version   # expect v24.x
 
 | Tier | Path | Audience |
 | --- | --- | --- |
-| Client guides | [`docs/client/`](../docs/client/index.md) | Play and evaluate the CRT shell |
+| Client guides | [`docs/client/`](../docs/client/index.md) | Play and evaluate surfaces |
 | Features | [`docs/features/`](../docs/features/index.md) | Product capabilities |
 | Developer | [`docs/developer/`](../docs/developer/index.md) | Maintainer setup and mdcp workflow |
 | Glossary | [`docs/glossary/`](../docs/_build/glossary.md#glossary) | Shared terms |
 | Architecture | [`docs/architecture/`](../docs/architecture/overview.md) | Legacy flat design views |
 | ADRs | [`docs/decisions/`](../docs/decisions/adventure-nl-cognition-adr-index.md) | Decision history |
 
-Package `README.md` files in this repo are **compiled from mdcp readme guides** under `docs/readme-*`. Edit shards, then run `npm run docs:compile` from `docs/`.
+**Client package READMEs** (this file may be one): compiled from `docs/client/readme-adventure-*/` into `adventure-langgraph/`, `adventure-webclient/`, and `adventure-nl/`.
+
+**Developer package READMEs**: compiled from `docs/developer/readme-adventure-*/` into `adventure-v2/`, `adventure-ag2/`, and nested packages.
+
+Edit shards under those directories, then run `npm run docs:compile` from `docs/`.
 
 ## Overview
 
@@ -60,7 +64,7 @@ One full turn yields **10** SSE wire events (4× `turn`, 4× `trace`, 2× `phase
 
 ## Oracle modes
 
-See [Fortran oracle](../docs/readme-shards/fortran-oracle.md) for build steps.
+See [Fortran oracle](../docs/_build/developer.md#fortran-oracle) for build steps.
 
 | Goal | Command |
 | --- | --- |
@@ -138,7 +142,7 @@ npm run test:cucumber
 npm run test:oracle-fortran
 ```
 
-See [Testing baseline](../docs/readme-shards/testing-baseline.md).
+See [Testing baseline](../docs/developer/readme-shards/testing-baseline.md).
 
 ## Related docs
 

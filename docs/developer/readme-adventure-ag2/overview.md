@@ -8,4 +8,4 @@ Stub for [AG2](https://github.com/ag2ai/ag2) multi-agent orchestration against C
 - [`adventure-v2/`](../adventure-v2/) — HTTP + SSE game API
 - [`adventure-nl/`](../adventure-nl/) — full NL provider stack
 
-See [Honest labeling](../readme-shards/honest-labeling.md) — heuristic runs are not AG2 multi-agent LLM play.
+See [Honest labeling](../../client/readme-shards/honest-labeling.md) — heuristic runs are not AG2 multi-agent LLM play.

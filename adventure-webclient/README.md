@@ -16,14 +16,18 @@ node --version   # expect v24.x
 
 | Tier | Path | Audience |
 | --- | --- | --- |
-| Client guides | [`docs/client/`](../docs/client/index.md) | Play and evaluate the CRT shell |
+| Client guides | [`docs/client/`](../docs/client/index.md) | Play and evaluate surfaces |
 | Features | [`docs/features/`](../docs/features/index.md) | Product capabilities |
 | Developer | [`docs/developer/`](../docs/developer/index.md) | Maintainer setup and mdcp workflow |
 | Glossary | [`docs/glossary/`](../docs/_build/glossary.md#glossary) | Shared terms |
 | Architecture | [`docs/architecture/`](../docs/architecture/overview.md) | Legacy flat design views |
 | ADRs | [`docs/decisions/`](../docs/decisions/adventure-nl-cognition-adr-index.md) | Decision history |
 
-Package `README.md` files in this repo are **compiled from mdcp readme guides** under `docs/readme-*`. Edit shards, then run `npm run docs:compile` from `docs/`.
+**Client package READMEs** (this file may be one): compiled from `docs/client/readme-adventure-*/` into `adventure-langgraph/`, `adventure-webclient/`, and `adventure-nl/`.
+
+**Developer package READMEs**: compiled from `docs/developer/readme-adventure-*/` into `adventure-v2/`, `adventure-ag2/`, and nested packages.
+
+Edit shards under those directories, then run `npm run docs:compile` from `docs/`.
 
 ## Overview
 
@@ -105,7 +109,7 @@ Until CRT migration completes, use [adventure-langgraph](../adventure-langgraph/
 npm test
 ```
 
-See [Testing baseline](../docs/readme-shards/testing-baseline.md).
+See [Testing baseline](../docs/developer/readme-shards/testing-baseline.md).
 
 ## Related docs
 

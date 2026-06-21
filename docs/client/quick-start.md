@@ -4,7 +4,7 @@ Play Colossal Cave in the adventure-langgraph CRT shell.
 
 ## Prerequisites
 
-Shared [Prerequisites](../readme-shards/prerequisites.md) and [Fortran oracle](../readme-shards/fortran-oracle.md). Package quick reference: [adventure-langgraph README](../../adventure-langgraph/README.md).
+Shared [Prerequisites](../developer/readme-shards/prerequisites.md) and [Fortran oracle](../developer/readme-shards/fortran-oracle.md). Package quick reference: [adventure-langgraph README](../../adventure-langgraph/README.md).
 
 ## Start the stack
 

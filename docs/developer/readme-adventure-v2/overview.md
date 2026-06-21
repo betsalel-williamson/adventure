@@ -12,4 +12,4 @@ HTTP + SSE game API for benchmark-oriented adventure orchestration with LangGrap
 
 **Not yet:** deployment hardening (auth, rate limits, TLS termination), real ModelAdapter in `plan`, Playwright E2E.
 
-Architecture: [`docs/architecture/adventure-v2/`](../architecture/adventure-v2/overview.md).
+Architecture: [`docs/architecture/adventure-v2/`](../../architecture/adventure-v2/overview.md).

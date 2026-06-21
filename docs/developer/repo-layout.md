@@ -53,17 +53,14 @@ adventure-ag2 reuses `@adventure-langgraph/map-core` for draft map logic. Real [
 
 ## Package README guides
 
-Compiled package entry points (edit shards under `docs/readme-adventure-*/`, not README files directly):
+Compiled package entry points — edit shards, not published README files:
 
-| Package | Readme guide |
-| --- | --- |
-| adventure-langgraph | `docs/readme-adventure-langgraph/` |
-| adventure-v2 | `docs/readme-adventure-v2/` |
-| adventure-nl | `docs/readme-adventure-nl/` |
-| adventure-webclient | `docs/readme-adventure-webclient/` |
-| adventure-ag2 | `docs/readme-adventure-ag2/` |
+| Persona | Shard location | Packages |
+| --- | --- | --- |
+| Client (play / evaluate) | `docs/client/readme-adventure-*/` | langgraph, webclient, nl |
+| Developer (maintain / run) | `docs/developer/readme-adventure-*/` | v2, ag2, map-core, assist-server, nl-glue, v2 nested |
 
-Shared shards: `docs/readme-shards/`. See [mdcp workflow](mdcp-workflow.md).
+Shared shards: `docs/client/readme-shards/` (end-user labeling), `docs/developer/readme-shards/` (prerequisites, oracle, testing). See [mdcp workflow](mdcp-workflow.md).
 
 ## Documentation tiers
 
@@ -73,5 +70,6 @@ Shared shards: `docs/readme-shards/`. See [mdcp workflow](mdcp-workflow.md).
 | `docs/developer/` | How to work on the repo (this guide) |
 | `docs/client/` | End-user and researcher play guides |
 | `docs/glossary/` | Shared term definitions |
-| `docs/readme-shards/` | Shared prose for compiled package READMEs |
+| `docs/client/readme-shards/` | End-user labeling shards for compiled client READMEs |
+| `docs/developer/readme-shards/` | Maintainer shards (prerequisites, oracle, testing) |
 | `docs/architecture/`, `docs/decisions/` | Legacy flat docs (outside mdcp compile) |

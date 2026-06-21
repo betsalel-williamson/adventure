@@ -12,21 +12,21 @@
     "features",
     "developer",
     "client",
-    "readme-adventure-langgraph",
-    "readme-adventure-langgraph-map-core",
-    "readme-adventure-langgraph-assist-server",
-    "readme-adventure-v2",
-    "readme-adventure-v2-contracts",
-    "readme-adventure-v2-server",
-    "readme-adventure-v2-web",
-    "readme-adventure-v2-cognition",
-    "readme-adventure-v2-control",
-    "readme-adventure-nl",
-    "readme-adventure-nl-nl-glue",
-    "readme-adventure-webclient",
-    "readme-adventure-webclient-web",
-    "readme-adventure-ag2",
-    "readme-adventure-ag2-bridge"
+    "client/readme-adventure-langgraph",
+    "client/readme-adventure-webclient",
+    "client/readme-adventure-webclient-web",
+    "client/readme-adventure-nl",
+    "developer/readme-adventure-v2",
+    "developer/readme-adventure-v2-contracts",
+    "developer/readme-adventure-v2-server",
+    "developer/readme-adventure-v2-web",
+    "developer/readme-adventure-v2-cognition",
+    "developer/readme-adventure-v2-control",
+    "developer/readme-adventure-langgraph-map-core",
+    "developer/readme-adventure-langgraph-assist-server",
+    "developer/readme-adventure-nl-nl-glue",
+    "developer/readme-adventure-ag2",
+    "developer/readme-adventure-ag2-bridge"
   ],
   "guides": [
     {
@@ -61,7 +61,7 @@
       }
     },
     {
-      "name": "readme-adventure-langgraph",
+      "name": "client/readme-adventure-langgraph",
       "compile": {
         "outputFile": "../../adventure-langgraph/README.md",
         "sectionsHeading": "Sections",
@@ -69,87 +69,7 @@
       }
     },
     {
-      "name": "readme-adventure-langgraph-map-core",
-      "compile": {
-        "outputFile": "../../adventure-langgraph/packages/map-core/README.md",
-        "sectionsHeading": "Sections",
-        "scopeRoot": "glossary"
-      }
-    },
-    {
-      "name": "readme-adventure-langgraph-assist-server",
-      "compile": {
-        "outputFile": "../../adventure-langgraph/packages/assist-server/README.md",
-        "sectionsHeading": "Sections",
-        "scopeRoot": "glossary"
-      }
-    },
-    {
-      "name": "readme-adventure-v2",
-      "compile": {
-        "outputFile": "../../adventure-v2/README.md",
-        "sectionsHeading": "Sections",
-        "scopeRoot": "glossary"
-      }
-    },
-    {
-      "name": "readme-adventure-v2-contracts",
-      "compile": {
-        "outputFile": "../../adventure-v2/packages/contracts/README.md",
-        "sectionsHeading": "Sections",
-        "scopeRoot": "glossary"
-      }
-    },
-    {
-      "name": "readme-adventure-v2-server",
-      "compile": {
-        "outputFile": "../../adventure-v2/apps/server/README.md",
-        "sectionsHeading": "Sections",
-        "scopeRoot": "glossary"
-      }
-    },
-    {
-      "name": "readme-adventure-v2-web",
-      "compile": {
-        "outputFile": "../../adventure-v2/apps/web/README.md",
-        "sectionsHeading": "Sections",
-        "scopeRoot": "glossary"
-      }
-    },
-    {
-      "name": "readme-adventure-v2-cognition",
-      "compile": {
-        "outputFile": "../../adventure-v2/packages/cognition/README.md",
-        "sectionsHeading": "Sections",
-        "scopeRoot": "glossary"
-      }
-    },
-    {
-      "name": "readme-adventure-v2-control",
-      "compile": {
-        "outputFile": "../../adventure-v2/packages/control/README.md",
-        "sectionsHeading": "Sections",
-        "scopeRoot": "glossary"
-      }
-    },
-    {
-      "name": "readme-adventure-nl",
-      "compile": {
-        "outputFile": "../../adventure-nl/README.md",
-        "sectionsHeading": "Sections",
-        "scopeRoot": "glossary"
-      }
-    },
-    {
-      "name": "readme-adventure-nl-nl-glue",
-      "compile": {
-        "outputFile": "../../adventure-nl/packages/nl-glue/README.md",
-        "sectionsHeading": "Sections",
-        "scopeRoot": "glossary"
-      }
-    },
-    {
-      "name": "readme-adventure-webclient",
+      "name": "client/readme-adventure-webclient",
       "compile": {
         "outputFile": "../../adventure-webclient/README.md",
         "sectionsHeading": "Sections",
@@ -157,7 +77,7 @@
       }
     },
     {
-      "name": "readme-adventure-webclient-web",
+      "name": "client/readme-adventure-webclient-web",
       "compile": {
         "outputFile": "../../adventure-webclient/apps/web/README.md",
         "sectionsHeading": "Sections",
@@ -165,7 +85,87 @@
       }
     },
     {
-      "name": "readme-adventure-ag2",
+      "name": "client/readme-adventure-nl",
+      "compile": {
+        "outputFile": "../../adventure-nl/README.md",
+        "sectionsHeading": "Sections",
+        "scopeRoot": "glossary"
+      }
+    },
+    {
+      "name": "developer/readme-adventure-v2",
+      "compile": {
+        "outputFile": "../../adventure-v2/README.md",
+        "sectionsHeading": "Sections",
+        "scopeRoot": "glossary"
+      }
+    },
+    {
+      "name": "developer/readme-adventure-v2-contracts",
+      "compile": {
+        "outputFile": "../../adventure-v2/packages/contracts/README.md",
+        "sectionsHeading": "Sections",
+        "scopeRoot": "glossary"
+      }
+    },
+    {
+      "name": "developer/readme-adventure-v2-server",
+      "compile": {
+        "outputFile": "../../adventure-v2/apps/server/README.md",
+        "sectionsHeading": "Sections",
+        "scopeRoot": "glossary"
+      }
+    },
+    {
+      "name": "developer/readme-adventure-v2-web",
+      "compile": {
+        "outputFile": "../../adventure-v2/apps/web/README.md",
+        "sectionsHeading": "Sections",
+        "scopeRoot": "glossary"
+      }
+    },
+    {
+      "name": "developer/readme-adventure-v2-cognition",
+      "compile": {
+        "outputFile": "../../adventure-v2/packages/cognition/README.md",
+        "sectionsHeading": "Sections",
+        "scopeRoot": "glossary"
+      }
+    },
+    {
+      "name": "developer/readme-adventure-v2-control",
+      "compile": {
+        "outputFile": "../../adventure-v2/packages/control/README.md",
+        "sectionsHeading": "Sections",
+        "scopeRoot": "glossary"
+      }
+    },
+    {
+      "name": "developer/readme-adventure-langgraph-map-core",
+      "compile": {
+        "outputFile": "../../adventure-langgraph/packages/map-core/README.md",
+        "sectionsHeading": "Sections",
+        "scopeRoot": "glossary"
+      }
+    },
+    {
+      "name": "developer/readme-adventure-langgraph-assist-server",
+      "compile": {
+        "outputFile": "../../adventure-langgraph/packages/assist-server/README.md",
+        "sectionsHeading": "Sections",
+        "scopeRoot": "glossary"
+      }
+    },
+    {
+      "name": "developer/readme-adventure-nl-nl-glue",
+      "compile": {
+        "outputFile": "../../adventure-nl/packages/nl-glue/README.md",
+        "sectionsHeading": "Sections",
+        "scopeRoot": "glossary"
+      }
+    },
+    {
+      "name": "developer/readme-adventure-ag2",
       "compile": {
         "outputFile": "../../adventure-ag2/README.md",
         "sectionsHeading": "Sections",
@@ -173,7 +173,7 @@
       }
     },
     {
-      "name": "readme-adventure-ag2-bridge",
+      "name": "developer/readme-adventure-ag2-bridge",
       "compile": {
         "outputFile": "../../adventure-ag2/packages/ag2-bridge/README.md",
         "sectionsHeading": "Sections",

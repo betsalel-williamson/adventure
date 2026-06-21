@@ -14,4 +14,4 @@ make adventure
 | Binary missing | **Synthetic** oracle (`OK.` responses) for deterministic tests |
 | Force synthetic | Set package-specific disable flags (for example `ADV_V2_DISABLE_AUTO_FORTRAN_ORACLE=1` on v2 API) |
 
-See package READMEs for env overrides and health-check fields.
+Package READMEs document env overrides and health-check fields.

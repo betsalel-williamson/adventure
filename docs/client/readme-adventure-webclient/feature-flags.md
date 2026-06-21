@@ -6,6 +6,6 @@ Override order: **query string** → **sessionStorage** (`adventure-webclient-fl
 
 Full catalog:
 
-- [`docs/features/webclient/`](../features/webclient/index.md) (product)
-- [`docs/client/webclient/`](../client/webclient/index.md) (personas)
-- [`docs/developer/webclient-migration-catalog.md`](../developer/webclient-migration-catalog.md) (migration)
+- [`docs/features/webclient/`](../../features/webclient/index.md) (product)
+- [`docs/client/webclient/`](../../client/webclient/index.md) (personas)
+- [`docs/developer/webclient-migration-catalog.md`](../../developer/webclient-migration-catalog.md) (migration)

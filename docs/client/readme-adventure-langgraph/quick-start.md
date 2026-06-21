@@ -13,7 +13,7 @@ That runs adventure-v2 `dev:server`, this package’s Vite app, and the assist H
 
 **Assist server only:** `npm run assist:dev`.
 
-Optional — real Fortran output: from the repository root, `make adventure` so `./adventure` exists (see [Fortran oracle](../readme-shards/fortran-oracle.md)).
+Optional — real Fortran output: from the repository root, `make adventure` so `./adventure` exists (see [Fortran oracle](../../developer/readme-shards/fortran-oracle.md)).
 
 Override API origin if needed:
 
