@@ -1,0 +1,6 @@
+# Copy to infra/oci/secrets/ocir-auth-token and replace this line with the token
+# from OCI Console → Profile → User settings → Auth tokens → Generate token.
+#
+# File must contain exactly one line (the token). No quotes. chmod 600 recommended.
+#
+# PLACEHOLDER-REPLACE-WITH-REAL-TOKEN

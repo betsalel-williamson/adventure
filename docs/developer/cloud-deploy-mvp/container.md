@@ -50,12 +50,20 @@ Production cloud deploy must **not** set `ADV_V2_DISABLE_AUTO_FORTRAN_ORACLE=1` 
 
 Session and inference env from S1 apply to v2 as documented in [security and session](../../architecture/cloud-deploy-mvp/security-and-session.md).
 
-## CI
+## CI and production deploy
 
-Workflow job **`cloud-deploy-c1`** in [`.github/workflows/adventure.yml`](../../../.github/workflows/adventure.yml) builds the image and runs `container-smoke.sh`.
+| Workflow | When | What |
+| --- | --- | --- |
+| **`cloud-deploy-c1`** ([`adventure.yml`](../../../.github/workflows/adventure.yml)) | Every PR / push | Build image + `container-smoke.sh` |
+| **`oci-deploy`** ([`oci-deploy.yml`](../../../.github/workflows/oci-deploy.yml)) | Manual dispatch | Build, push OCIR, SSH `docker pull` on VM |
+
+Use **`oci-deploy`** for all deploys to the OCI VM after infra is up. See [GitHub Actions setup](./github-actions-setup.md).
+
+Docker build context excludes secrets via [`.dockerignore`](../../../.dockerignore) (`terraform.tfvars`, `.env`, `*.pem`, etc.).
 
 ## Related
 
 - [Cloud deploy maintainer index](./index.md)
+- [Oracle Cloud setup](./oracle-cloud-setup.md)
 - [Work graph — C1](../../architecture/cloud-deploy-mvp/work-graph.md)
 - [assist-server README](../../../adventure-langgraph/packages/assist-server/README.md)

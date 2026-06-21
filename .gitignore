@@ -62,6 +62,21 @@
 /docs/mdcp.v*.llms.txt
 
 # =============================================================================
+# OpenTofu / Terraform (infra/oci)
+# =============================================================================
+
+**/.terraform/
+**/.terraform.lock.hcl
+**/terraform.tfstate
+**/terraform.tfstate.*
+**/terraform.tfvars
+**/terraform.tfvars.json
+infra/oci/secrets/
+!infra/oci/secrets.example/
+**/*.tfplan
+**/crash.log
+
+# =============================================================================
 # Local / tooling (not part of the product)
 # =============================================================================
 

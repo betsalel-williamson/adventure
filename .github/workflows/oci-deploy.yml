@@ -1,0 +1,71 @@
+name: oci-deploy
+
+# Build C1 image, push to OCIR, restart container on the OCI VM via SSH.
+# Requires: oci-infra applied, GitHub secrets configured (see infrastructure-as-code.md).
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "OCIR tag (default git SHA)"
+        required: false
+        type: string
+
+concurrency:
+  group: oci-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Resolve image tag
+        id: tag
+        run: echo "value=${{ inputs.image_tag || github.sha }}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to OCIR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.OCI_REGION }}.ocir.io
+          username: ${{ secrets.OCIR_USERNAME }}
+          password: ${{ secrets.OCIR_AUTH_TOKEN }}
+
+      - name: Build and push
+        env:
+          REGISTRY: ${{ secrets.OCI_REGION }}.ocir.io
+          NAMESPACE: ${{ secrets.OCIR_NAMESPACE }}
+          TAG: ${{ steps.tag.outputs.value }}
+        run: |
+          IMAGE="$REGISTRY/$NAMESPACE/adventure-cloud:$TAG"
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+
+      - name: Deploy on VM via SSH
+        env:
+          SSH_HOST: ${{ secrets.OCI_DEPLOY_HOST }}
+          SSH_USER: ubuntu
+          SSH_KEY: ${{ secrets.OCI_SSH_PRIVATE_KEY }}
+        run: |
+          install -m 600 /dev/stdin ~/.ssh/deploy_key <<< "$SSH_KEY"
+          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key "$SSH_USER@$SSH_HOST" \
+            "docker login ${{ secrets.OCI_REGION }}.ocir.io -u '${{ secrets.OCIR_USERNAME }}' -p '${{ secrets.OCIR_AUTH_TOKEN }}' && \
+             docker pull '$IMAGE' && \
+             docker rm -f adventure 2>/dev/null || true && \
+             docker run -d --name adventure --restart unless-stopped \
+               -p 8787:8787 -p 8790:8790 '$IMAGE'"
+
+      - name: Smoke test (remote)
+        env:
+          SSH_HOST: ${{ secrets.OCI_DEPLOY_HOST }}
+        run: |
+          curl -sf "http://$SSH_HOST:8787/health" | jq -e '.oracleMode == "process"'
+          curl -sf "http://$SSH_HOST:8790/assist/health" | jq -e '.status == "ok"'
