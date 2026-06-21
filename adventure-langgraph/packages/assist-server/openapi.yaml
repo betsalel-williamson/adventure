@@ -1,0 +1,247 @@
+openapi: 3.1.0
+info:
+  title: adventure-langgraph assist-server API
+  version: 0.1.0
+  description: Draft exploration map assist HTTP API. Generated from Zod schemas in packages/assist-server/src/schemas.ts.
+servers:
+  - url: http://127.0.0.1:8790
+components:
+  schemas: {}
+  parameters: {}
+paths:
+  /assist/health:
+    get:
+      summary: Liveness and adapter summary
+      responses:
+        "200":
+          description: Assist server health
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - ok
+                  adapter:
+                    type: string
+                  probeEnabled:
+                    type: boolean
+                required:
+                  - status
+                  - adapter
+                  - probeEnabled
+  /assist/ingest:
+    post:
+      summary: Merge transcript into draft exploration graph
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                runId:
+                  type: string
+                transcript:
+                  type: string
+                line:
+                  type: string
+                context:
+                  type: object
+                  properties:
+                    priorLines:
+                      type: array
+                      items:
+                        type: string
+                    currentPlaceId:
+                      type: string
+                      nullable: true
+                patch:
+                  nullable: true
+              required:
+                - runId
+                - transcript
+      responses:
+        "200":
+          description: Updated mapJson and Mermaid flowchart
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - ok
+                  mapJson:
+                    nullable: true
+                  mermaid:
+                    type: string
+                required:
+                  - status
+                  - mermaid
+        "400":
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    properties:
+                      status:
+                        type: string
+                        enum:
+                          - ok
+                      mapJson:
+                        nullable: true
+                      mermaid:
+                        type: string
+                    required:
+                      - status
+                      - mermaid
+                  - type: object
+                    properties:
+                      status:
+                        type: string
+                        enum:
+                          - error
+                      errorMessage:
+                        type: string
+                    required:
+                      - status
+                      - errorMessage
+  /assist/step:
+    post:
+      summary: Merge transcript and optionally run LangGraph navigator
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                runId:
+                  type: string
+                transcript:
+                  type: string
+                assistancePosture:
+                  type: string
+                  enum:
+                    - quickAssist
+                    - studyFirst
+                studyFirstConfirmed:
+                  type: boolean
+                advance:
+                  type: boolean
+              required:
+                - runId
+                - transcript
+      responses:
+        "200":
+          description: Step result (merge-only or navigator move)
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    properties:
+                      status:
+                        type: string
+                        enum:
+                          - ok
+                      nextMove:
+                        type: string
+                        nullable: true
+                      mapJson:
+                        nullable: true
+                      mermaid:
+                        type: string
+                      notice:
+                        type: string
+                    required:
+                      - status
+                      - nextMove
+                      - mermaid
+                  - type: object
+                    properties:
+                      status:
+                        type: string
+                        enum:
+                          - error
+                      errorMessage:
+                        type: string
+                    required:
+                      - status
+                      - errorMessage
+        "400":
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    properties:
+                      status:
+                        type: string
+                        enum:
+                          - ok
+                      nextMove:
+                        type: string
+                        nullable: true
+                      mapJson:
+                        nullable: true
+                      mermaid:
+                        type: string
+                      notice:
+                        type: string
+                    required:
+                      - status
+                      - nextMove
+                      - mermaid
+                  - type: object
+                    properties:
+                      status:
+                        type: string
+                        enum:
+                          - error
+                      errorMessage:
+                        type: string
+                    required:
+                      - status
+                      - errorMessage
+        "500":
+          description: Assist step failure
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    properties:
+                      status:
+                        type: string
+                        enum:
+                          - ok
+                      nextMove:
+                        type: string
+                        nullable: true
+                      mapJson:
+                        nullable: true
+                      mermaid:
+                        type: string
+                      notice:
+                        type: string
+                    required:
+                      - status
+                      - nextMove
+                      - mermaid
+                  - type: object
+                    properties:
+                      status:
+                        type: string
+                        enum:
+                          - error
+                      errorMessage:
+                        type: string
+                    required:
+                      - status
+                      - errorMessage
