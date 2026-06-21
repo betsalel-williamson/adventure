@@ -31,8 +31,8 @@ Maps to [layers-and-boundaries.md](../../architecture/cloud-deploy-mvp/layers-an
 | --- | --- | --- | --- | --- | --- |
 | [#3](https://github.com/betsalel-williamson/adventure/issues/3) | EPIC | all | Active | — | Parent; open until #14 done |
 | [#5](https://github.com/betsalel-williamson/adventure/issues/5) | I1 | Inference | **Done** | — | Unified OpenAPI + shared types (PR #69) |
-| [#6](https://github.com/betsalel-williamson/adventure/issues/6) | S1 | Execution + session | **In progress** | — | Session auth + pairing token foundation |
-| [#7](https://github.com/betsalel-williamson/adventure/issues/7) | C1 | Execution | **Ready** | — | Container: v2 + Fortran + assist |
+| [#6](https://github.com/betsalel-williamson/adventure/issues/6) | S1 | Execution + session | **Done** | — | Session auth + pairing token foundation (PR #70) |
+| [#7](https://github.com/betsalel-williamson/adventure/issues/7) | C1 | Execution | **In progress** | — | Container: v2 + Fortran + assist |
 | [#8](https://github.com/betsalel-williamson/adventure/issues/8) | C2 | Execution | Blocked | #7 | Static webclient + reverse proxy |
 | [#9](https://github.com/betsalel-williamson/adventure/issues/9) | I4 | Inference | Blocked | #5, #6 | Server relay + WSS registry |
 | [#10](https://github.com/betsalel-williamson/adventure/issues/10) | I5 | Inference | Blocked | #5, #6 | Desktop Ollama agent |
@@ -75,7 +75,7 @@ Track the single active foundation or implementation issue here when work starts
 
 | Issue | Key | Owner | Started |
 | --- | --- | --- | --- |
-| [#6](https://github.com/betsalel-williamson/adventure/issues/6) | S1 | — | session auth branch |
+| [#7](https://github.com/betsalel-williamson/adventure/issues/7) | C1 | — | container image branch |
 
 Update project **Status → In progress** when picking up work. Only one foundation issue (#5, #6, #7) should be **In progress** per owner unless explicitly parallelized on the epic.
 

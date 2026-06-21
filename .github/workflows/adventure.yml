@@ -207,6 +207,34 @@ jobs:
         working-directory: adventure-webclient
         run: npm run build
 
+  cloud-deploy-c1:
+    needs: merge-check
+    if: always() && (github.event_name == 'push' || needs.merge-check.result == 'success')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Merge default branch into PR
+        if: github.event_name == 'pull_request'
+        uses: ./.github/actions/merge-default-branch
+
+      - name: Build C1 container image
+        run: docker build -t adventure-cloud:c1 .
+
+      - name: Run container smoke test
+        run: |
+          docker run -d --name adventure-c1 \
+            -p 8787:8787 -p 8790:8790 \
+            adventure-cloud:c1
+          ./scripts/cloud-deploy/container-smoke.sh
+          docker logs adventure-c1
+          docker stop adventure-c1
+
   docs-check:
     needs: merge-check
     if: always() && (github.event_name == 'push' || needs.merge-check.result == 'success')

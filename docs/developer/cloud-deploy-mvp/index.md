@@ -32,8 +32,9 @@ Do **not** use `browserPlanner` or `OLLAMA_URL=127.0.0.1` in production web buil
 | Area | Status |
 | --- | --- |
 | Architecture + ADR | Documented |
-| Docker / compose | Not started — [#7](https://github.com/betsalel-williamson/adventure/issues/7) C1 |
-| Inference OpenAPI | Not started — [#5](https://github.com/betsalel-williamson/adventure/issues/5) I1 |
+| Docker / compose | **C1 image** — [#7](https://github.com/betsalel-williamson/adventure/issues/7) · [container guide](./container.md) |
+| Inference OpenAPI | Done — [#5](https://github.com/betsalel-williamson/adventure/issues/5) I1 (PR #69) |
+| Session auth | Done — [#6](https://github.com/betsalel-williamson/adventure/issues/6) S1 (PR #70) |
 | Relay + desktop agent | Not started — [#9](https://github.com/betsalel-williamson/adventure/issues/9) I4, [#10](https://github.com/betsalel-williamson/adventure/issues/10) I5 |
 | Pairing | Not started — [#13](https://github.com/betsalel-williamson/adventure/issues/13) I8 |
 | E2E smoke | Not started — [#14](https://github.com/betsalel-williamson/adventure/issues/14) E1 |

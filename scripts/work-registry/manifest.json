@@ -82,9 +82,9 @@
           "type": "task",
           "title": "cloud-deploy-mvp (S1): session auth + pairing token foundation",
           "issue": 6,
-          "status": "in_progress",
+          "status": "done",
           "phase": "Foundation",
-          "projectStatus": "In progress",
+          "projectStatus": "Done",
           "parentWorkKey": "EPIC",
           "labels": [
             "cloud-deploy-mvp"
@@ -95,9 +95,9 @@
           "type": "task",
           "title": "cloud-deploy-mvp (C1): container image — v2 + Fortran + assist-server",
           "issue": 7,
-          "status": "todo",
+          "status": "in_progress",
           "phase": "Foundation",
-          "projectStatus": "Todo",
+          "projectStatus": "In progress",
           "parentWorkKey": "EPIC",
           "labels": [
             "cloud-deploy-mvp"

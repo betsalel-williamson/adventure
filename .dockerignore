@@ -1,0 +1,14 @@
+.git
+.github
+.cursor
+.caches
+.work-items
+**node_modules
+**/dist
+**/coverage
+**/.cache
+adventure-nl
+adventure-ag2
+adventure-webclient
+docs/_build
+*.log
