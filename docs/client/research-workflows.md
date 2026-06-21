@@ -41,4 +41,4 @@ For UI experiments decoupled from a specific backend, use [`adventure-webclient/
 
 ## Work items for agents
 
-When driving doc or code tasks from issues, set `WORK_ITEM_LOOKUP` to `docs/developer/agent-work-item-tracking.md`.
+When driving doc or code tasks from issues, see [Agent work-item tracking](../developer/agent-work-item-tracking.md).

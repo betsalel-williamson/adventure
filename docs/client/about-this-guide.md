@@ -1,19 +1,32 @@
 # About this guide
 
-**Audience:** Researchers testing SLMs and LLMs to play the game using a framework to solve the game. The project is moving toward the [AG2 (AutoGen) framework](https://github.com/ag2ai/ag2) for multi-agent orchestration; this guide describes the **current v3 play surface** and how to evaluate models honestly against the Fortran oracle.
+**Audience:** People who play Colossal Cave or evaluate agent behavior on the langgraph CRT surface — not maintainers wiring backends.
+
+## Personas
+
+### Player
+
+You want a readable **CRT transcript** and classic parser commands that reach the real Fortran game. Room text is oracle truth; side panels are assistance.
+
+### Map explorer
+
+You watch the **draft exploration map** beside the transcript — inferred places and compass moves from visible text, not privileged game state.
+
+### Agent researcher
+
+You test **SLMs or LLMs** on the assist path (Ollama navigator, fixture evals, optional probe mode). You label runs honestly: draft maps are not world truth; scripted probes are not autonomous LLM play.
 
 ## What you can do here
 
-- Play Colossal Cave in a CRT-style transcript with real Fortran output
-- Watch a **draft** exploration map infer places and moves from visible text
-- Configure local models (Ollama) for navigator hints on the assist path
-- Run fixture-based evals without mistaking draft assistance for game truth
-
-Shared terms: [Glossary](../glossary/index.md).
+- Play in the CRT shell with real Fortran output ([Quick start](quick-start.md))
+- Read the draft exploration map ([Exploration map guide](exploration-map-guide.md))
+- Configure local models ([SLM configuration](slm-configuration.md))
+- Run research workflows and fixture evals ([Research workflows](research-workflows.md))
 
 ## What this guide is not
 
-- Not a substitute for parser source code or adventure-nl natural-language mapping docs
-- Not a promise of full autonomous AG2 play on the default v3 surface (that integration is upcoming)
+- Not maintainer setup — see [Developer guide — v3 dev setup](../developer/v3-dev-setup.md)
+- Not the unified webclient migration shell — see [Webclient guide](webclient/index.md)
+- Not a substitute for adventure-nl natural-language mapping docs
 
-For maintainer setup, see [Developer guide — v3 dev setup](../developer/v3-dev-setup.md).
+Shared terms: [Glossary](../glossary/index.md)
