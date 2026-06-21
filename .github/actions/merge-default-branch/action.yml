@@ -1,0 +1,20 @@
+name: Merge default branch
+description: >
+  Merge the integration branch into the checked-out PR head. Requires a prior
+  actions/checkout step with fetch-depth: 0.
+
+inputs:
+  default-branch:
+    description: Integration branch merged into PR heads before tests
+    required: false
+    default: feature/adventure-llm
+
+runs:
+  using: composite
+  steps:
+    - name: Merge default branch into PR
+      shell: bash
+      run: |
+        set -euo pipefail
+        git fetch origin "${{ inputs.default-branch }}"
+        git merge --no-edit "origin/${{ inputs.default-branch }}"
