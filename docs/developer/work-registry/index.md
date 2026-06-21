@@ -78,6 +78,14 @@ Backward-compatible wrapper for cloud deploy only:
 ./scripts/work-registry/verify.sh
 ```
 
+### 5. Audit project (read-only)
+
+```bash
+./scripts/work-registry/audit-project.sh
+```
+
+Compares live GitHub Project membership and field-option coverage to the manifest before syncing.
+
 Checks ledger completeness, issue existence, project membership, cloud deploy #3–#14.
 
 ## Migration waves

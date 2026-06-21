@@ -34,9 +34,10 @@ ledger_meta_get() {
   local section="$1"
   local field="${2:-}"
   if [[ -n "$field" ]]; then
-    jq -r --arg s "$section" --arg f "$field" '._meta[$s][$f] // empty' "$LEDGER" 2>/dev/null || true
+    jq -r --arg s "$section" --arg f "$field" \
+      '(._meta[$s][$f] // .[$s][$f] // empty)' "$LEDGER" 2>/dev/null || true
   else
-    jq -r --arg s "$section" '._meta[$s] // empty' "$LEDGER" 2>/dev/null || true
+    jq -r --arg s "$section" '((._meta[$s] // .[$s]) // empty)' "$LEDGER" 2>/dev/null || true
   fi
 }
 
@@ -46,7 +47,7 @@ ledger_meta_set() {
   local tmp
   tmp="$(mktemp)"
   jq --arg s "$section" --argjson v "$json" \
-    '._meta = (._meta // {}) | .[$s] = ((._meta[$s] // {}) + $v)' "$LEDGER" >"$tmp"
+    '._meta = ((._meta // {}) | .[$s] = ((._meta[$s] // .[$s] // {}) + $v)) | del(.[$s])' "$LEDGER" >"$tmp"
   mv "$tmp" "$LEDGER"
 }
 
