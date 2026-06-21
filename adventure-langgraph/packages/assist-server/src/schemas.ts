@@ -33,6 +33,11 @@ export const assistErrorResponseSchema = z.object({
 
 export const assistHealthResponseSchema = z.object({
   status: z.literal("ok"),
+  service: z.literal("assist-server"),
+  version: z.string(),
+  gitSha: z.string(),
+  imageTag: z.string(),
+  builtAt: z.string().nullable(),
   adapter: z.string(),
   probeEnabled: z.boolean(),
 });

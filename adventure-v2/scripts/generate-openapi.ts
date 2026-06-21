@@ -35,6 +35,10 @@ const healthResponseSchema = registry.register(
   z.object({
     status: z.literal("ok"),
     service: z.literal("adventure-v2"),
+    version: z.string(),
+    gitSha: z.string(),
+    imageTag: z.string(),
+    builtAt: z.string().nullable(),
     oracleMode: z.enum(["synthetic", "process"]),
     processOracleScript: z.string().nullable(),
   }),
