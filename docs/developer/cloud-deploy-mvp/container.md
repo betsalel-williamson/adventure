@@ -66,4 +66,4 @@ Docker build context excludes secrets via [`.dockerignore`](../../../.dockerigno
 - [Cloud deploy maintainer index](./index.md)
 - [Oracle Cloud setup](./oracle-cloud-setup.md)
 - [Work graph — C1](../../architecture/cloud-deploy-mvp/work-graph.md)
-- [assist-server README](../../../adventure-langgraph/packages/assist-server/README.md)
+- [assist-server maintainer docs](../readme-adventure-langgraph-assist-server/index.md)

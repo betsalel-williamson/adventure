@@ -26,8 +26,7 @@ Used by `terraform.tfvars` → GitHub `OCI_PRIVATE_KEY`.
 3. Save PEM outside the repo, e.g. `~/.oci/oci_api_key.pem` (`chmod 600`)
 4. Copy the **Configuration file preview** values into `infra/oci/terraform.tfvars`:
    - `tenancy_ocid`, `user_ocid`, `api_key_fingerprint`, `private_key_path`
-
-See also [Infrastructure as code — one-time setup](./infrastructure-as-code.md#one-time-setup).
+   - Extended steps: [Infrastructure as code — one-time setup](./infrastructure-as-code.md#one-time-setup)
 
 ### 1b. SSH key (VM login + deploy)
 
