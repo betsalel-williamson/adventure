@@ -8,7 +8,7 @@ body:
       value: |
         For **cloud deploy MVP** work, use **Cloud deploy MVP — task** instead.
 
-        See [agent work-item tracking](https://github.com/betsalel-williamson/adventure/blob/main/docs/developer/agent-work-item-tracking.md).
+        See [agent work-item tracking](https://github.com/betsalel-williamson/adventure/blob/feature/adventure-llm/docs/developer/agent-work-item-tracking.md).
   - type: textarea
     id: objective
     attributes:

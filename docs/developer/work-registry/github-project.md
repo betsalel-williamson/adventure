@@ -22,7 +22,8 @@ Create in the GitHub UI after sync:
 | **Board** | Board | Status |
 | **By program** | Table | Filter Program |
 | **Cloud deploy** | Table | Program = Cloud deploy MVP; sort Work key |
-| **Active** | Table | Status ≠ Done; Program ≠ Archive |
+| **Active** | Table | Program = Cloud deploy MVP; Status ≠ Done — see [issue triage](#mvp-filter-active-view) |
+| **Active (all programs)** | Table | Status ≠ Done; Program ≠ Archive |
 
 ## Sync from CLI
 
@@ -73,4 +74,6 @@ Work graph: [work-graph.md](../../architecture/cloud-deploy-mvp/work-graph.md).
 ## Related
 
 - [Work registry index](index.md)
+- [Issue triage catalog](issue-triage.md)
+- [TDD + GitHub workflow](../tdd-and-github-workflow.md)
 - [Agent work-item tracking](../agent-work-item-tracking.md)

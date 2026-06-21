@@ -1,3 +1,5 @@
+> **GitHub:** [#41](https://github.com/betsalel-williamson/adventure/issues/41) · **Status:** deferred
+
 # Epic AP2 — Run and learn loop
 
 ## Objective

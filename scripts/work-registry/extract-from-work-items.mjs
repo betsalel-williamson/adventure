@@ -68,15 +68,34 @@ function mergeItem(existing, incoming) {
   for (const k of ['issue', 'projectItemId', 'labels']) {
     if (existing[k] !== undefined && existing[k] !== null) preserved[k] = existing[k];
   }
-  return { ...incoming, ...preserved, status: existing.status === 'done' ? 'done' : incoming.status };
+  const preservedStatus =
+    existing.status === 'done' || existing.status === 'deferred' ? existing.status : incoming.status;
+  if (
+    write &&
+    existing.status &&
+    incoming.status &&
+    existing.status !== incoming.status &&
+    (existing.status === 'deferred' || existing.status === 'done')
+  ) {
+    console.warn(
+      `manifest-first: preserving status "${existing.status}" for ${existing.workKey ?? incoming.workKey} (extract had "${incoming.status}")`,
+    );
+  }
+  return { ...incoming, ...preserved, status: preservedStatus };
 }
 
 function listMdFiles(dir, pattern) {
   const out = [];
   if (!statSync(dir, { throwIfNoEntry: false })?.isDirectory()) return out;
+  if (dir.includes(`${WORK_ITEMS}${join('', '_archive')}`) || dir.includes('/_archive/')) return out;
   for (const name of readdirSync(dir)) {
     const full = join(dir, name);
-    if (statSync(full).isFile() && name.endsWith('.md') && name !== 'index.md' && pattern.test(name)) {
+    if (name === '_archive') continue;
+    if (statSync(full).isDirectory()) {
+      out.push(...listMdFiles(full, pattern));
+      continue;
+    }
+    if (name.endsWith('.md') && name !== 'index.md' && name !== 'README.md' && pattern.test(name)) {
       out.push(full);
     }
   }

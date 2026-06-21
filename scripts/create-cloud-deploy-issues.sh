@@ -10,7 +10,8 @@ echo "  ./scripts/work-registry/sync-github-project.sh --resume --program cloud-
 echo "" >&2
 
 REPO="betsalel-williamson/adventure"
-BASE="https://github.com/betsalel-williamson/adventure/blob/main/docs"
+DEFAULT_BRANCH="${DEFAULT_BRANCH:-feature/adventure-llm}"
+BASE="https://github.com/betsalel-williamson/adventure/blob/$DEFAULT_BRANCH/docs"
 
 existing_epic="$(gh issue list --repo "$REPO" --label epic --search "cloud-deploy-mvp hosted backend" --json number --jq '.[0].number // empty')"
 if [[ -n "$existing_epic" ]]; then
@@ -73,7 +74,7 @@ Land architecture documentation and ADR for cloud deploy MVP + desktop inference
 - [x] [work-graph.md](${BASE}/architecture/cloud-deploy-mvp/work-graph.md) lists issue DAG
 - [x] Cross-links from architecture overview, features, developer index, glossary
 - [ ] GitHub issue templates in `.github/ISSUE_TEMPLATE/`
-- [x] Live issue numbers in [work-graph.md](https://github.com/betsalel-williamson/adventure/blob/main/docs/architecture/cloud-deploy-mvp/work-graph.md) (epic [#3](https://github.com/betsalel-williamson/adventure/issues/3))
+- [x] Live issue numbers in [work-graph.md](https://github.com/betsalel-williamson/adventure/blob/feature/adventure-llm/docs/architecture/cloud-deploy-mvp/work-graph.md) (epic [#3](https://github.com/betsalel-williamson/adventure/issues/3))
 
 ## Dependencies
 

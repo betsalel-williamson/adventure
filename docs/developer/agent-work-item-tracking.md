@@ -23,10 +23,16 @@ Agents load issue body and acceptance criteria via:
 
 ## Branch discipline
 
-- **One WORK_ITEM per branch** — branch from updated `main` before editing
+- **One WORK_ITEM per branch** — branch from updated **`feature/adventure-llm`** before editing ([branch policy](branch-policy.md))
 - Shards describe **current behavior**; breaking changes belong in the PR/changeset, not feature/client guides
-- New work uses **GitHub Issues** for scope; legacy `.work-items/` files are historical only
+- New work uses **GitHub Issues** for scope; [`.work-items/`](../../.work-items/README.md) is backup/design archive only (see [source-of-truth hierarchy](tdd-and-github-workflow.md#source-of-truth-hierarchy))
 - Package `README.md` files are compiled from `docs/client/readme-adventure-*/` and `docs/developer/readme-adventure-*/` shards — see [mdcp workflow](mdcp-workflow.md)
+
+## TDD workflow
+
+Red → Green → Refactor tied to issue pick-up, branches, PRs, and project Status: [TDD + GitHub workflow](tdd-and-github-workflow.md).
+
+Issue classification and MVP filter: [issue triage catalog](work-registry/issue-triage.md).
 
 ## Cloud deploy MVP epic
 
@@ -38,10 +44,14 @@ Multi-issue program: epic [#3](https://github.com/betsalel-williamson/adventure/
 | Project board | [Adventure (project #3)](https://github.com/users/betsalel-williamson/projects/3) — filter Program = Cloud deploy MVP |
 | Milestone | [Cloud deploy MVP](https://github.com/betsalel-williamson/adventure/milestone/1) |
 | Issue templates | [`.github/ISSUE_TEMPLATE/`](../../.github/ISSUE_TEMPLATE/config.yml) |
+| PR template | [`.github/pull_request_template.md`](../../.github/pull_request_template.md) |
 | Project guide | [work-registry/github-project.md](work-registry/github-project.md) |
+| TDD workflow | [tdd-and-github-workflow.md](tdd-and-github-workflow.md) |
+| Branch policy | [branch-policy.md](branch-policy.md) |
+| Issue triage | [work-registry/issue-triage.md](work-registry/issue-triage.md) |
 | Work registry | [work-registry/index.md](work-registry/index.md) |
 
-Branch pattern: `cloud-deploy/<work-key>-<slug>`. PRs: `Closes #N` · `Part of #3`. Set **`WORK_ITEM=#N`** in agent prompts.
+Branch pattern: `cloud-deploy/<work-key>-<slug>`. PR body: [`.github/pull_request_template.md`](../../.github/pull_request_template.md). Set **`WORK_ITEM=#N`** in agent prompts.
 
 ## mdcp task prompts
 

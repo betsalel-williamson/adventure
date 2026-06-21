@@ -6,7 +6,7 @@ Architecture shards: [`docs/architecture/cloud-deploy-mvp/`](../../architecture/
 
 Decision record: [ADR0017](../../decisions/ADR0017-cloud-deploy-and-desktop-inference-bridge.md)
 
-Work tracking: [work graph](../../architecture/cloud-deploy-mvp/work-graph.md) · [issue templates](../../architecture/cloud-deploy-mvp/github-issues.md) · [GitHub Project](./github-project.md)
+Work tracking: [work graph](../../architecture/cloud-deploy-mvp/work-graph.md) · [issue templates](../../architecture/cloud-deploy-mvp/github-issues.md) · [GitHub Project](./github-project.md) · [TDD workflow](../tdd-and-github-workflow.md) · [issue triage](../work-registry/issue-triage.md)
 
 **Milestone:** [Cloud deploy MVP](https://github.com/betsalel-williamson/adventure/milestone/1) · **Epic:** [#3](https://github.com/betsalel-williamson/adventure/issues/3) · **Project:** [#3](https://github.com/users/betsalel-williamson/projects/3)
 
@@ -42,5 +42,7 @@ Do **not** use `browserPlanner` or `OLLAMA_URL=127.0.0.1` in production web buil
 
 - [Webclient dev setup](../webclient-dev-setup.md)
 - [v3 dev setup](../v3-dev-setup.md)
+- [TDD + GitHub workflow](../tdd-and-github-workflow.md)
+- [Issue triage catalog](../work-registry/issue-triage.md)
 - [Agent work-item tracking](../agent-work-item-tracking.md)
 - [GitHub Project management](./github-project.md)

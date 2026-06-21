@@ -1,3 +1,5 @@
+> **GitHub:** [#36–#39](https://github.com/betsalel-williamson/adventure/issues?q=is%3Aissue+label%3Aprogram%3Anl-backend-nl-deprecation) · **Status:** deferred · Track in GitHub + manifest.
+
 # Tasks: Deprecate server-forward NL (phased, TDD)
 
 Work is **sequential**; each step leaves the repo in a green state. Follow **Red → Green → Refactor** per [process-03-development.mdc](../../.cursor/rules/process-03-development.mdc).

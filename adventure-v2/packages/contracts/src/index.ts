@@ -53,3 +53,21 @@ export {
   postReplayResponseSchema
 } from "./http/wire.js";
 
+export {
+  inferenceCapabilitiesResponseSchema,
+  inferenceErrorResponseSchema,
+  inferenceModeSchema,
+  inferenceProviderIdSchema,
+  inferenceRequestSchema,
+  inferenceResponseSchema,
+  inferenceSuccessResponseSchema,
+} from "./inference/contract.js";
+
+export type {
+  InferenceCapabilitiesResponse,
+  InferenceMode,
+  InferenceProviderId,
+  InferenceRequest,
+  InferenceResponse,
+} from "./inference/contract.js";
+

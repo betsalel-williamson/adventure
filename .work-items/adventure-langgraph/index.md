@@ -1,6 +1,8 @@
 # adventure-v3 planning (sharded)
 
-**Entry point for this work item.** Planning content is split into small files (level-2 sections become separate documents) so tools and humans can load only what they need—see [Document Sharding Guide](https://docs.bmad-method.org/how-to/shard-large-documents/).
+**Trackable work:** GitHub Issues [#15–#27](https://github.com/betsalel-williamson/adventure/issues?q=is%3Aissue+label%3Aprogram%3Aadventure-v3) · [issue triage catalog](../../docs/developer/work-registry/issue-triage.md). **MVP execution path:** [cloud deploy work graph](../../docs/architecture/cloud-deploy-mvp/work-graph.md) (#3–#14).
+
+**Entry point for design context.** Planning content is split into small files (level-2 sections become separate documents) so tools and humans can load only what they need—see [Document Sharding Guide](https://docs.bmad-method.org/how-to/shard-large-documents/).
 
 ## How to read
 
@@ -19,7 +21,7 @@
 - **Repo work queues (Draft / Ready / Active / Finished):** [`../planning/plan-queues-index.md`](../planning/plan-queues-index.md) · short pointer [`../planning/work-in-progress.md`](../planning/work-in-progress.md)
 - **Agent project authoring (prompts / behaviors / AP stories):** [`../agent-project-authoring/index.md`](../agent-project-authoring/index.md)
 - **Epics:** [epics/index.md](epics/index.md)
-- **Milestone order (user value):** [US-1-1](stories/US-1-1-crt-hero-layout.md) → [US-1-2](stories/US-1-2-real-game-or-clear-failure.md) → [US-2-1](stories/US-2-1-connection-status-visible.md) → [US-3-1](stories/US-3-1-honest-scripted-autoplay.md) → [US-5-1](stories/US-5-1-draft-location-diagram-reviewable.md) (see [stories/index.md](stories/index.md); **E4** deferred — [deferred.md](deferred.md))
+- **Milestone order (user value):** Deferred for MVP — see [cloud deploy work graph](../../docs/architecture/cloud-deploy-mvp/work-graph.md). Historical story order: [stories/index.md](stories/index.md) (**E4** deferred — [deferred.md](deferred.md))
 - **Guideline (repo):** [guidelin../adventure-langgraph/orchestration-before-playability.md](../../guidelin../adventure-langgraph/orchestration-before-playability.md)
 - **v2 critique:** [ux-multidisciplinary-review-prep.md](../adventure-v2/ux-multidisciplinary-review-prep.md)
 - **Slice 01 review packet:** [slice-01-multidisciplinary-review.md](slice-01-multidisciplinary-review.md) · [pending-changes-review-evidence.md](pending-changes-review-evidence.md)

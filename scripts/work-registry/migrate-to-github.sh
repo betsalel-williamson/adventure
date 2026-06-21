@@ -43,7 +43,8 @@ gh_init_rate_limit_policy
 OWNER="$(jq -r '.project.owner' "$MANIFEST")"
 REPO="$(jq -r '.project.repo' "$MANIFEST")"
 REPO_SLUG="$OWNER/$REPO"
-BASE="https://github.com/$OWNER/$REPO/blob/main"
+DEFAULT_BRANCH="${DEFAULT_BRANCH:-feature/adventure-llm}"
+BASE="https://github.com/$OWNER/$REPO/blob/$DEFAULT_BRANCH"
 
 ledger_init
 
