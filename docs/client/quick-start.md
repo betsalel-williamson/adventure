@@ -4,8 +4,7 @@ Play Colossal Cave in the adventure-langgraph CRT shell.
 
 ## Prerequisites
 
-- Node.js **24+** (use root `.nvmrc`)
-- Optional: `make adventure` at repo root for real Fortran room text
+Shared [Prerequisites](../readme-shards/prerequisites.md) and [Fortran oracle](../readme-shards/fortran-oracle.md). Package quick reference: [adventure-langgraph README](../../adventure-langgraph/README.md).
 
 ## Start the stack
 

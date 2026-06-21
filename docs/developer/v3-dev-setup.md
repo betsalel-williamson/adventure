@@ -4,15 +4,7 @@ Setup for adventure-langgraph local development.
 
 ## Prerequisites
 
-- **Node.js 24+** — use root `.nvmrc` (`nvm use` / `fnm use`)
-- **npm** — each package has its own `package-lock.json`
-- **GNU Fortran** — for real oracle output (`gfortran`, `make adventure`)
-
-Verify Node before install:
-
-```bash
-node --version   # expect v24.x
-```
+Shared [Prerequisites](../readme-shards/prerequisites.md) and [Fortran oracle](../readme-shards/fortran-oracle.md).
 
 ## Quick start
 
@@ -57,10 +49,4 @@ Without `OLLAMA_URL`, navigator uses the heuristic adapter only.
 
 ## Fortran oracle
 
-From repository root:
-
-```bash
-make adventure
-```
-
-When `./adventure` exists, adventure-v2 auto-selects the persistent Fortran oracle.
+When `./adventure` exists at repo root, adventure-v2 auto-selects the persistent Fortran oracle. Details: [Fortran oracle](../readme-shards/fortran-oracle.md).
