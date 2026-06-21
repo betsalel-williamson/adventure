@@ -87,8 +87,7 @@ Product behavior: [`docs/features/crt-shell.md`](../docs/_build/features-v3.md#c
 
 [`packages/assist-server`](../../adventure-langgraph/packages/assist-server) merges transcript text into a **directed graph** (`@adventure-langgraph/map-core`).
 
-- **`POST /assist/ingest`** — updates the graph from transcript (+ optional patch)
-- **`POST /assist/step`** — with `advance: true` runs the LangGraph navigator only when probe is enabled server- and client-side
+**API reference:** [`openapi.yaml`](../../adventure-langgraph/packages/assist-server/openapi.yaml). Product detail: [Assist runtime](../docs/_build/features-v3.md#assist-runtime).
 
 **Browser → assist URL:** override with **`VITE_ASSIST_URL`** (defaults to `<http://127.0.0.1:8790>`).
 
