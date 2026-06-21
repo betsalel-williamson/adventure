@@ -31,10 +31,10 @@ User-facing documents here (**persona**, **stories**) describe **observable beha
 
 | Mode | Primary job |
 | --- | --- |
-| **Play / demo** | Experience the game in the shell—readable transcript, honest status. Aligned with [adventure-v3 overview](../adventure-v3/overview.md). |
+| **Play / demo** | Experience the game in the shell—readable transcript, honest status. Aligned with [adventure-v3 overview](../adventure-langgraph/overview.md). |
 | **Author / test project** | Shape **project configuration** (what you defined: prompts, agent behaviors, reactions) and **run** automated play to **learn** what works. |
 
-**Author mode** may foreground orchestration and iteration **without** replacing **Play mode** defaults for casual visitors ([orchestration-before-playability](../../guidelines/adventure-v3/orchestration-before-playability.md): game-first presentation stays the norm for the default shell).
+**Author mode** may foreground orchestration and iteration **without** replacing **Play mode** defaults for casual visitors ([orchestration-before-playability](../../guidelin../adventure-langgraph/orchestration-before-playability.md): game-first presentation stays the norm for the default shell).
 
 ---
 
@@ -58,7 +58,7 @@ Terms here clarify **planning documents**. They **do not** belong verbatim in us
 | --- | --- |
 | **Slice** | A shipping increment (repo Cursor plans / slices)—internal schedule concept. |
 | **Epic** | A themed bundle of user stories (v3 uses **E1–E5**; this hub uses **AP1–AP3**). |
-| **US-x-x** | User story IDs under [adventure-v3/stories/](../adventure-v3/stories/) (CRT-first product track). |
+| **US-x-x** | User story IDs under [adventure-v3/stories/](../adventure-langgraph/stories/) (CRT-first product track). |
 | **AP-x-x** | User story IDs under [stories/](stories/) (**agent project authoring** track). |
 | **Project configuration** | What the author defines (prompts, behaviors, reactions)—**design.md** will specify representation; stories stay behavioral. |
 
@@ -79,9 +79,9 @@ flowchart LR
 
 ## Implementer cross-links (technical bounds)
 
-- [adventure-v3 index](../adventure-v3/index.md) — CRT-first milestones, E4/E5 assist context.
-- [design-agentic-mvp.md](../adventure-v3/design-agentic-mvp.md) — Assistance boundaries; game remains authority for world truth.
-- [orchestration-before-playability.md](../../guidelines/adventure-v3/orchestration-before-playability.md) — Game transcript before orchestration chrome.
+- [adventure-v3 index](../adventure-langgraph/index.md) — CRT-first milestones, E4/E5 assist context.
+- [design-agentic-mvp.md](../adventure-langgraph/design-agentic-mvp.md) — Assistance boundaries; game remains authority for world truth.
+- [orchestration-before-playability.md](../../guidelin../adventure-langgraph/orchestration-before-playability.md) — Game transcript before orchestration chrome.
 
 **Do not** paste implementation requirements into **AP-*** acceptance criteria unless they appear as **user-visible** outcomes (for example, a clear message when the game is unavailable).
 

@@ -1,4 +1,4 @@
-# Features — adventure-v3
+# Features — adventure-langgraph
 
 Product capabilities for the CRT-first Colossal Cave shell and assist path.
 

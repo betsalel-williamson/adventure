@@ -25,5 +25,5 @@ New product documentation belongs in mdcp guides (`docs/features/`, `docs/client
 ## Other maintainer docs
 
 - Root [README.md](../../README.md), [CONTRIBUTING.md](../../CONTRIBUTING.md)
-- [adventure-v3/README.md](../../adventure-v3/README.md) — package quick reference
-- `.work-items/adventure-v3/` — planning hub (pre-shard)
+- [adventure-langgraph/README.md](../../adventure-langgraph/README.md) — package quick reference
+- `.work-items/adventure-langgraph/` — planning hub (pre-shard)

@@ -1,6 +1,6 @@
 # v3 dev setup
 
-Setup for adventure-v3 local development.
+Setup for adventure-langgraph local development.
 
 ## Prerequisites
 
@@ -16,7 +16,7 @@ node --version   # expect v24.x
 
 ## Quick start
 
-From `adventure-v3/`:
+From `adventure-langgraph/`:
 
 ```bash
 npm install

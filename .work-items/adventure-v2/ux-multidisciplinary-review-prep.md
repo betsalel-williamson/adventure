@@ -80,7 +80,7 @@ Capture answers in meeting notes; these steer the next milestone.
 
 ## 5. Work queue: incremental steps
 
-**Product note:** “Simple CRT-first, watch Adventure play” work now lives in the **Adventure v3** shard hub [`../adventure-v3/index.md`](../adventure-v3/index.md) (epics **E1–E3**, stories **US-1-1** … **US-3-1**). The **U*** steps in the table below remain **adventure-v2** shell maintenance unless folded into v3.
+**Product note:** “Simple CRT-first, watch Adventure play” work now lives in the **Adventure v3** shard hub [`../adventure-langgraph/index.md`](../adventure-langgraph/index.md) (epics **E1–E3**, stories **US-1-1** … **US-3-1**). The **U*** steps in the table below remain **adventure-v2** shell maintenance unless folded into v3.
 
 Use this section to promote work through [`.work-items/planning/plan-queues-index.md`](../planning/plan-queues-index.md) (**Draft** → **Ready** → **Implementing**). Steps are **ordered by dependency**; later coding steps assume **decision prompts (§4)** are answered or explicitly deferred.
 

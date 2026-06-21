@@ -1,11 +1,11 @@
 # v3 testing
 
-Test gates for adventure-v3 changes.
+Test gates for adventure-langgraph changes.
 
 ## Unit and component tests
 
 ```bash
-cd adventure-v3
+cd adventure-langgraph
 npm test              # all Vitest projects
 npm run test:web      # jsdom / apps/web only
 ```
@@ -31,13 +31,13 @@ npm run test:cucumber:fortran
 
 When `./adventure` exists, Cucumber hooks use adventure-v2's **persistent Fortran oracle** (`createPersistentFortranOracleBridge`): one long-lived game subprocess per HTTP `runId`. Scenarios can pass while Node still hangs if those children are not killed — CI appears stuck on **Cucumber Fortran transcript** even though steps finished.
 
-The Fortran Cucumber harness must tear down the oracle in its `After` hook via `shutdownOracleBridge` (see `adventure-v3/tests/cucumber/http_hooks.ts`). The bridge implements optional `shutdown()` on `OracleBridge` in `adventure-v2/apps/server/src/oracle/persistentFortranOracleBridge.ts`.
+The Fortran Cucumber harness must tear down the oracle in its `After` hook via `shutdownOracleBridge` (see `adventure-langgraph/tests/cucumber/http_hooks.ts`). The bridge implements optional `shutdown()` on `OracleBridge` in `adventure-v2/apps/server/src/oracle/persistentFortranOracleBridge.ts`.
 
 When adding hooks or acceptance tests that start a persistent oracle, always release subprocesses before the process exits. One-shot process oracles (`createProcessOracleBridge`) do not need this — each observation is a short-lived child.
 
 ## Full verify gate
 
-Before merge from `adventure-v3/`:
+Before merge from `adventure-langgraph/`:
 
 ```bash
 npm run verify

@@ -7,7 +7,7 @@ Runs and assists are **labeled honestly**: scripted or deterministic paths do no
 ## Scope
 
 - **User-visible** distinctions between run modes where multiple behaviors exist.
-- **Hints** versus **room/parser output** from the adventure—consistent vocabulary ([design-agentic-mvp.md](../../adventure-v3/design-agentic-mvp.md) bounds apply to implementers; stories stay non-technical).
+- **Hints** versus **room/parser output** from the adventure—consistent vocabulary ([design-agentic-mvp.md](../../adventure-langgraph/design-agentic-mvp.md) bounds apply to implementers; stories stay non-technical).
 
 ## Stories
 

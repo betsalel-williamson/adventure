@@ -1,6 +1,6 @@
 # Developer guide
 
-How to maintain and develop the adventure monorepo, with focus on adventure-v3.
+How to maintain and develop the adventure monorepo, with focus on adventure-langgraph.
 
 Shared terms: [Glossary](../glossary/index.md).
 

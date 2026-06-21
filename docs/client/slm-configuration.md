@@ -18,7 +18,7 @@ With [Ollama](https://ollama.com/) running locally:
 ```bash
 export OLLAMA_URL=http://127.0.0.1:11434
 export OLLAMA_MODEL=llama3.2   # optional
-cd adventure-v3 && npm start
+cd adventure-langgraph && npm start
 ```
 
 ## What the SLM affects

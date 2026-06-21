@@ -30,7 +30,7 @@ Include:
   - `npm install`
   - `npm run check` (TypeScript + tests)
   - `npm run lint` (if you touched JS/TS)
-- **adventure-v3/:** `npm run verify` when you change the CRT shell or assist packages
+- **adventure-langgraph/:** `npm run verify` when you change the CRT shell or assist packages
 - **Documentation shards (`docs/glossary/`, `docs/features/`, `docs/developer/`, `docs/client/`):** from `docs/` run `npm run docs:check` (or `make docs-check` from repo root)
 - **Fortran:** `make` from the repository root should succeed with no new
   warnings you can reasonably fix.
@@ -53,7 +53,7 @@ never in commits.
 
 - Root overview: [`README.md`](README.md)
 - Natural-language / dashboard tooling: [`adventure-nl/README.md`](adventure-nl/README.md)
-- adventure-v3 sharded guides: [`docs/client/`](docs/client/index.md) (researcher), [`docs/features/`](docs/features/index.md), [`docs/developer/`](docs/developer/index.md)
+- adventure-langgraph sharded guides: [`docs/client/`](docs/client/index.md) (researcher), [`docs/features/`](docs/features/index.md), [`docs/developer/`](docs/developer/index.md)
 - HTTP API (dashboard): [`API_DOCUMENTATION.md`](API_DOCUMENTATION.md)
 - Judge / demo walkthrough: [`DEMO.md`](DEMO.md)
 - mdcp maintainer workflow: [`docs/developer/mdcp-workflow.md`](docs/developer/mdcp-workflow.md)

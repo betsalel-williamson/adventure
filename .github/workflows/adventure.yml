@@ -45,7 +45,7 @@ jobs:
         working-directory: adventure-v2
         run: npm run test:oracle-fortran
 
-  adventure-v3:
+  adventure-langgraph:
     runs-on: ubuntu-latest
 
     steps:
@@ -65,34 +65,34 @@ jobs:
           cache: npm
           cache-dependency-path: |
             adventure-v2/package-lock.json
-            adventure-v3/package-lock.json
+            adventure-langgraph/package-lock.json
 
       - name: Install dependencies (adventure-v2, for Cucumber harness imports)
         working-directory: adventure-v2
         run: npm ci
 
-      - name: Install dependencies (adventure-v3)
-        working-directory: adventure-v3
+      - name: Install dependencies (adventure-langgraph)
+        working-directory: adventure-langgraph
         run: npm ci
 
-      - name: Audit dependencies (adventure-v3)
-        working-directory: adventure-v3
+      - name: Audit dependencies (adventure-langgraph)
+        working-directory: adventure-langgraph
         run: npm audit --audit-level=moderate
 
       - name: Unit tests
-        working-directory: adventure-v3
+        working-directory: adventure-langgraph
         run: npm test
 
       - name: Cucumber CRT wire (synthetic oracle)
-        working-directory: adventure-v3
+        working-directory: adventure-langgraph
         run: npm run test:cucumber
 
       - name: Cucumber Fortran transcript
-        working-directory: adventure-v3
+        working-directory: adventure-langgraph
         run: npm run test:cucumber:fortran
 
       - name: Production build
-        working-directory: adventure-v3
+        working-directory: adventure-langgraph
         run: npm run build
 
   docs-check:

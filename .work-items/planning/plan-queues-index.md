@@ -14,7 +14,7 @@ Paths are repo-relative (`adventure/` root).
 | Hub | Purpose |
 | --- | --- |
 | **This file** | Loop snapshot, Draft / Ready / Active / Finished / Revisit queues |
-| **[`../adventure-v3/index.md`](../adventure-v3/index.md)** | **Adventure v3** — sharded [lessons, epics, user stories](https://docs.bmad-method.org/how-to/shard-large-documents/) (CRT-first product direction; v2 superseded for human-facing demo) |
+| **[`../adventure-langgraph/index.md`](../adventure-langgraph/index.md)** | **Adventure v3** — sharded [lessons, epics, user stories](https://docs.bmad-method.org/how-to/shard-large-documents/) (CRT-first product direction; v2 superseded for human-facing demo) |
 | **[`../adventure-v2/`](../adventure-v2/)** | adventure-v2 slice reviews, design copies — **experimental orchestration shell**, still in-repo |
 
 ---
@@ -26,10 +26,10 @@ Paths are repo-relative (`adventure/` root).
 | Field | Value |
 | --- | --- |
 | **Loop state** | `BetweenPlans` |
-| **Primary direction** | **Adventure v3** — exploration **map column** + background location agent ([`../adventure-v3/index.md`](../adventure-v3/index.md)); **E4** deferred for default UX ([`../adventure-v3/deferred.md`](../adventure-v3/deferred.md)). |
-| **Secondary tracks** | **AAB** LangGraph pivot — [`Implementing`](#concurrently-active-queue). **Adventure v2** — maintenance / slice close-out only (e.g. [`slice-18-multidisciplinary-review.md`](../adventure-v2/slice-18-multidisciplinary-review.md)); not the path for “simple game-first” UX (see [`lessons-from-v2.md`](../adventure-v3/lessons-from-v2.md)). |
+| **Primary direction** | **Adventure v3** — exploration **map column** + background location agent ([`../adventure-langgraph/index.md`](../adventure-langgraph/index.md)); **E4** deferred for default UX ([`../adventure-langgraph/deferred.md`](../adventure-langgraph/deferred.md)). |
+| **Secondary tracks** | **AAB** LangGraph pivot — [`Implementing`](#concurrently-active-queue). **Adventure v2** — maintenance / slice close-out only (e.g. [`slice-18-multidisciplinary-review.md`](../adventure-v2/slice-18-multidisciplinary-review.md)); not the path for “simple game-first” UX (see [`lessons-from-v2.md`](../adventure-langgraph/lessons-from-v2.md)). |
 | **Blocking** | _(none)_ |
-| **Next after v3 MLP** | Per [`../adventure-v3/deferred.md`](../adventure-v3/deferred.md); v2 **README Not yet** items (auth, TLS, Playwright, …) remain backlog unless reprioritized. |
+| **Next after v3 MLP** | Per [`../adventure-langgraph/deferred.md`](../adventure-langgraph/deferred.md); v2 **README Not yet** items (auth, TLS, Playwright, …) remain backlog unless reprioritized. |
 
 *v2 slice history (1–17 shipped):* see [**Finished queue**](#finished-queue) — exhaustive paragraph removed in favor of indexed slice reviews under [`../adventure-v2/`](../adventure-v2/).
 
@@ -71,7 +71,7 @@ Slices that are **green** and awaiting **human review + version-control commit**
 
 **Loop state:** `Ready` — next up once promoted; dependencies clear.
 
-- **Adventure v3 (product)** — Epic/story backlog is **sharded**: start at [`../adventure-v3/index.md`](../adventure-v3/index.md). Execution order: [`../adventure-v3/stories/index.md`](../adventure-v3/stories/index.md). Guideline: [`../../guidelines/adventure-v3/orchestration-before-playability.md`](../../guidelines/adventure-v3/orchestration-before-playability.md).
+- **Adventure v3 (product)** — Epic/story backlog is **sharded**: start at [`../adventure-langgraph/index.md`](../adventure-langgraph/index.md). Execution order: [`../adventure-langgraph/stories/index.md`](../adventure-langgraph/stories/index.md). Guideline: [`../../guidelin../adventure-langgraph/orchestration-before-playability.md`](../../guidelin../adventure-langgraph/orchestration-before-playability.md).
 - **Adventure v2 (maintenance)** — README **Not yet** and residual UX prep (**U1–U2** outcomes, **U6–U7** in [`ux-multidisciplinary-review-prep.md`](../adventure-v2/ux-multidisciplinary-review-prep.md) §5). **Secondary** to v3 for demo-facing work; **U6** blocked until ModelAdapter / run config is honored server-side.
 
 _(**AAB** is listed under [Concurrently active](#concurrently-active-queue) while staffed — avoid duplicating it here.)_

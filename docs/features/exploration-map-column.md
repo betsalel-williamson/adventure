@@ -6,7 +6,7 @@ The **exploration map column** sits beside the CRT and shows a **draft** Mermaid
 
 1. Client accumulates transcript text from oracle SSE output.
 2. Each new line (with bounded context) is sent to `POST /assist/ingest` when the location agent is enabled.
-3. `@adventure-v3/map-core` merges **YOU ARE** cues and compass echo lines into a `DirectedMapGraph`.
+3. `@adventure-langgraph/map-core` merges **YOU ARE** cues and compass echo lines into a `DirectedMapGraph`.
 4. Mermaid serialization renders beside the CRT.
 
 When assist is unreachable, the client falls back to deterministic in-browser merge — still draft, not oracle truth.

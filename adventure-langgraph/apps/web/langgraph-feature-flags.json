@@ -1,0 +1,17 @@
+{
+  "storagePrefix": "adventure-langgraph-flag-",
+  "defaults": {
+    "explorationMap": true,
+    "assistPanels": false,
+    "mapProbe": false,
+    "mapInspectors": false,
+    "locationAgent": true
+  },
+  "envKeys": {
+    "explorationMap": "VITE_LANGGRAPH_EXPLORATION_MAP",
+    "assistPanels": "VITE_LANGGRAPH_ASSIST_PANELS",
+    "mapProbe": "VITE_LANGGRAPH_MAP_PROBE",
+    "mapInspectors": "VITE_LANGGRAPH_MAP_INSPECTORS",
+    "locationAgent": "VITE_LANGGRAPH_LOCATION_AGENT"
+  }
+}

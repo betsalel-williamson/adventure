@@ -1,6 +1,6 @@
 # Glossary
 
-Shared definitions for adventure-v3 documentation. Use these terms consistently across feature, developer, and client guides.
+Shared definitions for adventure-langgraph documentation. Use these terms consistently across feature, developer, and client guides.
 
 Browse by group: [Product terms (v3)](index-product.md).
 

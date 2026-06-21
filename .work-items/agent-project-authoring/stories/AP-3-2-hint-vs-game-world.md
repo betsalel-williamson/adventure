@@ -26,7 +26,7 @@ See [persona.md](../persona.md) — **Agent builder Avery**.
 
 ## Notes
 
-- Implementers align boundary details with [design-agentic-mvp.md](../../adventure-v3/design-agentic-mvp.md); stories remain **user-observable** only.
+- Implementers align boundary details with [design-agentic-mvp.md](../../adventure-langgraph/design-agentic-mvp.md); stories remain **user-observable** only.
 
 ## Navigation
 

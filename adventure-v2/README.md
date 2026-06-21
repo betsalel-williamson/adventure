@@ -202,7 +202,7 @@ Game text from Fortran never prints in the **`npm run dev`** terminal; it appear
 
 ## Testing strategy
 
-**CI gate:** from this directory, `npm test` runs Vitest once (`vitest run`) over `tests/**/*.test.ts` but **`vitest.config.ts` excludes** `tests/oracleFortran.ci.test.ts`. GitHub Actions runs `npm audit` after `npm ci`, then `npm run test:cucumber` for HTTP Gherkin scenarios. `npm run test:oracle-fortran` uses [`vitest.oracle-ci.config.ts`](vitest.oracle-ci.config.ts) so only that file runs, with `ADV_V2_CI_FORTRAN=1`. The root workflow [`.github/workflows/adventure.yml`](../.github/workflows/adventure.yml) defines parallel **`adventure-v2`** and **`adventure-v3`** jobs; both install `gfortran` and run `make adventure` at the repo root. The **adventure-v2** job runs `npm run test:oracle-fortran` (along with the rest of the v2 suite).
+**CI gate:** from this directory, `npm test` runs Vitest once (`vitest run`) over `tests/**/*.test.ts` but **`vitest.config.ts` excludes** `tests/oracleFortran.ci.test.ts`. GitHub Actions runs `npm audit` after `npm ci`, then `npm run test:cucumber` for HTTP Gherkin scenarios. `npm run test:oracle-fortran` uses [`vitest.oracle-ci.config.ts`](vitest.oracle-ci.config.ts) so only that file runs, with `ADV_V2_CI_FORTRAN=1`. The root workflow [`.github/workflows/adventure.yml`](../.github/workflows/adventure.yml) defines parallel **`adventure-v2`** and **`adventure-langgraph`** jobs; both install `gfortran` and run `make adventure` at the repo root. The **adventure-v2** job runs `npm run test:oracle-fortran` (along with the rest of the v2 suite).
 
 **Layers (test pyramid):**
 

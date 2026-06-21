@@ -1,4 +1,4 @@
-# Product terms — adventure-v3
+# Product terms — adventure-langgraph
 
 Terms for the CRT shell, assist server, and draft exploration map.
 

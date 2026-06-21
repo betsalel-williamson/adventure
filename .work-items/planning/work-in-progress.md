@@ -8,7 +8,7 @@
 
 ## Primary direction (product)
 
-**Adventure v3** — CRT-first, game-first shell (supersedes v2 for human-facing demos). **Sharded** epics and stories: [`../adventure-v3/index.md`](../adventure-v3/index.md) · stories [`../adventure-v3/stories/index.md`](../adventure-v3/stories/index.md).
+**Adventure v3** — CRT-first, game-first shell (supersedes v2 for human-facing demos). **Sharded** epics and stories: [`../adventure-langgraph/index.md`](../adventure-langgraph/index.md) · stories [`../adventure-langgraph/stories/index.md`](../adventure-langgraph/stories/index.md).
 
 ## Concurrent engineering track
 
@@ -16,7 +16,7 @@
 
 ## Adventure v2 (experimental / maintenance)
 
-Orchestration shell and slices 1–18 close-outs — [`adventure-v2/`](../../adventure-v2/), queues in [`plan-queues-index.md`](plan-queues-index.md). Not the primary track for “watch Adventure play” UX; see [`../adventure-v3/lessons-from-v2.md`](../adventure-v3/lessons-from-v2.md).
+Orchestration shell and slices 1–18 close-outs — [`adventure-v2/`](../../adventure-v2/), queues in [`plan-queues-index.md`](plan-queues-index.md). Not the primary track for “watch Adventure play” UX; see [`../adventure-langgraph/lessons-from-v2.md`](../adventure-langgraph/lessons-from-v2.md).
 
 ## Queue roster
 

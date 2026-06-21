@@ -10,12 +10,12 @@ The repository combines a Fortran game engine with optional TypeScript tooling a
 | `make adventure` | Build `./adventure` oracle binary |
 | `adventure-nl/` | Natural-language CLI, autoplay dashboard, MCP glue |
 | `adventure-v2/` | HTTP + SSE game API, cognition stubs, wire tests |
-| `adventure-v3/` | CRT-first web shell + assist server (primary v3 surface) |
+| `adventure-langgraph/` | CRT-first web shell + LangGraph assist server |
 | `docs/` | Architecture ADRs, mdcp sharded guides |
 | `.work-items/` | Feature planning (migrating into mdcp shards) |
 | `guidelines/` | Lessons learned |
 
-## adventure-v3 packages
+## adventure-langgraph packages
 
 | Package | Role |
 | --- | --- |
@@ -24,7 +24,7 @@ The repository combines a Fortran game engine with optional TypeScript tooling a
 | `packages/assist-server` | Assist HTTP server, LangGraph cartographer/navigator |
 | `packages/cartographer-fixtures` | Eval fixtures for ingest benchmarks |
 
-adventure-v3 depends on adventure-v2 at dev time (`npm start` runs v2 `dev:server`).
+adventure-langgraph depends on adventure-v2 at dev time (`npm start` runs v2 `dev:server`).
 
 ## Documentation tiers
 

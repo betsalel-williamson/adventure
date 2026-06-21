@@ -1,6 +1,6 @@
 # Cartographer fixtures
 
-The `@adventure-v3/cartographer-fixtures` package provides schema-valid JSON fixtures for benchmarking assist ingest and navigator output.
+The `@adventure-langgraph/cartographer-fixtures` package provides schema-valid JSON fixtures for benchmarking assist ingest and navigator output.
 
 ## Purpose
 

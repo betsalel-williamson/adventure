@@ -1,6 +1,6 @@
 # CRT shell
 
-The **CRT shell** (`apps/web`) is the primary player surface in adventure-v3.
+The **CRT shell** (`apps/web`) is the primary player surface in adventure-langgraph.
 
 ## Wire protocol
 
@@ -16,11 +16,11 @@ The transcript renders oracle text in an 80×24 viewport. A status strip reports
 
 | Flag | Env override | Default |
 | --- | --- | --- |
-| `explorationMap` | `VITE_V3_EXPLORATION_MAP` | on |
-| `locationAgent` | `VITE_V3_LOCATION_AGENT` | on |
-| `assistPanels` | `VITE_V3_ASSIST_PANELS` | off |
-| `mapProbe` | `VITE_V3_MAP_PROBE` | off |
-| `mapInspectors` | `VITE_V3_MAP_INSPECTORS` | off |
+| `explorationMap` | `VITE_LANGGRAPH_EXPLORATION_MAP` | on |
+| `locationAgent` | `VITE_LANGGRAPH_LOCATION_AGENT` | on |
+| `assistPanels` | `VITE_LANGGRAPH_ASSIST_PANELS` | off |
+| `mapProbe` | `VITE_LANGGRAPH_MAP_PROBE` | off |
+| `mapInspectors` | `VITE_LANGGRAPH_MAP_INSPECTORS` | off |
 
 Override API origin: `VITE_API_URL`. Override assist origin: `VITE_ASSIST_URL`.
 

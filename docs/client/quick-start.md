@@ -1,6 +1,6 @@
 # Quick start
 
-Play Colossal Cave in the adventure-v3 CRT shell.
+Play Colossal Cave in the adventure-langgraph CRT shell.
 
 ## Prerequisites
 
@@ -10,7 +10,7 @@ Play Colossal Cave in the adventure-v3 CRT shell.
 ## Start the stack
 
 ```bash
-cd adventure-v3
+cd adventure-langgraph
 npm install
 npm start
 ```

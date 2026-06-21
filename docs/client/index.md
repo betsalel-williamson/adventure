@@ -1,4 +1,4 @@
-# Client guide — adventure-v3
+# Client guide — adventure-langgraph
 
 End-user and researcher documentation for playing and evaluating the CRT shell.
 
