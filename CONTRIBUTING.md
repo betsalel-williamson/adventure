@@ -51,6 +51,58 @@ Describe the change in the PR body using [`.github/pull_request_template.md`](.g
 Secrets belong in environment variables or a local `.env` file (gitignored),
 never in commits.
 
+### Git hooks (pre-commit)
+
+This repo uses the [pre-commit](https://pre-commit.com/) Python framework for
+all git hooks — secret scanning, commit message lint, docs checks, and
+package-scoped lint/tests on changed paths. Config:
+[`.pre-commit-config.yaml`](.pre-commit-config.yaml).
+
+**One-time setup:**
+
+```bash
+brew install pre-commit          # or: pip install pre-commit
+cd adventure-nl && npm install   # installs Husky → delegates to pre-commit
+```
+
+Install dependencies for packages you work in (as needed):
+
+```bash
+npm ci --prefix docs              # docs shard checks
+npm ci --prefix adventure-nl      # NL lint-staged
+npm ci --prefix adventure-langgraph
+npm ci --prefix adventure-v2
+```
+
+**What runs on commit:**
+
+| Hook | When |
+| --- | --- |
+| Trailing whitespace, YAML/JSON, merge conflicts | Always |
+| gitleaks secret scan | Always |
+| commitlint (conventional commits) | Every commit message |
+| `docs-check` (mdcp) | `docs/` changes |
+| adventure-nl lint-staged | `adventure-nl/` changes |
+| adventure-langgraph lint-staged | `adventure-langgraph/` changes |
+| adventure-v2 unit tests | `adventure-v2/` changes |
+
+Run manually:
+
+```bash
+pre-commit run --all-files                    # everything
+pre-commit run docs-check --all-files         # one hook
+pre-commit run commitlint --hook-stage commit-msg --commit-msg-filename /path/to/msg
+```
+
+Skip hooks in an emergency: `SKIP=gitleaks,docs-check git commit …`
+
+Alternative without Husky (e.g. Fortran-only work):
+
+```bash
+pre-commit install
+pre-commit install --hook-type commit-msg
+```
+
 ## Documentation
 
 - **Start here:** [`docs/index.md`](docs/index.md) — play paths, tiers, and doc checks
