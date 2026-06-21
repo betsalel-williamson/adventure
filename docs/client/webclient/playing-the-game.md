@@ -12,9 +12,9 @@ The hero panel stays primary — side panels must not hide readable game text.
 
 ## What you do
 
-WHEN you type a parser command and press Enter THEN you SHALL see your echo and the oracle response in the transcript.
+Type a parser command and press Enter — your echo and the oracle response appear in the transcript.
 
-WHEN the game API is unreachable THEN you SHALL see a clear status message — not a blank screen.
+If the game API is unreachable, you see a clear status message instead of a blank screen.
 
 ## Authority
 

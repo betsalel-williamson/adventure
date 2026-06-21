@@ -8,6 +8,6 @@ The Fortran game remains truth; the dashboard repeats **heuristic** location/inv
 
 **Text model dropdown** (when configured) hot-swaps MLX, HTTP, and Gemini without restart. Distinct presets share reference-counted server clients; global FIFO queue limits concurrent LLM calls.
 
-See [Honest labeling](../readme-shards/honest-labeling.md).
+See [Honest labeling](../docs/client/readme-shards/honest-labeling.md).
 
-Architecture: [`docs/architecture/adventure-engine.md`](../../architecture/adventure-engine.md).
+Architecture: [`docs/architecture/adventure-engine.md`](../docs/architecture/adventure-engine.md).

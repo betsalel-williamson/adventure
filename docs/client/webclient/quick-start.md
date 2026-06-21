@@ -18,7 +18,7 @@ npm run dev
 
 Open `http://127.0.0.1:5175`.
 
-The stub shell shows enabled feature flags and backend summary. Full play wiring lands incrementally — until CRT migration completes, use [langgraph quick start](../quick-start.md) or [adventure-nl README](../../adventure-nl/README.md) for production play.
+The stub shell shows enabled feature flags and backend summary. Full play wiring lands incrementally — until CRT migration completes, use [LangGraph CRT quick start](../quick-start.md) or [adventure-nl README](../../adventure-nl/README.md) for production play.
 
 ## Enable panels for your persona
 
@@ -36,7 +36,7 @@ See [Choose your surface](choose-your-surface.md) for persona-specific flag sets
 
 1. Read room text in the **CRT transcript**.
 2. Type parser commands (`N`, `TAKE KEYS`, `INVENTORY`, …).
-3. IF the exploration map is enabled THEN watch it update as **draft** inferred topology — not privileged game state.
+3. If the exploration map is enabled, watch it update as **draft** inferred topology — not privileged game state.
 
 ## Next steps
 

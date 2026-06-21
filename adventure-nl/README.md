@@ -75,7 +75,7 @@ With **`GEMINI_API_KEY`**, the first line can be natural language; after that, c
 
 **`npm start -- --autoplay`** — self-acting mode with text model planning (requires configured provider; not compatible with `--classic`).
 
-See [`.env.example`](../../adventure-nl/.env.example) for provider configuration.
+See [`.env.example`](.env.example) for provider configuration.
 
 ## Web dashboard
 
