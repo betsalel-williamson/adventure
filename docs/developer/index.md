@@ -60,3 +60,4 @@ Shared shards: `docs/client/readme-shards/`, `docs/developer/readme-shards/`.
 ## Agent automation
 
 - [Agent work-item tracking](agent-work-item-tracking.md)
+- [Work registry](work-registry/index.md) — migrate and sync `.work-items/` to GitHub

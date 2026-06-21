@@ -1,5 +1,7 @@
 # Plan queue index (adventure repo)
 
+> **Superseded for active tracking:** use the [Adventure GitHub Project](https://github.com/users/betsalel-williamson/projects/3) and [work registry](../../docs/developer/work-registry/index.md). This file remains a historical snapshot of Cursor plan queues and `.work-items/` lifecycle.
+
 Track Cursor implementation plans (`*.plan.md`) and lifecycle queues for work under `.work-items/`.
 
 - **Inventory** at the bottom lists `.cursor/plans/*.plan.md` (best-effort **mtime** sort).
@@ -141,7 +143,7 @@ Duplicates, parking lot, tooling debt, unclear completion, optional follow-ups.
 - `.cursor/plans/benchmark_profiles_and_runs_acab8b71.plan.md` — Benchmark profiles and runs _(promote toward AAB when extending metrics)_
 - `.cursor/plans/glue_as_client_mcp_ea429146.plan.md` — Glue as client MCP _(confirm remaining scope vs done)_
 - `.cursor/plans/xstate_nl-glue_actors_7545a629.plan.md` — XState nl-glue actors _(confirm vs current cognition/dashboard work)_
-- **Broken symlink:** `.cursor/plans/adventure-llm-task.plan.md` → `.work-items/adventure-llm/task.md` (target **missing**). Repoint to [`.work-items/adventure-nl/task.md`](../adventure-nl/task.md) or restore the old folder layout.
+- **Broken symlink:** `.cursor/plans/adventure-llm-task.plan.md` → repoint to [`.work-items/adventure-nl/task.md`](../adventure-nl/task.md) (target **adventure-llm** folder was removed).
 
 ---
 
@@ -185,7 +187,7 @@ Sorted by last modified (**newest first**). Title from plan frontmatter `name:`.
 
 Not listed above (broken symlink — not a readable plan file):
 
-- `adventure-llm-task.plan.md` → `../../.work-items/adventure-llm/task.md` (**target missing**)
+- `adventure-llm-task.plan.md` → `../../.work-items/adventure-nl/task.md` (**repoint from missing adventure-llm**)
 
 ---
 

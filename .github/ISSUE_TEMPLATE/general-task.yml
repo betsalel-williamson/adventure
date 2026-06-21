@@ -1,0 +1,34 @@
+name: General implementation task
+description: Code or docs task tracked via WORK_ITEM (outside cloud deploy MVP)
+title: ""
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For **cloud deploy MVP** work, use **Cloud deploy MVP — task** instead.
+
+        See [agent work-item tracking](https://github.com/betsalel-williamson/adventure/blob/main/docs/developer/agent-work-item-tracking.md).
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objective
+      description: What needs to be done
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Testable outcomes
+      value: |
+        - [ ] …
+    validations:
+      required: true
+  - type: textarea
+    id: references
+    attributes:
+      label: References
+      description: Shards, ADRs, related issues
+    validations:
+      required: false

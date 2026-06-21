@@ -103,7 +103,7 @@ Also visible from the repo **Projects** tab once linked. Setup guide: [GitHub Pr
 
 Project URL: https://github.com/users/betsalel-williamson/projects/3
 
-To sync via CLI: [`scripts/setup-cloud-deploy-project.sh`](../../../scripts/setup-cloud-deploy-project.sh) (added in a follow-up PR).
+To sync via CLI: [`scripts/setup-cloud-deploy-project.sh`](../../../scripts/setup-cloud-deploy-project.sh) or full registry [`scripts/work-registry/sync-github-project.sh`](../../../scripts/work-registry/sync-github-project.sh). Catalog: [`scripts/work-registry/manifest.json`](../../../scripts/work-registry/manifest.json).
 
 </details>
 

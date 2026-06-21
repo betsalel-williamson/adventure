@@ -1,0 +1,75 @@
+name: Cloud deploy MVP — task
+description: Implementation task from the cloud deploy work graph (ADR0017)
+title: "cloud-deploy-mvp (KEY): "
+labels:
+  - cloud-deploy-mvp
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Pick a **work graph key** and link the epic. Update [work-graph.md](https://github.com/betsalel-williamson/adventure/blob/main/docs/architecture/cloud-deploy-mvp/work-graph.md) when creating new keys.
+
+        Decision: [ADR0017](https://github.com/betsalel-williamson/adventure/blob/main/docs/decisions/ADR0017-cloud-deploy-and-desktop-inference-bridge.md)
+  - type: dropdown
+    id: work_key
+    attributes:
+      label: Work graph key
+      description: Identifier from the DAG (update title to match, e.g. cloud-deploy-mvp (I1): …)
+      options:
+        - D0
+        - I1
+        - S1
+        - C1
+        - C2
+        - I4
+        - I5
+        - I6
+        - I7
+        - I8
+        - E1
+    validations:
+      required: true
+  - type: input
+    id: epic
+    attributes:
+      label: Epic issue
+      description: Parent epic number (e.g. 42 → write #42 in blocked-by section below)
+      placeholder: "#3"
+    validations:
+      required: true
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objective
+      description: What this task implements
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Verifiable checkboxes
+      value: |
+        - [ ] …
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: Use GitHub issue references
+      value: |
+        - Epic: #
+        - Blocked by: #
+        - Blocks: #
+    validations:
+      required: true
+  - type: textarea
+    id: references
+    attributes:
+      label: Architecture references
+      description: Links to shards under docs/architecture/cloud-deploy-mvp/
+      value: |
+        - …
+    validations:
+      required: false
