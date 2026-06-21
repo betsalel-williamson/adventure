@@ -17,6 +17,15 @@ export type OracleObservationResult = {
 
 export type OracleBridge = {
   observe(input: OracleObservationInput): OracleObservationResult | Promise<OracleObservationResult>;
+  /** Release subprocesses or other resources held by the bridge (optional). */
+  shutdown?(): void | Promise<void>;
+};
+
+/** Tear down bridges that expose `shutdown` (no-op for synthetic / one-shot process bridges). */
+export const shutdownOracleBridge = async (bridge: OracleBridge): Promise<void> => {
+  if (typeof bridge.shutdown === "function") {
+    await bridge.shutdown();
+  }
 };
 
 /**

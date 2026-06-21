@@ -28,6 +28,7 @@ describe.runIf(shouldRunFortranOracle)("Fortran oracle CI bridge", () => {
       output: expect.stringMatching(/WELL HOUSE|END OF A ROAD/i)
     });
     expect(turn.reconcile.driftDetected).toBe(false);
+    await bridge.shutdown?.();
   });
 
   it("keeps one Fortran process per runId (no inventory reset between turns)", async () => {
@@ -48,5 +49,29 @@ describe.runIf(shouldRunFortranOracle)("Fortran oracle CI bridge", () => {
     expect(last.payload).toMatchObject({ rejected: false });
     const out = (last.payload as { output: string }).output;
     expect(out).not.toMatch(/I SEE NO LAMP HERE/i);
+    await bridge.shutdown?.();
+  });
+
+  it("shutdown releases Fortran child processes", async () => {
+    const bridge = createPersistentFortranOracleBridge({
+      repoRoot: repoRootPath,
+      adventureBinary: adventureBin,
+      maxWaitMs: 15_000
+    });
+    await bridge.observe({
+      runId: "shutdown-test",
+      turnId: "shutdown-test:turn:1",
+      sequence: 1,
+      action: "look"
+    });
+    await bridge.shutdown?.();
+    const afterShutdown = await bridge.observe({
+      runId: "shutdown-test",
+      turnId: "shutdown-test:turn:2",
+      sequence: 2,
+      action: "look"
+    });
+    expect(afterShutdown).toMatchObject({ rejected: false, outcome: "accepted" });
+    await bridge.shutdown?.();
   });
 });

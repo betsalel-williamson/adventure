@@ -26,6 +26,14 @@ type FortranSession = {
   instructionsDeclined: boolean;
 };
 
+const killSession = (session: FortranSession): void => {
+  try {
+    session.child.kill();
+  } catch {
+    // ignore kill errors
+  }
+};
+
 const stripFortranCrashTail = (text: string): string => {
   let s = text.replace(/\r\n/g, "\n");
   const markers = [
@@ -206,11 +214,7 @@ export const createPersistentFortranOracleBridge = (
         return { rejected: false, output: clipped, outcome: "accepted" };
       } catch (err) {
         sessions.delete(input.runId);
-        try {
-          session!.child.kill();
-        } catch {
-          // ignore kill errors
-        }
+        killSession(session!);
         const msg = err instanceof Error ? err.message : String(err);
         return {
           rejected: true,
@@ -218,6 +222,13 @@ export const createPersistentFortranOracleBridge = (
           outcome: "transport_error"
         };
       }
+    },
+
+    shutdown() {
+      for (const session of sessions.values()) {
+        killSession(session);
+      }
+      sessions.clear();
     }
   };
 };
