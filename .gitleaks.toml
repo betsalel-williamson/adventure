@@ -1,0 +1,15 @@
+# Repo-specific gitleaks config. Extends upstream defaults.
+# https://github.com/gitleaks/gitleaks#configuration
+
+title = "adventure gitleaks config"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Example env and secret templates (no real credentials)"
+paths = [
+  '''\.env\.example$''',
+  '''\.example$''',
+  '''secrets\.example/''',
+]
