@@ -1,0 +1,881 @@
+openapi: 3.1.0
+info:
+  title: adventure-nl web dashboard HTTP API
+  version: 0.1.0
+  description: |
+    Local web dashboard started with `npm run web` from `adventure-nl/` (or `make run-autoplay-web` from the repo root).
+    Binds to **127.0.0.1** only.
+
+    **Thin backend:** The Node process streams game text (SSE), runs the Fortran `adventure` binary, and (for non-browser flows) hosts the text-model pool.
+    Autoplay planning is intended to run entirely in the browser (Gemini or OpenAI-compatible HTTP); the server exposes `browserPlanner` credentials on SSE `text_llm` and `GET /api/text-llm`.
+    **`POST /api/nl/interpret`** remains request in → JSON out for manual NL. **`POST /api/nl/planner`** is legacy/compat (forward to the pool).
+
+    **Authentication:** none. Do not expose this server to untrusted networks.
+
+    **Session lifecycle:** Dashboard state (cookie `adventure_session` → in-memory session, Fortran subprocess, transcript, planner memory, UI-backed settings) exists only while the `npm run web` process runs.
+    A server restart wipes all sessions; unknown cookie ids are replaced with new sessions — there is no resume or disk snapshot of game state.
+
+    **NL cognition (default):** Unless opted out, interpretation and autoplay planning run in the browser (`ADVENTURE_NL_BROWSER_ORCHESTRATED_AUTOPLAY` unset).
+    Set `ADVENTURE_NL_BROWSER_ORCHESTRATED_AUTOPLAY=0` to run the full NL loop in Node.
+
+    Legacy path aliases: `/api/llm/plan`, `/api/llm/interpret`, `/api/autoplay-plan`, `/api/autoplay-engine-input`, `/api/manual-command`.
+servers:
+  - url: http://127.0.0.1:8787
+    description: Default bind (no TLS)
+  - url: https://127.0.0.1:8787
+    description: When TLS is configured for the dashboard
+tags:
+  - name: static
+    description: Static dashboard UI under adventure-nl/public/
+  - name: sse
+    description: Server-Sent Events stream
+  - name: session
+    description: Session probe and cookie establishment
+  - name: nl
+    description: Natural-language interpret and legacy planner
+  - name: engine
+    description: Fortran GETIN and parser data
+  - name: autoplay
+    description: Autoplay mode and pacing settings
+  - name: subsystem
+    description: Client subsystem replica sync (ADR0008)
+components:
+  schemas:
+    ErrorBody:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+    SessionResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        browserOrchestratedAutoplay:
+          type: boolean
+          description: When true, NL glue runs in the browser bundle.
+      required:
+        - ok
+        - browserOrchestratedAutoplay
+    SubsystemSyncRequest:
+      type: object
+      properties:
+        workspaceId:
+          type: string
+          pattern: ^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$
+        clientHeadRevisionId:
+          type: integer
+        revisions:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              parentRevisionId:
+                type: integer
+                nullable: true
+              createdAtIso:
+                type: string
+                format: date-time
+              fileChanges:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    path:
+                      type: string
+                    content:
+                      type: string
+                  required:
+                    - path
+                    - content
+              tags:
+                type: array
+                items:
+                  type: object
+              promotions:
+                type: array
+                items:
+                  type: object
+            required:
+              - id
+              - createdAtIso
+              - fileChanges
+      required:
+        - workspaceId
+        - clientHeadRevisionId
+        - revisions
+    SubsystemSyncResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        sync:
+          type: object
+          properties:
+            status:
+              type: string
+              enum: [applied, noop, fork]
+            serverHeadRevisionId:
+              type: integer
+            appliedRevisionIds:
+              type: array
+              items:
+                type: integer
+            clientBehindServer:
+              type: boolean
+            message:
+              type: string
+          required:
+            - status
+      required:
+        - ok
+        - sync
+    AdventureDatabaseResponse:
+      type: object
+      properties:
+        database:
+          description: Serialized adventure.dat for client-side hints
+      required:
+        - database
+    AutoplayMode:
+      type: object
+      properties:
+        plannerEnabled:
+          type: boolean
+        waitingForManual:
+          type: boolean
+      required:
+        - plannerEnabled
+        - waitingForManual
+    AutoplayModeRequest:
+      type: object
+      properties:
+        plannerEnabled:
+          type: boolean
+      required:
+        - plannerEnabled
+    AutoplaySettings:
+      type: object
+      properties:
+        paceMs:
+          type: integer
+          minimum: 0
+          maximum: 3600000
+        maxMoves:
+          type: integer
+          minimum: 1
+          maximum: 1000000
+      required:
+        - paceMs
+        - maxMoves
+    AutoplaySettingsRequest:
+      type: object
+      properties:
+        paceMs:
+          type: integer
+          minimum: 0
+          maximum: 3600000
+        maxMoves:
+          type: integer
+          minimum: 1
+          maximum: 1000000
+    ParserVerbsResponse:
+      type: object
+      properties:
+        groups:
+          type: array
+          items:
+            type: array
+            items:
+              type: string
+      required:
+        - groups
+    TextLlmResponse:
+      type: object
+      properties:
+        current:
+          type: object
+          nullable: true
+          properties:
+            providerId:
+              type: string
+            modelId:
+              type: string
+        backends:
+          type: array
+          items: {}
+        canSwap:
+          type: boolean
+        packaging:
+          type: object
+        browserPlanner:
+          type: object
+          description: Credentials for client-side autoplay planning (google/http sessions).
+          properties:
+            googleApiKey:
+              type: string
+            httpBaseUrl:
+              type: string
+    TextLlmSwapRequest:
+      type: object
+      properties:
+        providerId:
+          type: string
+          enum: [mlx, http, google]
+        modelId:
+          type: string
+      required:
+        - providerId
+        - modelId
+    TextLlmSwapResponse:
+      type: object
+      properties:
+        providerId:
+          type: string
+        modelId:
+          type: string
+      required:
+        - providerId
+        - modelId
+    MlxModelResponse:
+      type: object
+      properties:
+        canSwap:
+          type: boolean
+        modelId:
+          type: string
+        presets:
+          type: array
+          items:
+            type: string
+    MlxModelRequest:
+      type: object
+      properties:
+        modelId:
+          type: string
+      required:
+        - modelId
+    MlxCancelResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        cancelled:
+          type: boolean
+      required:
+        - ok
+        - cancelled
+    NlPlannerRequest:
+      type: object
+      properties:
+        plannerUserPrompt:
+          description: Planner prompt payload (legacy server-side path).
+        recentGameTextForRepair:
+          type: string
+        includeDatHelpInSystem:
+          type: boolean
+      required:
+        - plannerUserPrompt
+    NlPlannerResponse:
+      type: object
+      properties:
+        plan: {}
+      required:
+        - plan
+    NlInterpretRequest:
+      type: object
+      properties:
+        natural:
+          type: string
+          example: go east
+      required:
+        - natural
+    NlInterpretResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        scripted:
+          type: string
+      required:
+        - ok
+        - scripted
+    EngineInputRequest:
+      type: object
+      properties:
+        endSession:
+          type: boolean
+        getinLine:
+          type: string
+          description: Fixed-width GETIN line (e.g. "EAST     ").
+        scripted:
+          type: string
+        plan:
+          description: Optional plan metadata for plan_applied SSE event.
+        motionGridHint:
+          description: Optional motion grid hint for plan_applied.
+        moveNumber:
+          type: integer
+      description: Do not send `natural` here — use POST /api/nl/interpret first.
+    EngineInputResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        action:
+          type: string
+          enum: [endSession, scripted, engineInput]
+      required:
+        - ok
+        - action
+    SseEvent:
+      type: object
+      description: JSON payload after SSE `data:` line. Event name in preceding `event:` line.
+      additionalProperties: true
+  parameters:
+    AdventureSessionCookie:
+      name: adventure_session
+      in: cookie
+      required: false
+      description: Session cookie; established on first /api/* or /events access.
+      schema:
+        type: string
+paths:
+  /:
+    get:
+      tags: [static]
+      summary: Dashboard home page
+      description: Serves index.html from adventure-nl/public/.
+      responses:
+        "200":
+          description: HTML dashboard
+          content:
+            text/html:
+              schema:
+                type: string
+  "/{staticPath}":
+    get:
+      tags: [static]
+      summary: Static assets
+      description: Other files under adventure-nl/public/.
+      parameters:
+        - name: staticPath
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Static file content
+  /events:
+    get:
+      tags: [sse]
+      summary: Dashboard event stream
+      description: |
+        `text/event-stream`. Subscribing starts (or attaches to) one dashboard session (Fortran + transcript stream).
+
+        Initial events may include `autoplay_mode`, `autoplay_settings`, `manual_waiting`, `parser_verbs`, `text_llm`, `mlx_model`, `mlx_loading`.
+        Game progress arrives as `transcript_delta`, `turn_end`, `plan_applied`, `log_line`, etc.
+        When waiting for scripted input, the server may emit `getin_prompt_ready`.
+        Errors use `session_error` with a `message` string.
+
+        Parse SSE lines as usual — event name in `event:` lines, JSON payloads after `data:`.
+      parameters:
+        - $ref: "#/components/parameters/AdventureSessionCookie"
+      responses:
+        "200":
+          description: Server-Sent Events stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: SSE framing; each event data line is JSON matching SseEvent when applicable.
+  /api/session:
+    get:
+      tags: [session]
+      summary: Session probe and cookie establishment
+      parameters:
+        - $ref: "#/components/parameters/AdventureSessionCookie"
+      responses:
+        "200":
+          description: Session status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionResponse"
+  /api/subsystem-sync:
+    post:
+      tags: [subsystem]
+      summary: Apply client subsystem history batch to server replica
+      description: Requires adventure_session cookie. See ADR0008.
+      parameters:
+        - $ref: "#/components/parameters/AdventureSessionCookie"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubsystemSyncRequest"
+      responses:
+        "200":
+          description: Sync result (including fork as ok with sync.status fork)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubsystemSyncResponse"
+        "400":
+          description: Invalid body or workspaceId
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Apply failure
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+  /api/adventure-database:
+    get:
+      tags: [nl]
+      summary: Serialized adventure.dat for client hints
+      parameters:
+        - $ref: "#/components/parameters/AdventureSessionCookie"
+      responses:
+        "200":
+          description: Database JSON
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdventureDatabaseResponse"
+        "503":
+          description: adventure.dat unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+  /api/nl/planner:
+    post:
+      tags: [nl]
+      summary: Legacy server-side autoplay planner
+      description: Forward to text model pool. Default dashboard autoplay uses browser planning instead.
+      parameters:
+        - $ref: "#/components/parameters/AdventureSessionCookie"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NlPlannerRequest"
+      responses:
+        "200":
+          description: Planner output
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NlPlannerResponse"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "503":
+          description: No text model or dat
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Planner failure
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+  /api/llm/plan:
+    post:
+      tags: [nl]
+      summary: Alias of POST /api/nl/planner
+      parameters:
+        - $ref: "#/components/parameters/AdventureSessionCookie"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NlPlannerRequest"
+      responses:
+        "200":
+          description: Planner output
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NlPlannerResponse"
+  /api/autoplay-plan:
+    post:
+      tags: [nl]
+      summary: Alias of POST /api/nl/planner
+      parameters:
+        - $ref: "#/components/parameters/AdventureSessionCookie"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NlPlannerRequest"
+      responses:
+        "200":
+          description: Planner output
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NlPlannerResponse"
+  /api/nl/interpret:
+    post:
+      tags: [nl]
+      summary: Interpret natural language to scripted GETIN
+      parameters:
+        - $ref: "#/components/parameters/AdventureSessionCookie"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NlInterpretRequest"
+      responses:
+        "200":
+          description: Scripted GETIN line
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NlInterpretResponse"
+        "400":
+          description: Invalid natural input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "503":
+          description: No text model or dat
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+  /api/llm/interpret:
+    post:
+      tags: [nl]
+      summary: Alias of POST /api/nl/interpret
+      parameters:
+        - $ref: "#/components/parameters/AdventureSessionCookie"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NlInterpretRequest"
+      responses:
+        "200":
+          description: Scripted GETIN line
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NlInterpretResponse"
+  /api/engine/input:
+    post:
+      tags: [engine]
+      summary: Submit scripted GETIN to Fortran engine
+      description: NL steps use /api/nl/* first; engine output streams on /events.
+      parameters:
+        - $ref: "#/components/parameters/AdventureSessionCookie"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EngineInputRequest"
+            examples:
+              endSession:
+                value:
+                  endSession: true
+              getinLine:
+                value:
+                  getinLine: "EAST     "
+              scripted:
+                value:
+                  scripted: "EAST     "
+      responses:
+        "200":
+          description: Input accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EngineInputResponse"
+        "400":
+          description: Invalid body (e.g. natural sent here)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "404":
+          description: Not applicable in current mode
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "503":
+          description: Engine not ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+  /api/autoplay-engine-input:
+    post:
+      tags: [engine]
+      summary: Alias of POST /api/engine/input
+      parameters:
+        - $ref: "#/components/parameters/AdventureSessionCookie"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EngineInputRequest"
+      responses:
+        "200":
+          description: Input accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EngineInputResponse"
+  /api/manual-command:
+    post:
+      tags: [engine]
+      summary: Alias of POST /api/engine/input (no natural field)
+      parameters:
+        - $ref: "#/components/parameters/AdventureSessionCookie"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EngineInputRequest"
+      responses:
+        "200":
+          description: Input accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EngineInputResponse"
+  /api/autoplay-mode:
+    get:
+      tags: [autoplay]
+      summary: Planner and manual waiting state
+      parameters:
+        - $ref: "#/components/parameters/AdventureSessionCookie"
+      responses:
+        "200":
+          description: Current autoplay mode
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutoplayMode"
+    post:
+      tags: [autoplay]
+      summary: Enable or disable planner
+      parameters:
+        - $ref: "#/components/parameters/AdventureSessionCookie"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AutoplayModeRequest"
+      responses:
+        "200":
+          description: Updated mode
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutoplayMode"
+        "400":
+          description: Invalid JSON or plannerEnabled not boolean
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+  /api/autoplay-settings:
+    get:
+      tags: [autoplay]
+      summary: Effective pace and move cap
+      parameters:
+        - $ref: "#/components/parameters/AdventureSessionCookie"
+      responses:
+        "200":
+          description: Autoplay settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutoplaySettings"
+    post:
+      tags: [autoplay]
+      summary: Override pace and move cap
+      description: Omitted fields keep previous override or env default.
+      parameters:
+        - $ref: "#/components/parameters/AdventureSessionCookie"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AutoplaySettingsRequest"
+      responses:
+        "200":
+          description: Applied settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutoplaySettings"
+        "400":
+          description: Out-of-range values
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+  /api/parser-verbs:
+    get:
+      tags: [engine]
+      summary: Verb synonym groups from adventure.dat
+      parameters:
+        - $ref: "#/components/parameters/AdventureSessionCookie"
+      responses:
+        "200":
+          description: Parser verb groups
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParserVerbsResponse"
+        "503":
+          description: Database unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+  /api/text-llm:
+    get:
+      tags: [nl]
+      summary: Text LLM backends and browserPlanner credentials
+      parameters:
+        - $ref: "#/components/parameters/AdventureSessionCookie"
+      responses:
+        "200":
+          description: Provider configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TextLlmResponse"
+    post:
+      tags: [nl]
+      summary: Hot-swap text backend
+      parameters:
+        - $ref: "#/components/parameters/AdventureSessionCookie"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TextLlmSwapRequest"
+      responses:
+        "200":
+          description: Active provider
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TextLlmSwapResponse"
+        "400":
+          description: Validation failure
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "503":
+          description: Swap not available
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Swap failure
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+  /api/mlx-model:
+    get:
+      tags: [nl]
+      summary: MLX model id and presets
+      parameters:
+        - $ref: "#/components/parameters/AdventureSessionCookie"
+      responses:
+        "200":
+          description: MLX configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MlxModelResponse"
+    post:
+      tags: [nl]
+      summary: Select MLX model
+      parameters:
+        - $ref: "#/components/parameters/AdventureSessionCookie"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MlxModelRequest"
+      responses:
+        "200":
+          description: Model applied
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  modelId:
+                    type: string
+                required:
+                  - modelId
+        "400":
+          description: Unknown or disallowed modelId
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+  /api/mlx-model/cancel:
+    post:
+      tags: [nl]
+      summary: Cancel in-flight MLX model load
+      parameters:
+        - $ref: "#/components/parameters/AdventureSessionCookie"
+      responses:
+        "200":
+          description: Cancel result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MlxCancelResponse"
+        "400":
+          description: Nothing cancellable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
