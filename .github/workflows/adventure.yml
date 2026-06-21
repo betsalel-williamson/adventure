@@ -45,6 +45,10 @@ jobs:
         working-directory: adventure-v2
         run: npm run test:oracle-fortran
 
+      - name: OpenAPI spec drift check
+        working-directory: adventure-v2
+        run: npm run openapi:check
+
   adventure-langgraph:
     runs-on: ubuntu-latest
 
@@ -94,6 +98,10 @@ jobs:
       - name: Production build
         working-directory: adventure-langgraph
         run: npm run build
+
+      - name: OpenAPI spec drift check
+        working-directory: adventure-langgraph
+        run: npm run openapi:check
 
   adventure-ag2:
     runs-on: ubuntu-latest
