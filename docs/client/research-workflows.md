@@ -37,7 +37,7 @@ Probe sends assist-backed moves — label runs as **scripted probe**, not autono
 
 ## Unified frontend (webclient)
 
-For UI experiments decoupled from a specific backend, use [`adventure-webclient/`](../../adventure-webclient/README.md): enable panels via feature flags and point at LangGraph assist, AG2, v2 game API, or NL dashboard with env vars. Catalog: [Webclient feature catalog](../features/webclient/feature-catalog.md).
+For UI experiments decoupled from a specific backend, use [`adventure-webclient/`](../../adventure-webclient/README.md): enable panels via feature flags and point at LangGraph assist, AG2, v2 game API, or NL dashboard with env vars. Start at [Client guide — webclient](webclient/index.md).
 
 ## Work items for agents
 

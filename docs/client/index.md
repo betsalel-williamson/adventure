@@ -11,3 +11,4 @@ Shared terms: [Glossary](../glossary/index.md).
 - [Exploration map guide](exploration-map-guide.md)
 - [SLM configuration](slm-configuration.md)
 - [Research workflows](research-workflows.md)
+- [Webclient guide](webclient/index.md)
