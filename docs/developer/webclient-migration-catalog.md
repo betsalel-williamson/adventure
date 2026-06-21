@@ -57,7 +57,7 @@ End-user personas: [Client guide — webclient](../client/webclient/index.md). P
 5. NL research panels (flag-gated, off by default)
 6. Cognition / Stately depth
 
-Tasks: [`.work-items/adventure-webclient/task.md`](../../.work-items/adventure-webclient/task.md)
+Tasks: GitHub Issues (preferred). Legacy plan: [`.work-items/adventure-webclient/task.md`](../../.work-items/adventure-webclient/task.md).
 
 ## Documentation queue
 

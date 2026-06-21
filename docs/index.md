@@ -22,6 +22,7 @@ Sharded guides for playing, evaluating, and maintaining Colossal Cave Adventure 
 
 ## Contribute
 
+- [Community guide](community.md) — bugs, doc edits, code checks, agents
 - [CONTRIBUTING.md](../CONTRIBUTING.md) — pull request expectations and checks
 - [Developer guide](developer/index.md) — mdcp workflow, local dev, migration catalogs
 
