@@ -48,7 +48,8 @@ NPM_RUN := $(NPM) --prefix $(NL_DIR) run
 	adventure-v2-dev \
 	smoke smoke-build qa \
 	dependency-check dependency-check-quick \
-	install-hooks pre-commit
+	install-hooks pre-commit \
+	changeset changeset-status
 
 # =============================================================================
 # Default & Fortran build
@@ -178,3 +179,15 @@ install-hooks:
 pre-commit:
 	@command -v pre-commit >/dev/null 2>&1 || { echo "Install pre-commit: https://pre-commit.com/#install" >&2; exit 1; }
 	pre-commit run --all-files
+
+# =============================================================================
+# Versioning — Changesets (see .changeset/config.json)
+# =============================================================================
+
+changeset:
+	@command -v npm >/dev/null 2>&1 || { echo "Install Node.js 24+ (see .nvmrc)" >&2; exit 1; }
+	npm run changeset
+
+changeset-status:
+	@command -v npm >/dev/null 2>&1 || { echo "Install Node.js 24+ (see .nvmrc)" >&2; exit 1; }
+	npm run changeset:status

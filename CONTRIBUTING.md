@@ -103,6 +103,45 @@ pre-commit install
 pre-commit install --hook-type commit-msg
 ```
 
+### Versioning (Changesets)
+
+We use [Changesets](https://github.com/changesets/changesets) for semver bumps
+and per-package changelogs. Config: [`.changeset/config.json`](.changeset/config.json).
+
+**When to add a changeset:** user-facing fixes, features, or breaking API changes
+in a TypeScript package. Skip for docs-only, refactors, tests, or CI-only edits.
+
+```bash
+npm install          # once — installs @changesets/cli at repo root
+npm run changeset    # or: make changeset
+```
+
+Pick the affected package(s) and bump type. Commit the generated
+`.changeset/*.md` file with your PR. If the PR does not need a release (docs,
+refactors, CI-only), run:
+
+```bash
+npm run changeset -- --empty
+```
+
+`adventure-ag2` is not in the Changesets workspace yet (local `file:` deps).
+
+`adventure-v2` and `adventure-langgraph` are **fixed** — they version together
+(C1 cloud container). Other packages version independently.
+
+CI opens a **Version Packages** PR when changesets merge to
+`feature/adventure-llm` ([`changesets.yml`](.github/workflows/changesets.yml)).
+Packages are private; we do not publish to npm.
+
+Check pending changesets:
+
+```bash
+npm run changeset:status   # or: make changeset-status
+```
+
+Deployed C1 images expose package `version` in `/health` (see
+[container docs](docs/developer/cloud-deploy-mvp/container.md)).
+
 ## Documentation
 
 - **Start here:** [`docs/index.md`](docs/index.md) — play paths, tiers, and doc checks

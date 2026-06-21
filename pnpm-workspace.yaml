@@ -1,0 +1,12 @@
+# Package discovery for Changesets (https://github.com/changesets/changesets).
+# Per-package npm ci + package-lock.json files are unchanged — this file is not
+# used for installs unless you opt into pnpm at the repo root.
+packages:
+  - "adventure-v2"
+  - "adventure-nl"
+  - "adventure-nl/packages/*"
+  - "adventure-langgraph"
+  - "adventure-langgraph/packages/*"
+  - "adventure-webclient"
+  - "docs"
+  # adventure-ag2 omitted until map-core uses semver workspace deps (file: breaks validation)

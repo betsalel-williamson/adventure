@@ -1,0 +1,19 @@
+{
+  "name": "adventure",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Colossal Cave Adventure — Fortran oracle plus TypeScript tooling",
+  "license": "MIT",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "changeset": "changeset",
+    "changeset:status": "changeset status",
+    "version-packages": "changeset version",
+    "release": "changeset publish"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.29.8"
+  }
+}

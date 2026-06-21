@@ -240,6 +240,34 @@ jobs:
           docker logs adventure-c1
           docker stop adventure-c1
 
+  changeset-check:
+    needs: merge-check
+    if: github.event_name == 'pull_request' && needs.merge-check.result == 'success'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Merge default branch into PR
+        uses: ./.github/actions/merge-default-branch
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install Changesets CLI
+        run: npm ci --ignore-scripts
+
+      - name: Require changeset when packages change
+        run: npx changeset status --since=origin/feature/adventure-llm
+
   docs-check:
     needs: merge-check
     if: always() && (github.event_name == 'push' || needs.merge-check.result == 'success')

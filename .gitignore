@@ -9,7 +9,7 @@
 # =============================================================================
 
 **/node_modules/
-/package-lock.json
+# Root package-lock.json tracks @changesets/cli only (see package.json).
 
 # =============================================================================
 # Build / compile output
