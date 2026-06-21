@@ -2,6 +2,15 @@
 
 The repository combines a Fortran game engine with optional TypeScript tooling across several packages.
 
+## Git branches
+
+| Branch | Purpose |
+| --- | --- |
+| **`main`** | Frozen historical Fortran source — clean-room baseline; no product commits |
+| **`feature/adventure-llm`** | Default development branch — all TypeScript, docs, and cloud work |
+
+Details: [branch policy](branch-policy.md).
+
 ## Top-level map
 
 | Path | Purpose |
@@ -14,7 +23,7 @@ The repository combines a Fortran game engine with optional TypeScript tooling a
 | `adventure-ag2/` | AG2 multi-agent handoff stub (Python bridge planned) |
 | `adventure-webclient/` | Unified frontend shell — migrate NL + langgraph UI behind flags |
 | `docs/` | Architecture ADRs, mdcp sharded guides, readme guide shards |
-| `.work-items/` | Legacy planning files (historical; new work uses GitHub Issues) |
+| `.work-items/` | Backup/design archive for planning markdown (trackable work → GitHub Issues) |
 | `guidelines/` | Lessons learned |
 
 ## adventure-langgraph packages

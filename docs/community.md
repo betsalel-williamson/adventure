@@ -39,7 +39,7 @@ See [CONTRIBUTING.md](../../CONTRIBUTING.md). Package verify matrix:
 
 Set `WORK_ITEM` to a GitHub Issue number or URL. Load scope with `gh issue view <number>`.
 
-Conventions: [Agent work-item tracking](developer/agent-work-item-tracking.md).
+Conventions: [Agent work-item tracking](developer/agent-work-item-tracking.md) · [Branch policy](developer/branch-policy.md)
 
 **Tracker policy:** new work uses **GitHub Issues** + [manifest.json](../scripts/work-registry/manifest.json). [`.work-items/`](../.work-items/README.md) is a backup and design archive — not a parallel tracker.
 

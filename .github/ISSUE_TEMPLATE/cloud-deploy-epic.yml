@@ -10,7 +10,7 @@ body:
       value: |
         Use this template once per program milestone. Child tasks use **Cloud deploy MVP — task**.
 
-        Architecture: [overview](https://github.com/betsalel-williamson/adventure/blob/main/docs/architecture/cloud-deploy-mvp/overview.md) · [work graph](https://github.com/betsalel-williamson/adventure/blob/main/docs/architecture/cloud-deploy-mvp/work-graph.md) · [ADR0017](https://github.com/betsalel-williamson/adventure/blob/main/docs/decisions/ADR0017-cloud-deploy-and-desktop-inference-bridge.md)
+        Architecture: [overview](https://github.com/betsalel-williamson/adventure/blob/feature/adventure-llm/docs/architecture/cloud-deploy-mvp/overview.md) · [work graph](https://github.com/betsalel-williamson/adventure/blob/feature/adventure-llm/docs/architecture/cloud-deploy-mvp/work-graph.md) · [ADR0017](https://github.com/betsalel-williamson/adventure/blob/feature/adventure-llm/docs/decisions/ADR0017-cloud-deploy-and-desktop-inference-bridge.md)
   - type: textarea
     id: summary
     attributes:
@@ -26,7 +26,7 @@ body:
       label: MVP acceptance
       description: Link or paste acceptance from mvp-scope.md
       value: |
-        See [mvp-scope.md](https://github.com/betsalel-williamson/adventure/blob/main/docs/architecture/cloud-deploy-mvp/mvp-scope.md).
+        See [mvp-scope.md](https://github.com/betsalel-williamson/adventure/blob/feature/adventure-llm/docs/architecture/cloud-deploy-mvp/mvp-scope.md).
     validations:
       required: true
   - type: textarea

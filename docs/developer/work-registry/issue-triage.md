@@ -145,7 +145,7 @@ Closed with comments linking replacement cloud-deploy issues.
 
 Meta-issue: [R0: Project review — layered model + MVP issue triage](https://github.com/betsalel-williamson/adventure/issues/68) (created during workflow refresh).
 
-Blocks starting #5–#7 implementation branches until this catalog and `.work-items/` cleanup land on `main`.
+Blocks starting #5–#7 implementation branches until this catalog and `.work-items/` cleanup land on **`feature/adventure-llm`**.
 
 ## Per-program manifest mapping
 

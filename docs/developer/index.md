@@ -10,6 +10,7 @@ Play and evaluate: `docs/client/`. Product capabilities: `docs/features/`.
 
 ## Start here
 
+- [Branch policy](branch-policy.md) — `main` vs `feature/adventure-llm` (default)
 - [Repository layout](repo-layout.md)
 - [mdcp workflow](mdcp-workflow.md)
 - [Legacy docs](legacy-docs.md)

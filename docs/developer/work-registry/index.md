@@ -182,6 +182,7 @@ See [GitHub Project management](github-project.md).
 ## Related
 
 - [Issue triage catalog](issue-triage.md)
+- [Branch policy](../branch-policy.md)
 - [TDD + GitHub workflow](../tdd-and-github-workflow.md)
 - [Agent work-item tracking](../agent-work-item-tracking.md)
 - [Cloud deploy work graph](../../architecture/cloud-deploy-mvp/work-graph.md)

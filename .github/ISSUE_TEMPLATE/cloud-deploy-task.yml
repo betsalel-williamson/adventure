@@ -7,9 +7,9 @@ body:
   - type: markdown
     attributes:
       value: |
-        Pick a **work graph key** and link the epic. Update [work-graph.md](https://github.com/betsalel-williamson/adventure/blob/main/docs/architecture/cloud-deploy-mvp/work-graph.md) when creating new keys.
+        Pick a **work graph key** and link the epic. Update [work-graph.md](https://github.com/betsalel-williamson/adventure/blob/feature/adventure-llm/docs/architecture/cloud-deploy-mvp/work-graph.md) when creating new keys.
 
-        Decision: [ADR0017](https://github.com/betsalel-williamson/adventure/blob/main/docs/decisions/ADR0017-cloud-deploy-and-desktop-inference-bridge.md)
+        Decision: [ADR0017](https://github.com/betsalel-williamson/adventure/blob/feature/adventure-llm/docs/decisions/ADR0017-cloud-deploy-and-desktop-inference-bridge.md)
   - type: dropdown
     id: work_key
     attributes:

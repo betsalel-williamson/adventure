@@ -26,7 +26,7 @@ See [work registry — GraphQL fallback](work-registry/index.md#graphql-quota-fa
 
 1. **Pick work** — Filter [project #3](https://github.com/users/betsalel-williamson/projects/3): Program = Cloud deploy MVP, Status = Todo. Confirm dependencies are closed (`gh issue view`, [work graph](../architecture/cloud-deploy-mvp/work-graph.md)). Use the [issue triage Active view](work-registry/issue-triage.md#mvp-filter-active-view).
 2. **Load scope** — Set `WORK_ITEM=#N`; read issue body + linked architecture shard (`gh issue view <N>`).
-3. **Branch** — `cloud-deploy/<work-key>-<slug>` from updated `main`.
+3. **Branch** — `cloud-deploy/<work-key>-<slug>` from updated **`feature/adventure-llm`** ([branch policy](branch-policy.md))
 4. **Red** — Failing test(s) for acceptance criteria (package-level Vitest/integration per area).
 5. **Green** — Minimal implementation.
 6. **Refactor** — Only with tests green; separate structural vs behavioral commits.
@@ -109,6 +109,7 @@ Never create new trackable epic/story files under `.work-items/` for cloud-deplo
 
 ## Related
 
+- [Branch policy](../branch-policy.md)
 - [Issue triage catalog](work-registry/issue-triage.md)
 - [GitHub Project management](work-registry/github-project.md)
 - [Cloud deploy GitHub Project](cloud-deploy-mvp/github-project.md)

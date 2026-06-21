@@ -24,7 +24,8 @@ Include:
 
 ## Pull requests
 
-- Branch from `main` (or the default branch).
+- Branch from **`feature/adventure-llm`** (the GitHub default branch). See [branch policy](docs/developer/branch-policy.md).
+- **Do not** target `main` — that branch preserves the frozen historical Fortran source for clean-room comparison and authenticity proof.
 - Keep changes focused; prefer small, reviewable diffs.
 - **TypeScript / dashboard (`adventure-nl/`):** from that directory run:
   - `npm install`
@@ -55,6 +56,7 @@ never in commits.
 
 - **Start here:** [`docs/index.md`](docs/index.md) — play paths, tiers, and doc checks
 - **Community:** [`docs/community.md`](docs/community.md) — bugs, doc edits, contribution checks
+- **Branches:** [`docs/developer/branch-policy.md`](docs/developer/branch-policy.md) — `main` (frozen Fortran) vs `feature/adventure-llm` (default development)
 - Root overview: [`README.md`](README.md)
 - Natural-language / dashboard tooling: [`adventure-nl/README.md`](adventure-nl/README.md)
 - adventure-langgraph sharded guides: [`docs/client/`](docs/client/index.md) (researcher), [`docs/features/`](docs/features/index.md), [`docs/developer/`](docs/developer/index.md)
