@@ -39,7 +39,7 @@ git checkout -b cloud-deploy/i1-inference-openapi   # or your topic branch
 
 | Rule | Setting |
 | --- | --- |
-| Required status check | **`adventure / ci`** |
+| Required status check | **`ci`** (job in [`adventure.yml`](../../.github/workflows/adventure.yml)) |
 | Require branches up to date | Yes (`strict`) |
 | Require pull request | Yes |
 | Force pushes | Disabled |
