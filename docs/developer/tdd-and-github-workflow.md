@@ -97,7 +97,7 @@ Never create new trackable epic/story files under `.work-items/` for cloud-deplo
 
 ## Related
 
-- [Branch policy](../branch-policy.md)
+- [Branch policy](#branch-policy)
 - [Issue triage catalog](work-registry/issue-triage.md)
 - [GitHub Project management](work-registry/github-project.md)
 - [Cloud deploy GitHub Project](cloud-deploy-mvp/github-project.md)

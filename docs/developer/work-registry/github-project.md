@@ -22,7 +22,7 @@ Create in the GitHub UI after sync:
 | **Board** | Board | Status |
 | **By program** | Table | Filter Program |
 | **Cloud deploy** | Table | Program = Cloud deploy MVP; sort Work key |
-| **Active** | Table | Program = Cloud deploy MVP; Status ≠ Done — see [issue triage](../issue-triage.md#mvp-filter-active-view) |
+| **Active** | Table | Program = Cloud deploy MVP; Status ≠ Done — see [issue triage](#mvp-filter-active-view) |
 | **Active (all programs)** | Table | Status ≠ Done; Program ≠ Archive |
 
 ## Sync from CLI
