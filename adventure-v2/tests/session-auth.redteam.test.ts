@@ -1,7 +1,10 @@
 /**
  * Red-team tests for S1 session layer — mapped to OWASP Session Management /
  * Authentication cheat sheets. Each case attempts a low-hanging attack; we fix
- * only what is feasible in this threat model (see security-and-session.md).
+ * only what is feasible in this threat model.
+ *
+ * Committed analysis: docs/architecture/cloud-deploy-mvp/security-reviews/2026-06-21-s1-session-auth.md
+ * Living spec: docs/architecture/cloud-deploy-mvp/security-and-session.md
  */
 import { randomUUID } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";

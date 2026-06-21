@@ -34,6 +34,8 @@ Red → Green → Refactor tied to issue pick-up, branches, PRs, and project Sta
 
 Before opening a PR, produce a local [QA verification report](qa-verification-report.md) in `.caches/qa-reports/` — targeted tests, regression output, live HTTP evidence when applicable, and a table mapping each acceptance criterion to proof. Paste the executive summary into the PR **Test plan**; do not commit the report.
 
+For auth, session, pairing, or crypto changes, also write a committed [security review](security-review-workflow.md) under `docs/architecture/.../security-reviews/` and update the living security spec.
+
 Issue classification and MVP filter: [issue triage catalog](work-registry/issue-triage.md).
 
 ## Cloud deploy MVP epic
@@ -50,6 +52,7 @@ Multi-issue program: epic [#3](https://github.com/betsalel-williamson/adventure/
 | Project guide | [work-registry/github-project.md](work-registry/github-project.md) |
 | TDD workflow | [tdd-and-github-workflow.md](tdd-and-github-workflow.md) |
 | QA verification report | [qa-verification-report.md](qa-verification-report.md) |
+| Security review workflow | [security-review-workflow.md](security-review-workflow.md) |
 | Branch policy | [branch-policy.md](branch-policy.md) |
 | Issue triage | [work-registry/issue-triage.md](work-registry/issue-triage.md) |
 | Work registry | [work-registry/index.md](work-registry/index.md) |

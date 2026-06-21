@@ -14,6 +14,7 @@
 - [ ] Targeted tests pass (`npm test -- tests/<issue>.test.ts` or issue test strategy)
 - [ ] Regression suite pass (package or repo gate)
 - [ ] Local [QA verification report](../docs/developer/qa-verification-report.md) produced — paste executive summary + acceptance-criteria table below (file stays in `.caches/qa-reports/`, gitignored)
+- [ ] Security review written (auth/session/crypto only) — link `docs/architecture/.../security-reviews/YYYY-MM-DD-<work-key>.md` ([workflow](../docs/developer/security-review-workflow.md))
 - [ ] …
 
 ## Docs

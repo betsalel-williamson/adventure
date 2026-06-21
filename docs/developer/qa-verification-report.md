@@ -13,7 +13,7 @@ Reports live under **`.caches/qa-reports/`** (gitignored). **Do not commit** QA 
 | Pure refactor with existing test coverage | Optional — targeted test output may suffice |
 | Doc-only issue | Skip — use `make docs-check` output instead |
 
-Agents and contributors: produce the report after **Green** (tests pass) and before step **PR** in [TDD + GitHub workflow](tdd-and-github-workflow.md).
+Agents and contributors: produce the report after **Green** (tests pass) and before step **PR** in [TDD + GitHub workflow](tdd-and-github-workflow.md). Auth/session changes also require a committed [security review](security-review-workflow.md).
 
 ## File naming and location
 
@@ -167,6 +167,7 @@ The first report in this format was produced for **#6 S1** (session auth + pairi
 
 ## Related
 
+- [Security review workflow](security-review-workflow.md)
 - [TDD + GitHub workflow](tdd-and-github-workflow.md)
 - [Agent work-item tracking](agent-work-item-tracking.md)
 - [v3 testing](v3-testing.md) — langgraph verify gates (separate from this report format)

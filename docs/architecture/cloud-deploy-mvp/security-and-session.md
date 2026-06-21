@@ -15,6 +15,7 @@ Operator checklist:
 - Set `ADV_V2_CORS_ORIGINS` to hosted web origin(s) — never `*` in production.
 - Keep model/provider secrets in server env only ([mvp-scope](./mvp-scope.md)).
 - Pairing codes are bootstrap-only; long-lived credentials live in desktop keychain, not browser storage.
+- Session idle TTL: `ADV_V2_SESSION_IDLE_TTL_MS` (default 10 min, minimum 5 min).
 
 ## Session principal
 
@@ -47,23 +48,28 @@ Flow matches [desktop-inference-bridge](./desktop-inference-bridge.md):
 
 Contracts: `adventure-v2/packages/contracts/src/session/contract.ts` · OpenAPI paths under `/session` and `/pairing/*`.
 
-## OWASP red-team review (S1)
+## Controls summary (S1)
 
-Threat model: research MVP, in-memory store, no accounts. Method: attempt low-hanging attacks in `tests/session-auth.redteam.test.ts`; mitigate only **feasible** classes.
+| Control | Default / behavior |
+| --- | --- |
+| Session id | UUID v4; server-side membership check |
+| Pairing code TTL | 5 minutes; single use |
+| Pairing redeem rate limit | 30 attempts / minute / client IP → 429 |
+| Session idle TTL | 10 minutes; revokes session + pairing + devices |
+| Browser Origin check | When `ADV_V2_CORS_ORIGINS` set; exempt desktop redeem |
+| Device token at rest | SHA-256 hash; constant-time compare on validation |
 
-| OWASP area | Attack | Feasible? | Mitigation / rationale |
-| --- | --- | --- | --- |
-| **Session Management** — guessable session id | Brute-force `adv_v2_session` UUID | **No** | UUID v4 (~122 bits); online search infeasible |
-| **Session Management** — forged cookie | Send random UUID cookie | **Blocked** | Server-side `Set` membership → 401 |
-| **Session Management** — cross-session access | Use victim cookie on attacker browser | **Out of scope** | Requires cookie theft (XSS/network); `HttpOnly` blocks JS exfil |
-| **Authentication** — pairing code online guess | Flood `POST /pairing/redeem` | **Yes** | Sliding window rate limit (default 30/min per client IP) → 429 |
-| **Authentication** — pairing code entropy | Guess 6× base32 char in 5 min | **No** at default rate | ~10³⁰ space vs ~150 attempts/TTL window |
-| **CSRF** — cross-site POST with cookie | Evil site triggers mutating route | **No** (modern browsers) | `SameSite=Lax` omits cookie on cross-site POST |
-| **CSRF** — wrong Origin when allowlist set | Forged Origin with stolen cookie | **Yes** (defense in depth) | `requireAllowedBrowserOrigin` on browser routes when `ADV_V2_CORS_ORIGINS` set; **exempt** `POST /pairing/redeem` (desktop) |
-| **Cryptographic storage** — timing on device token | Compare digests with `===` | **Theoretical** | `timingSafeEqual` via `secureCompareHexDigests`; hash-indexed lookup |
-| **Session timeout** — idle session | Stale session forever | **Mitigated** | Default 10 min idle TTL (`ADV_V2_SESSION_IDLE_TTL_MS`, min 5 min); revokes session, pairing codes, and devices |
+Red-team regression: `adventure-v2/tests/session-auth.redteam.test.ts`.
 
-Implementation: `sessionCrypto.ts`, `pairingRateLimit.ts`, `sessionOriginPolicy.ts`, red-team tests in `tests/session-auth.redteam.test.ts`.
+## Security reviews
+
+Point-in-time analysis (before/after, feasible attacks, accepted risks) lives in **[security-reviews/](./security-reviews/)** — committed, immutable records.
+
+| Date | Review |
+| --- | --- |
+| 2026-06-21 | [S1 session auth + pairing](./security-reviews/2026-06-21-s1-session-auth.md) |
+
+Process: [security review workflow](../../developer/security-review-workflow.md).
 
 ## Previous / next
 
