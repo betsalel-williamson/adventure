@@ -10,7 +10,7 @@ Fortran game state remains authoritative — merged graphs are **draft assistanc
 
 ## API surface
 
-Key exports from [`packages/map-core/src/`](src):
+Key exports from [`packages/map-core/src/`](../../adventure-langgraph/packages/map-core/src/):
 
 - Directed graph types and merge helpers
 - Mermaid diagram serialization for the exploration map column
@@ -18,9 +18,9 @@ Key exports from [`packages/map-core/src/`](src):
 
 Consumed by:
 
-- [`packages/assist-server`](../assist-server)
-- [`apps/web`](../../apps/web) (client-side fallback)
-- [`adventure-ag2/packages/ag2-bridge`](../../../adventure-ag2/packages/ag2-bridge)
+- [`packages/assist-server`](../../adventure-langgraph/packages/assist-server)
+- [`apps/web`](../../adventure-langgraph/apps/web) (client-side fallback)
+- [`adventure-ag2/packages/ag2-bridge`](../../adventure-ag2/packages/ag2-bridge)
 
 ## Testing
 
@@ -30,4 +30,4 @@ From `adventure-langgraph/`:
 npm test -- packages/map-core
 ```
 
-Vitest runs under the **`node`** project in [`vitest.config.ts`](../../vitest.config.ts).
+Vitest runs under the **`node`** project in [`vitest.config.ts`](../../adventure-langgraph/vitest.config.ts).

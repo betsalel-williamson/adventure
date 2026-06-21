@@ -7,7 +7,7 @@
 - LangGraph pre-oracle cognition + XState loop policy via `RunCoordinator`
 - Ordered SSE fanout of turn, phase, and cognition trace events
 
-Oracle selection: persistent Fortran when `./adventure` exists, synthetic default, or explicit process bridge script — see the **Oracle modes** section in the [adventure-v2 README](../../../README.md).
+Oracle selection: persistent Fortran when `./adventure` exists, synthetic default, or explicit process bridge script — see the **Oracle modes** section in the [adventure-v2 README](../../README.md).
 
 ## Layout
 

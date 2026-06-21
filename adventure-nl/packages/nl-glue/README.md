@@ -15,7 +15,7 @@ Browser and Node paths share prompt packaging constants and eval fixtures where 
 | MCP tools          | Glue MCP stdio server and snapshot schemas       |
 | Fixtures           | Interpret eval fixtures for prompt experiments   |
 
-Package entry: [`packages/nl-glue/src/`](src).
+Package entry: [`packages/nl-glue/src/`](../../adventure-nl/packages/nl-glue/src/).
 
 ADRs: [ADR0014](../../../docs/decisions/ADR0014-two-step-nl-glue-package-then-browser.md), [ADR0016](../../../docs/decisions/ADR0016-cognition-glue-mcp-and-execution-mcp-surfaces.md).
 

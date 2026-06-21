@@ -6,6 +6,7 @@ Compiled from mdcp readme guide. Edit shards under `docs/readme-adventure-langgr
 
 - [Prerequisites](../../developer/readme-shards/prerequisites.md)
 - [Documentation map](../../developer/readme-shards/documentation-map.md)
+- [Key terms](../readme-shards/key-terms.md)
 - [Overview](overview.md)
 - [Quick start](quick-start.md)
 - [Feature flags](feature-flags.md)

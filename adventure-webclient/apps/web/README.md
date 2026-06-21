@@ -6,18 +6,18 @@ Vite shell under `apps/web/` — panel placeholders and unified feature flags fo
 
 Default dev URL: `<http://127.0.0.1:5175>`.
 
-Backend adapter types live in [`src/backends/`](src/backends) (env-driven).
+Backend adapter types live in [`src/backends/`](../../adventure-webclient/apps/web/src/backends/) (env-driven).
 
-Parent package: [`adventure-webclient/README.md`](../../../README.md).
+Parent package: [`adventure-webclient/README.md`](../../README.md).
 
 ## Backend adapters
 
-Configured via Vite env — see the **Backend adapters** section in the [adventure-webclient README](../../../README.md).
+Configured via Vite env — see the **Backend adapters** section in the [adventure-webclient README](../../README.md).
 
-Implementation: [`src/backends/`](src/backends).
+Implementation: [`src/backends/`](../../adventure-webclient/apps/web/src/backends/).
 
 ## Feature flags
 
-JSON defaults: [`webclient-feature-flags.json`](webclient-feature-flags.json)
+JSON defaults: [`webclient-feature-flags.json`](../../adventure-webclient/apps/web/webclient-feature-flags.json)
 
 Resolution and override order documented in [`docs/developer/webclient-feature-flags.md`](../../../docs/_build/developer.md#webclient-feature-flags).

@@ -14,4 +14,4 @@ npm test
 npm run check   # lint + tsc + tests
 ```
 
-Module ↔ test map: [`docs/source-map.md`](../../adventure-nl/docs/source-map.md).
+Module ↔ test map: [`docs/source-map.md`](docs/source-map.md).

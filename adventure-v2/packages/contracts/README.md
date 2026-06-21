@@ -22,4 +22,4 @@ Contract tests guard wire shape before adapters and orchestration change.
 | `src/http/wire.ts` | REST + SSE payload shapes |
 | `src/index.ts` | Public export map |
 
-Tests: [`tests/contracts.test.ts`](../../tests/contracts.test.ts).
+Tests: [`tests/contracts.test.ts`](../../adventure-v2/tests/contracts.test.ts).

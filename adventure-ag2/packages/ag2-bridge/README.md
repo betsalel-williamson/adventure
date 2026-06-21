@@ -6,11 +6,11 @@ TypeScript contract and heuristic adapter for AG2-style multi-agent handoff agai
 
 Reuses `@adventure-langgraph/map-core` for exploration policy. Real [AG2](https://github.com/ag2ai/ag2) integration will route `Ag2LlmAdapter` through a Python subprocess bridge.
 
-Parent package: [`adventure-ag2/README.md`](../../../README.md).
+Parent package: [`adventure-ag2/README.md`](../../README.md).
 
 ## Handoff graph
 
-Implementation: [`src/ag2HandoffGraph.ts`](src/ag2HandoffGraph.ts)
+Implementation: [`src/ag2HandoffGraph.ts`](../../adventure-ag2/packages/ag2-bridge/src/ag2HandoffGraph.ts)
 
 Sequence per turn: **cartographer → navigator → reviewer**.
 
