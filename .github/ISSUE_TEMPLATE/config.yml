@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Cloud deploy MVP project board
+    url: https://github.com/users/betsalel-williamson/projects/3
+    about: Board for epic #3 and work graph keys D0–E1
+  - name: Cloud deploy work graph (docs)
+    url: https://github.com/betsalel-williamson/adventure/blob/main/docs/architecture/cloud-deploy-mvp/work-graph.md
+    about: Issue DAG, dependencies, and issue numbers
+  - name: Agent work-item tracking
+    url: https://github.com/betsalel-williamson/adventure/blob/main/docs/developer/agent-work-item-tracking.md
+    about: Branch discipline and WORK_ITEM conventions for coding agents
