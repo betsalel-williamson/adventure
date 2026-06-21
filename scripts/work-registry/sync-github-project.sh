@@ -85,9 +85,19 @@ ensure_project_fields() {
   load_fields_cache
 
   local -a programs phases work_keys
-  mapfile -t programs < <(collect_programs)
-  mapfile -t phases < <(collect_phases)
-  mapfile -t work_keys < <(collect_work_keys)
+  local line
+  programs=()
+  while IFS= read -r line; do
+    [[ -n "$line" ]] && programs+=("$line")
+  done < <(collect_programs)
+  phases=()
+  while IFS= read -r line; do
+    [[ -n "$line" ]] && phases+=("$line")
+  done < <(collect_phases)
+  work_keys=()
+  while IFS= read -r line; do
+    [[ -n "$line" ]] && work_keys+=("$line")
+  done < <(collect_work_keys)
 
   if [[ "$DRY_RUN" == true ]]; then
     echo "[dry-run] ensure fields Program, Work key, Phase"
