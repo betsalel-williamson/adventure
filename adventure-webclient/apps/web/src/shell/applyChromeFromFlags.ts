@@ -56,6 +56,6 @@ export const renderFeatureFlagDevPanel = (
   const hint = document.createElement("p");
   hint.className = "webclient-muted";
   hint.textContent =
-    "Toggle with ?flag=true query params or sessionStorage adventure-webclient-flag-<name>. See docs/features/webclient/feature-catalog.md.";
+    "Toggle with ?flag=true query params or sessionStorage adventure-webclient-flag-<name>. See docs/client/webclient/choose-your-surface.md.";
   root.append(hint);
 };

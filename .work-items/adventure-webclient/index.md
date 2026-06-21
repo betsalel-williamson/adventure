@@ -14,13 +14,18 @@ Unified frontend shell — migrate UI from `adventure-nl` and `adventure-langgra
 
 [`adventure-webclient/`](../../adventure-webclient/README.md)
 
-## Feature documentation
+## Documentation (mdcp shards)
 
-[`docs/features/webclient/`](../../docs/features/webclient/index.md)
+| Guide | Path |
+| ----- | ---- |
+| Client (personas) | [`docs/client/webclient/`](../../docs/client/webclient/index.md) |
+| Features (product) | [`docs/features/webclient/`](../../docs/features/webclient/index.md) |
+| Developer (migration) | [`docs/developer/webclient-migration-catalog.md`](../../docs/developer/webclient-migration-catalog.md) |
+| Glossary | [`docs/glossary/webclient.md`](../../docs/glossary/webclient.md) |
 
 ## Status
 
-**Phase 0 (current):** stub shell, unified feature-flag registry, backend config types, feature catalog docs.
+**Phase 0 (current):** stub shell, unified feature-flag registry, backend config types, mdcp persona shards (client / features / developer / glossary).
 
 **Phase 1 (next):** migrate CRT transcript + v2 game adapter.
 

@@ -54,7 +54,7 @@ Registry: [`apps/web/webclient-feature-flags.json`](apps/web/webclient-feature-f
 
 Override order: **query string** → **sessionStorage** (`adventure-webclient-flag-<name>`) → **Vite env** → JSON defaults.
 
-Full catalog: [`docs/features/webclient/feature-catalog.md`](../docs/features/webclient/feature-catalog.md)
+Full catalog: [`docs/features/webclient/`](../docs/features/webclient/index.md) (product) · [`docs/client/webclient/`](../docs/client/webclient/index.md) (personas) · [`docs/developer/webclient-migration-catalog.md`](../docs/developer/webclient-migration-catalog.md) (migration)
 
 ## Tests
 
