@@ -4,3 +4,4 @@
 - Demo script: [`DEMO.md`](../DEMO.md)
 - ADRs: [`docs/decisions/`](../docs/decisions/adventure-nl-cognition-adr-index.md)
 - nl-glue package: [`packages/nl-glue/README.md`](packages/nl-glue/README.md)
+- Maintainer: [layout and tests](../docs/developer/readme-adventure-nl/layout-and-tests.md) · [OWASP SCA](../docs/developer/readme-adventure-nl/owasp-sca.md) · [full env vars](../docs/developer/readme-adventure-nl/env-vars.md)
