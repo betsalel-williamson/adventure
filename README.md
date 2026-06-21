@@ -59,11 +59,25 @@ make adventure-v2-dev
 
 See [`adventure-v2/README.md`](adventure-v2/README.md).
 
+### Documentation quick paths
+
+Full map: [`docs/index.md`](docs/index.md).
+
+| Goal | Surface | Command | Port |
+| --- | --- | --- | --- |
+| **Play CRT + draft map (recommended)** | adventure-langgraph | `cd adventure-langgraph && npm install && npm start` | 5174 |
+| **NL autoplay / research dashboard** | adventure-nl | `make install-nl && make run-autoplay-web` | 8787 |
+| **Unified webclient (stub)** | adventure-webclient | `cd adventure-webclient && npm install && npm start` | 5175 |
+| **Classic Fortran only** | `./adventure` | `make && ./adventure` | — |
+
+Use langgraph or NL for full play today; the webclient shell is migrating panels from those packages.
+
 ## Docs & community
 
 | Doc | Purpose |
 | --- | ------- |
 | [`docs/index.md`](docs/index.md) | **Start here** — play paths, doc tiers, contribute |
+| [`docs/community.md`](docs/community.md) | Bugs, doc edits, code checks, agents |
 | [`DEMO.md`](DEMO.md) | Step-by-step demo script |
 | [`API_DOCUMENTATION.md`](API_DOCUMENTATION.md) | Dashboard HTTP + SSE |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | How to contribute, PR checks |
