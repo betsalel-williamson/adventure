@@ -24,9 +24,20 @@ export {
 export type { WireStreamItem } from "./http/wireStream.js";
 export {
   ADV_V2_INSECURE_HTTP_ENV,
+  ADV_V2_SESSION_IDLE_TTL_MS_ENV,
+  DEFAULT_PAIRING_TTL_MS,
+  DEFAULT_SESSION_IDLE_TTL_MS,
+  MIN_SESSION_IDLE_TTL_MS,
   SessionStore,
   SESSION_COOKIE_NAME,
   formatSessionCookie,
   parseSessionCookie,
+  resolveSessionIdleTtlMs,
   sessionCookieFlags
 } from "./session/sessionStore.js";
+export {
+  PairingRedeemRateLimiter,
+  clientRateLimitKey
+} from "./session/pairingRateLimit.js";
+export { hashSecretHex, secureCompareHexDigests } from "./session/sessionCrypto.js";
+export { requireAllowedBrowserOrigin } from "./session/sessionOriginPolicy.js";

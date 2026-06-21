@@ -156,6 +156,73 @@ describe("session auth (S1)", () => {
     }
   });
 
+  it("revokes idle session after inactivity and drops paired devices", async () => {
+    const sessions = new SessionStore({ sessionIdleTtlMs: 50 });
+    const coordinator = new RunCoordinator();
+    const { server, baseUrl } = await listenAdventureServer(coordinator, 0, "127.0.0.1", sessions);
+    try {
+      const sessionRes = await fetch(`${baseUrl}/session`, { method: "POST" });
+      const cookie = sessionRes.headers.get("set-cookie") ?? "";
+      const codeRes = await fetch(`${baseUrl}/pairing/codes`, {
+        method: "POST",
+        headers: { Cookie: cookie.split(";")[0] ?? "" },
+      });
+      const { code } = issuePairingCodeResponseSchema.parse(await codeRes.json());
+      const redeemRes = await fetch(`${baseUrl}/pairing/redeem`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+      });
+      const { deviceToken } = redeemPairingCodeResponseSchema.parse(await redeemRes.json());
+      expect(sessions.validateDeviceToken(deviceToken)).not.toBeNull();
+
+      await new Promise((r) => setTimeout(r, 60));
+
+      const afterIdle = await fetch(`${baseUrl}/inference/plan`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Cookie: cookie.split(";")[0] ?? "",
+        },
+        body: JSON.stringify({
+          requestId: "550e8400-e29b-41d4-a716-446655440000",
+          mode: "planner",
+          system: "sys",
+          user: "usr",
+          schemaMode: "planner",
+        }),
+      });
+      expect(afterIdle.status).toBe(401);
+      expect(sessions.validateDeviceToken(deviceToken)).toBeNull();
+    } finally {
+      await closeServer(server);
+    }
+  });
+
+  it("extends idle session when authenticated routes are used", async () => {
+    const sessions = new SessionStore({ sessionIdleTtlMs: 80 });
+    const coordinator = new RunCoordinator();
+    const { server, baseUrl } = await listenAdventureServer(coordinator, 0, "127.0.0.1", sessions);
+    try {
+      const sessionRes = await fetch(`${baseUrl}/session`, { method: "POST" });
+      const cookie = sessionRes.headers.get("set-cookie") ?? "";
+      await new Promise((r) => setTimeout(r, 50));
+      const touch = await fetch(`${baseUrl}/pairing/codes`, {
+        method: "POST",
+        headers: { Cookie: cookie.split(";")[0] ?? "" },
+      });
+      expect(touch.status).toBe(201);
+      await new Promise((r) => setTimeout(r, 50));
+      const stillValid = await fetch(`${baseUrl}/pairing/codes`, {
+        method: "POST",
+        headers: { Cookie: cookie.split(";")[0] ?? "" },
+      });
+      expect(stillValid.status).toBe(201);
+    } finally {
+      await closeServer(server);
+    }
+  });
+
   it("rejects expired pairing codes", async () => {
     const coordinator = new RunCoordinator();
     const sessions = new SessionStore({ pairingTtlMs: 1 });

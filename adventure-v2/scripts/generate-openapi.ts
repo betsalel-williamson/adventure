@@ -206,6 +206,7 @@ registry.registerPath({
     },
     404: { description: "Unknown pairing code" },
     410: { description: "Expired or already redeemed pairing code" },
+    429: { description: "Too many redeem attempts (rate limited)" },
   },
 });
 

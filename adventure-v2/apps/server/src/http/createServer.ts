@@ -27,19 +27,19 @@ import {
   formatSessionCookie,
   parseSessionCookie
 } from "../session/sessionStore.js";
+import {
+  PairingRedeemRateLimiter,
+  clientRateLimitKey
+} from "../session/pairingRateLimit.js";
+import { requireAllowedBrowserOrigin } from "../session/sessionOriginPolicy.js";
+import { ADV_V2_CORS_ORIGINS_ENV, corsHeadersForRequest } from "./corsPolicy.js";
 import type { WireStreamItem } from "./wireStream.js";
 
 /** Maximum bytes read for JSON request bodies (`POST` routes using `readJsonBody`). */
 export const HTTP_MAX_JSON_BODY_BYTES = 256 * 1024;
 
 export { healthOracleWireFields };
-
-/**
- * Comma-separated list of allowed browser `Origin` values. When unset or blank,
- * responses use `Access-Control-Allow-Origin: *`. When set, only matching
- * origins receive a reflected `Access-Control-Allow-Origin`; others omit it.
- */
-export const ADV_V2_CORS_ORIGINS_ENV = "ADV_V2_CORS_ORIGINS";
+export { ADV_V2_CORS_ORIGINS_ENV, corsHeadersForRequest };
 
 class JsonBodyTooLargeError extends Error {
   constructor() {
@@ -47,32 +47,6 @@ class JsonBodyTooLargeError extends Error {
     this.name = "JsonBodyTooLargeError";
   }
 }
-
-const parseCorsAllowlist = (): readonly string[] | null => {
-  const raw = process.env[ADV_V2_CORS_ORIGINS_ENV];
-  if (raw === undefined || raw.trim() === "") {
-    return null;
-  }
-  const parts = raw.split(",").map((s) => s.trim()).filter((s) => s.length > 0);
-  return parts.length === 0 ? null : parts;
-};
-
-/** CORS headers for a request; reads `ADV_V2_CORS_ORIGINS` per request for tests and runtime env changes. */
-export const corsHeadersForRequest = (req: IncomingMessage): Record<string, string> => {
-  const base: Record<string, string> = {
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type"
-  };
-  const allowlist = parseCorsAllowlist();
-  if (allowlist === null) {
-    return { ...base, "Access-Control-Allow-Origin": "*" };
-  }
-  const origin = req.headers.origin;
-  if (typeof origin === "string" && allowlist.includes(origin)) {
-    return { ...base, "Access-Control-Allow-Origin": origin };
-  }
-  return base;
-};
 
 const readJsonBody = async (req: IncomingMessage): Promise<unknown> => {
   const chunks: Buffer[] = [];
@@ -200,10 +174,11 @@ const isUnknownCheckpointError = (err: unknown): boolean =>
 
 export const createAdventureHttpServer = (
   coordinator: RunCoordinator,
-  sessions: SessionStore = new SessionStore()
+  sessions: SessionStore = new SessionStore(),
+  pairingRedeemLimiter: PairingRedeemRateLimiter = new PairingRedeemRateLimiter()
 ): Server => {
   return createServer((req, res) => {
-    void handleHttp(coordinator, sessions, req, res);
+    void handleHttp(coordinator, sessions, pairingRedeemLimiter, req, res);
   });
 };
 
@@ -213,7 +188,7 @@ const requireSession = (
   sessions: SessionStore
 ): string | null => {
   const sessionId = parseSessionCookie(req.headers.cookie);
-  if (!sessionId || !sessions.hasSession(sessionId)) {
+  if (!sessionId || !sessions.requireActiveSession(sessionId)) {
     sendJson(req, res, 401, {
       error: "unauthorized",
       message: "Valid session cookie required"
@@ -226,6 +201,7 @@ const requireSession = (
 const handleHttp = async (
   coordinator: RunCoordinator,
   sessions: SessionStore,
+  pairingRedeemLimiter: PairingRedeemRateLimiter,
   req: IncomingMessage,
   res: ServerResponse
 ): Promise<void> => {
@@ -252,6 +228,9 @@ const handleHttp = async (
     }
 
     if (route.kind === "post-session") {
+      if (!requireAllowedBrowserOrigin(req, res, sendJson)) {
+        return;
+      }
       const sessionId = sessions.createSession();
       sendJson(
         req,
@@ -264,6 +243,9 @@ const handleHttp = async (
     }
 
     if (route.kind === "post-pairing-codes") {
+      if (!requireAllowedBrowserOrigin(req, res, sendJson)) {
+        return;
+      }
       const sessionId = requireSession(req, res, sessions);
       if (!sessionId) {
         return;
@@ -274,6 +256,14 @@ const handleHttp = async (
     }
 
     if (route.kind === "post-pairing-redeem") {
+      const rateKey = clientRateLimitKey(req.socket.remoteAddress ?? undefined);
+      if (!pairingRedeemLimiter.allow(rateKey)) {
+        sendJson(req, res, 429, {
+          error: "too_many_requests",
+          message: "Too many pairing redeem attempts; try again later"
+        });
+        return;
+      }
       const raw = await readJsonBody(req);
       let body;
       try {
@@ -299,6 +289,9 @@ const handleHttp = async (
     }
 
     if (route.kind === "post-inference-plan" || route.kind === "post-inference-navigator") {
+      if (!requireAllowedBrowserOrigin(req, res, sendJson)) {
+        return;
+      }
       if (!requireSession(req, res, sessions)) {
         return;
       }
@@ -429,9 +422,10 @@ export const listenAdventureServer = (
   coordinator: RunCoordinator,
   port: number,
   host: string = "127.0.0.1",
-  sessions: SessionStore = new SessionStore()
+  sessions: SessionStore = new SessionStore(),
+  pairingRedeemLimiter: PairingRedeemRateLimiter = new PairingRedeemRateLimiter()
 ): Promise<{ server: Server; port: number; baseUrl: string }> => {
-  const server = createAdventureHttpServer(coordinator, sessions);
+  const server = createAdventureHttpServer(coordinator, sessions, pairingRedeemLimiter);
   return new Promise((resolve, reject) => {
     server.listen(port, host, () => {
       const address = server.address();
