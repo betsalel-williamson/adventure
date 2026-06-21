@@ -11,6 +11,9 @@ import { z } from "zod";
 import {
   createRunRequestSchema,
   createRunResponseSchema,
+  inferenceCapabilitiesResponseSchema,
+  inferenceRequestSchema,
+  inferenceResponseSchema,
   listCheckpointsResponseSchema,
   postReplayRequestSchema,
   postReplayResponseSchema,
@@ -149,6 +152,54 @@ registry.registerPath({
   },
 });
 
+registry.registerPath({
+  method: "post",
+  path: "/inference/plan",
+  summary: "Planner inference (stateless system + user)",
+  request: {
+    body: {
+      content: { "application/json": { schema: inferenceRequestSchema } },
+    },
+  },
+  responses: {
+    200: {
+      description: "Planner JSON result",
+      content: { "application/json": { schema: inferenceResponseSchema } },
+    },
+  },
+});
+
+registry.registerPath({
+  method: "post",
+  path: "/inference/navigator",
+  summary: "Assist navigator inference (stateless system + user)",
+  request: {
+    body: {
+      content: { "application/json": { schema: inferenceRequestSchema } },
+    },
+  },
+  responses: {
+    200: {
+      description: "Navigator JSON result",
+      content: { "application/json": { schema: inferenceResponseSchema } },
+    },
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/inference/capabilities",
+  summary: "List inference providers available for the session",
+  responses: {
+    200: {
+      description: "Hosted, server-local, and paired-desktop capabilities",
+      content: {
+        "application/json": { schema: inferenceCapabilitiesResponseSchema },
+      },
+    },
+  },
+});
+
 const generator = new OpenApiGeneratorV3(registry.definitions);
 const document = generator.generateDocument({
   openapi: "3.1.0",
@@ -156,7 +207,7 @@ const document = generator.generateDocument({
     title: "adventure-v2 HTTP API",
     version: "0.1.0",
     description:
-      "Game run lifecycle, turns, SSE fanout, checkpoints, and replay. Generated from Zod contracts in packages/contracts.",
+      "Game run lifecycle, turns, SSE fanout, checkpoints, replay, and unified inference relay. Generated from Zod contracts in packages/contracts.",
   },
   servers: [{ url: "http://127.0.0.1:8787" }],
 });

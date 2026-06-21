@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: adventure-v2 HTTP API
   version: 0.1.0
-  description: Game run lifecycle, turns, SSE fanout, checkpoints, and replay. Generated from Zod contracts in packages/contracts.
+  description: Game run lifecycle, turns, SSE fanout, checkpoints, replay, and unified inference relay. Generated from Zod contracts in packages/contracts.
 servers:
   - url: http://127.0.0.1:8787
 components:
@@ -457,3 +457,246 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PayloadTooLarge"
+  /inference/plan:
+    post:
+      summary: Planner inference (stateless system + user)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                requestId:
+                  type: string
+                  format: uuid
+                mode:
+                  type: string
+                  enum: &a4
+                    - planner
+                    - interpret
+                    - navigator
+                system:
+                  type: string
+                user:
+                  type: string
+                schemaMode:
+                  type: string
+                  nullable: true
+                  enum: &a5
+                    - planner
+                    - interpret
+                modelHint:
+                  type: object
+                  properties:
+                    providerId:
+                      type: string
+                      enum: &a3
+                        - google
+                        - http
+                        - ollama
+                        - mlx
+                    modelId:
+                      type: string
+                      minLength: 1
+                  required:
+                    - providerId
+              required:
+                - requestId
+                - mode
+                - system
+                - user
+                - schemaMode
+      responses:
+        "200":
+          description: Planner JSON result
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    properties:
+                      requestId:
+                        type: string
+                        format: uuid
+                      ok:
+                        type: boolean
+                        enum:
+                          - true
+                      json:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                      text:
+                        type: string
+                      providerId:
+                        type: string
+                        enum: *a3
+                      modelId:
+                        type: string
+                        minLength: 1
+                      durationMs:
+                        type: integer
+                        minimum: 0
+                    required:
+                      - requestId
+                      - ok
+                      - json
+                      - providerId
+                      - modelId
+                      - durationMs
+                  - type: object
+                    properties:
+                      requestId:
+                        type: string
+                        format: uuid
+                      ok:
+                        type: boolean
+                        enum:
+                          - false
+                      code:
+                        type: string
+                        minLength: 1
+                      message:
+                        type: string
+                        minLength: 1
+                    required:
+                      - requestId
+                      - ok
+                      - code
+                      - message
+  /inference/navigator:
+    post:
+      summary: Assist navigator inference (stateless system + user)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                requestId:
+                  type: string
+                  format: uuid
+                mode:
+                  type: string
+                  enum: *a4
+                system:
+                  type: string
+                user:
+                  type: string
+                schemaMode:
+                  type: string
+                  nullable: true
+                  enum: *a5
+                modelHint:
+                  type: object
+                  properties:
+                    providerId:
+                      type: string
+                      enum: *a3
+                    modelId:
+                      type: string
+                      minLength: 1
+                  required:
+                    - providerId
+              required:
+                - requestId
+                - mode
+                - system
+                - user
+                - schemaMode
+      responses:
+        "200":
+          description: Navigator JSON result
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    properties:
+                      requestId:
+                        type: string
+                        format: uuid
+                      ok:
+                        type: boolean
+                        enum:
+                          - true
+                      json:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                      text:
+                        type: string
+                      providerId:
+                        type: string
+                        enum: *a3
+                      modelId:
+                        type: string
+                        minLength: 1
+                      durationMs:
+                        type: integer
+                        minimum: 0
+                    required:
+                      - requestId
+                      - ok
+                      - json
+                      - providerId
+                      - modelId
+                      - durationMs
+                  - type: object
+                    properties:
+                      requestId:
+                        type: string
+                        format: uuid
+                      ok:
+                        type: boolean
+                        enum:
+                          - false
+                      code:
+                        type: string
+                        minLength: 1
+                      message:
+                        type: string
+                        minLength: 1
+                    required:
+                      - requestId
+                      - ok
+                      - code
+                      - message
+  /inference/capabilities:
+    get:
+      summary: List inference providers available for the session
+      responses:
+        "200":
+          description: Hosted, server-local, and paired-desktop capabilities
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  capabilities:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        providerId:
+                          type: string
+                          enum: *a3
+                        modelId:
+                          type: string
+                          minLength: 1
+                        source:
+                          type: string
+                          enum:
+                            - hosted
+                            - server-local
+                            - paired-desktop
+                        label:
+                          type: string
+                          minLength: 1
+                      required:
+                        - providerId
+                        - modelId
+                        - source
+                        - label
+                required:
+                  - capabilities
