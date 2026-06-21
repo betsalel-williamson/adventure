@@ -44,13 +44,14 @@ Multi-issue program: epic [#3](https://github.com/betsalel-williamson/adventure/
 | Project board | [Adventure (project #3)](https://github.com/users/betsalel-williamson/projects/3) — filter Program = Cloud deploy MVP |
 | Milestone | [Cloud deploy MVP](https://github.com/betsalel-williamson/adventure/milestone/1) |
 | Issue templates | [`.github/ISSUE_TEMPLATE/`](../../.github/ISSUE_TEMPLATE/config.yml) |
+| PR template | [`.github/pull_request_template.md`](../../.github/pull_request_template.md) |
 | Project guide | [work-registry/github-project.md](work-registry/github-project.md) |
 | TDD workflow | [tdd-and-github-workflow.md](tdd-and-github-workflow.md) |
 | Branch policy | [branch-policy.md](branch-policy.md) |
 | Issue triage | [work-registry/issue-triage.md](work-registry/issue-triage.md) |
 | Work registry | [work-registry/index.md](work-registry/index.md) |
 
-Branch pattern: `cloud-deploy/<work-key>-<slug>`. PRs: `Closes #N` · `Part of #3`. Set **`WORK_ITEM=#N`** in agent prompts.
+Branch pattern: `cloud-deploy/<work-key>-<slug>`. PR body: [`.github/pull_request_template.md`](../../.github/pull_request_template.md). Set **`WORK_ITEM=#N`** in agent prompts.
 
 ## mdcp task prompts
 

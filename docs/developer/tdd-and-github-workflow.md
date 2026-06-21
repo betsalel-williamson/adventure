@@ -30,7 +30,7 @@ See [work registry — GraphQL fallback](work-registry/index.md#graphql-quota-fa
 4. **Red** — Failing test(s) for acceptance criteria (package-level Vitest/integration per area).
 5. **Green** — Minimal implementation.
 6. **Refactor** — Only with tests green; separate structural vs behavioral commits.
-7. **PR** — `Closes #N` · `Part of #3`; test plan checklist.
+7. **PR** — Open against **`feature/adventure-llm`**; fill [`.github/pull_request_template.md`](../../.github/pull_request_template.md) (GitHub pre-populates it).
 8. **Board** — Project Status **In progress** → **Done** on merge; run targeted tests from issue test strategy.
 
 ```mermaid
@@ -53,19 +53,7 @@ cloud-deploy/<work-key>-<short-slug>
 
 Examples: `cloud-deploy/i1-inference-openapi`, `cloud-deploy/s1-session-auth`.
 
-PR body template:
-
-```markdown
-## Summary
-…
-
-## Work item
-Closes #5
-Part of #3
-
-## Test plan
-- [ ] …
-```
+**PR body:** use [`.github/pull_request_template.md`](../../.github/pull_request_template.md) — do not duplicate the template in docs. GitHub fills it when you open a PR; agents should read that file for the canonical sections (Summary, Work item, Test plan, Docs).
 
 Set **`WORK_ITEM=#N`** in agent prompts — see [agent work-item tracking](agent-work-item-tracking.md).
 

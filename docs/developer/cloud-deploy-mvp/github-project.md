@@ -49,22 +49,9 @@ Set `WORK_ITEM=#5` (or issue URL) in agent prompts — see [agent work-item trac
 ### Pull requests
 
 - **One issue per PR** when possible (small batch).
-- Title: `cloud-deploy (I1): unified inference OpenAPI`
-- Body:
-
-```markdown
-## Summary
-…
-
-## Work item
-Closes #5
-Part of #3
-
-## Test plan
-- [ ] …
-```
-
-Use **Closes #N** only when acceptance criteria are fully met (task standards).
+- **Base branch:** `feature/adventure-llm` ([branch policy](../branch-policy.md))
+- **Title:** `cloud-deploy (I1): unified inference OpenAPI` (work key + short slug)
+- **Body:** [`.github/pull_request_template.md`](../../../.github/pull_request_template.md) — canonical template; GitHub pre-populates it on new PRs. Use **Closes #N** only when acceptance criteria are fully met.
 
 ### Status updates
 

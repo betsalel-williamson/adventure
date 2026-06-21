@@ -38,8 +38,7 @@ Include:
 - **Fortran:** `make` from the repository root should succeed with no new
   warnings you can reasonably fix.
 
-Describe the change in the PR body so reviewers can follow intent without
-reading every line.
+Describe the change in the PR body using [`.github/pull_request_template.md`](.github/pull_request_template.md) so reviewers can follow intent without reading every line.
 
 ## Development environment
 
