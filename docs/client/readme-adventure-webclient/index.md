@@ -3,7 +3,7 @@
 ## Sections
 
 - [Prerequisites](../../developer/readme-shards/prerequisites.md)
-- [Documentation map](../../developer/readme-shards/documentation-map.md)
+- [Documentation links](../readme-shards/documentation-links-client.md)
 - [Key terms](../readme-shards/key-terms.md)
 - [Overview](overview.md)
 - [Quick start](quick-start.md)

@@ -12,22 +12,16 @@ Verify Node before install:
 node --version   # expect v24.x
 ```
 
-## Documentation map
+## Documentation links
 
-| Tier          | Path                                                                       | Audience                           |
-| ------------- | -------------------------------------------------------------------------- | ---------------------------------- |
-| Client guides | [`docs/client/`](../docs/client/index.md)                                  | Play and evaluate surfaces         |
-| Features      | [`docs/features/`](../docs/features/index.md)                              | Product capabilities               |
-| Developer     | [`docs/developer/`](../docs/developer/index.md)                            | Maintainer setup and mdcp workflow |
-| Glossary      | [`docs/glossary/`](../docs/_build/client-v3.md#glossary)                   | Shared terms                       |
-| Architecture  | [`docs/architecture/`](../docs/architecture/overview.md)                   | Legacy flat design views           |
-| ADRs          | [`docs/decisions/`](../docs/decisions/adventure-nl-cognition-adr-index.md) | Decision history                   |
+| Tier          | Path                                                     | Audience                   |
+| ------------- | -------------------------------------------------------- | -------------------------- |
+| Client guides | [`docs/client/`](../docs/client/index.md)                | Play and evaluate surfaces |
+| Features      | [`docs/features/`](../docs/features/index.md)            | Product capabilities       |
+| Developer     | [`docs/developer/`](../docs/developer/index.md)          | Maintainer setup           |
+| Glossary      | [`docs/glossary/`](../docs/_build/client-v3.md#glossary) | Shared terms               |
 
-**Client package READMEs** (this file may be one): compiled from `docs/client/readme-adventure-*/` into `adventure-langgraph/`, `adventure-webclient/`, and `adventure-nl/`.
-
-**Developer package READMEs**: compiled from `docs/developer/readme-adventure-*/` into `adventure-v2/`, `adventure-ag2/`, and nested packages.
-
-Edit shards under those directories, then run `npm run docs:compile` from `docs/`.
+Start here: [`docs/index.md`](../docs/index.md)
 
 ## Key terms
 

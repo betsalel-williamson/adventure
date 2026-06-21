@@ -24,7 +24,7 @@ New product documentation belongs in mdcp guides (`docs/features/`, `docs/client
 
 ## Package READMEs (compiled)
 
-Each `adventure-*/README.md` is generated from mdcp readme guides under `docs/readme-adventure-*/`. Edit shards, then `npm run docs:compile`.
+Each `adventure-*/README.md` is generated from mdcp readme guides under `docs/client/readme-adventure-*/` and `docs/developer/readme-adventure-*/`. Edit shards, then `npm run docs:compile`.
 
 - [adventure-langgraph/README.md](../../adventure-langgraph/README.md)
 - [adventure-v2/README.md](../../adventure-v2/README.md)
