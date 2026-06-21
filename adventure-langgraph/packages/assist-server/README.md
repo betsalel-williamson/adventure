@@ -6,21 +6,11 @@ HTTP assist server for adventure-langgraph. Merges CRT transcript into a per-run
 
 Runs as part of `npm start` in adventure-langgraph or standalone via `npm run assist:dev`.
 
-## Endpoints
+## API reference
 
-#### `GET /assist/health`
+OpenAPI spec: [`openapi.yaml`](openapi.yaml) (default `http://127.0.0.1:8790`).
 
-Liveness check.
-
-#### `POST /assist/ingest`
-
-Accepts transcript text (+ optional graph patch). Returns updated `mapJson`, Mermaid, and `suggestedNextMove`. Called by the exploration map column when `locationAgent` is enabled.
-
-#### `POST /assist/step`
-
-Merges transcript. With `advance: true` and probe enabled (server `ASSIST_PROBE_ENABLED` + client `mapProbe`), runs LangGraph navigator.
-
-Legacy Assist UI uses this for automated probe steps with **study first** confirmation when enabled.
+Request/response schemas live in `packages/assist-server/src/schemas.ts`. SLM and probe configuration: [Configuration](#configuration).
 
 ## Configuration
 

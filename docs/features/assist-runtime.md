@@ -2,19 +2,7 @@
 
 The **assist server** (`packages/assist-server`) merges CRT transcript into a per-run draft graph and optional navigator hints.
 
-## Endpoints
-
-### `POST /assist/ingest`
-
-Accepts transcript text (+ optional graph patch). Returns updated `mapJson`, Mermaid, and `suggestedNextMove`.
-
-Called by the exploration map column on each relevant transcript line when `locationAgent` is enabled.
-
-### `POST /assist/step`
-
-Merges transcript. With `advance: true` and probe enabled (server `ASSIST_PROBE_ENABLED` + client `mapProbe`), runs LangGraph **cartographer → navigator**.
-
-Legacy Assist UI uses this for automated probe steps with **study first** confirmation when enabled.
+**API reference:** [`openapi.yaml`](../../adventure-langgraph/packages/assist-server/openapi.yaml) (default `http://127.0.0.1:8790`).
 
 ## SLM configuration
 

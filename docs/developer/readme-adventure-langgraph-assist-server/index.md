@@ -3,6 +3,6 @@
 ## Sections
 
 - [Overview](overview.md)
-- [Endpoints](endpoints.md)
+- [API reference](api-reference.md)
 - [Configuration](configuration.md)
 - [Testing](testing.md)
