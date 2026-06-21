@@ -1,0 +1,792 @@
+{
+  "project": {
+    "owner": "betsalel-williamson",
+    "repo": "adventure",
+    "number": 3,
+    "title": "Adventure"
+  },
+  "fields": {
+    "program": [
+      "Cloud deploy MVP",
+      "Adventure v3",
+      "Webclient",
+      "v2 maintenance",
+      "NL deprecation",
+      "Agent authoring",
+      "Archive"
+    ],
+    "phase": [
+      "Foundation",
+      "Deploy",
+      "Relay",
+      "Integration",
+      "Implementation",
+      "Done",
+      "Archive"
+    ],
+    "status": [
+      "Todo",
+      "In progress",
+      "Blocked",
+      "Done"
+    ]
+  },
+  "programs": [
+    {
+      "id": "cloud-deploy-mvp",
+      "label": "Cloud deploy MVP",
+      "epic": {
+        "workKey": "EPIC",
+        "issue": 3,
+        "title": "cloud-deploy-mvp: hosted backend + webclient + desktop SLM bridge (epic)"
+      },
+      "items": [
+        {
+          "workKey": "EPIC",
+          "type": "epic",
+          "title": "cloud-deploy-mvp: hosted backend + webclient + desktop SLM bridge (epic)",
+          "issue": 3,
+          "status": "todo",
+          "phase": "Foundation",
+          "projectStatus": "Todo",
+          "parentWorkKey": null
+        },
+        {
+          "workKey": "D0",
+          "type": "task",
+          "title": "cloud-deploy-mvp (D0): ADR0017 + architecture shards + work graph",
+          "issue": 4,
+          "status": "done",
+          "phase": "Done",
+          "projectStatus": "Done",
+          "parentWorkKey": "EPIC",
+          "labels": [
+            "cloud-deploy-mvp"
+          ]
+        },
+        {
+          "workKey": "I1",
+          "type": "task",
+          "title": "cloud-deploy-mvp (I1): unified inference OpenAPI + shared types",
+          "issue": 5,
+          "status": "todo",
+          "phase": "Foundation",
+          "projectStatus": "Todo",
+          "parentWorkKey": "EPIC",
+          "labels": [
+            "cloud-deploy-mvp"
+          ]
+        },
+        {
+          "workKey": "S1",
+          "type": "task",
+          "title": "cloud-deploy-mvp (S1): session auth + pairing token foundation",
+          "issue": 6,
+          "status": "todo",
+          "phase": "Foundation",
+          "projectStatus": "Todo",
+          "parentWorkKey": "EPIC",
+          "labels": [
+            "cloud-deploy-mvp"
+          ]
+        },
+        {
+          "workKey": "C1",
+          "type": "task",
+          "title": "cloud-deploy-mvp (C1): container image — v2 + Fortran + assist-server",
+          "issue": 7,
+          "status": "todo",
+          "phase": "Foundation",
+          "projectStatus": "Todo",
+          "parentWorkKey": "EPIC",
+          "labels": [
+            "cloud-deploy-mvp"
+          ]
+        },
+        {
+          "workKey": "C2",
+          "type": "task",
+          "title": "cloud-deploy-mvp (C2): reverse proxy + static webclient deploy",
+          "issue": 8,
+          "status": "todo",
+          "phase": "Deploy",
+          "projectStatus": "Todo",
+          "parentWorkKey": "EPIC",
+          "labels": [
+            "cloud-deploy-mvp"
+          ]
+        },
+        {
+          "workKey": "I4",
+          "type": "task",
+          "title": "cloud-deploy-mvp (I4): server inference relay (HTTP + desktop WSS registry)",
+          "issue": 9,
+          "status": "todo",
+          "phase": "Relay",
+          "projectStatus": "Todo",
+          "parentWorkKey": "EPIC",
+          "labels": [
+            "cloud-deploy-mvp"
+          ]
+        },
+        {
+          "workKey": "I5",
+          "type": "task",
+          "title": "cloud-deploy-mvp (I5): desktop inference agent (Ollama, outbound WSS)",
+          "issue": 10,
+          "status": "todo",
+          "phase": "Relay",
+          "projectStatus": "Todo",
+          "parentWorkKey": "EPIC",
+          "labels": [
+            "cloud-deploy-mvp"
+          ]
+        },
+        {
+          "workKey": "I6",
+          "type": "task",
+          "title": "cloud-deploy-mvp (I6): hosted cloud LLM path (server-held keys)",
+          "issue": 11,
+          "status": "todo",
+          "phase": "Relay",
+          "projectStatus": "Todo",
+          "parentWorkKey": "EPIC",
+          "labels": [
+            "cloud-deploy-mvp"
+          ]
+        },
+        {
+          "workKey": "I7",
+          "type": "task",
+          "title": "cloud-deploy-mvp (I7): assist navigator via inference relay",
+          "issue": 12,
+          "status": "todo",
+          "phase": "Relay",
+          "projectStatus": "Todo",
+          "parentWorkKey": "EPIC",
+          "labels": [
+            "cloud-deploy-mvp"
+          ]
+        },
+        {
+          "workKey": "I8",
+          "type": "task",
+          "title": "cloud-deploy-mvp (I8): pairing flow (web UI + API + desktop UX)",
+          "issue": 13,
+          "status": "todo",
+          "phase": "Integration",
+          "projectStatus": "Todo",
+          "parentWorkKey": "EPIC",
+          "labels": [
+            "cloud-deploy-mvp"
+          ]
+        },
+        {
+          "workKey": "E1",
+          "type": "task",
+          "title": "cloud-deploy-mvp (E1): E2E smoke — cloud play + paired or hosted SLM",
+          "issue": 14,
+          "status": "todo",
+          "phase": "Integration",
+          "projectStatus": "Todo",
+          "parentWorkKey": "EPIC",
+          "labels": [
+            "cloud-deploy-mvp"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "adventure-v3",
+      "label": "Adventure v3",
+      "epic": {
+        "workKey": "V3-EPIC",
+        "title": "Adventure v3: CRT-first product"
+      },
+      "items": [
+        {
+          "workKey": "E1",
+          "type": "epic",
+          "title": "Epic E1 — CRT surface and playable game text",
+          "source": ".work-items/adventure-langgraph/epics/E1-crt-and-play.md",
+          "status": "deferred",
+          "phase": "Foundation",
+          "projectStatus": "Todo",
+          "parentWorkKey": "V3-EPIC",
+          "children": [
+            "US-1-1",
+            "US-1-2"
+          ]
+        },
+        {
+          "workKey": "E2",
+          "type": "epic",
+          "title": "Epic E2 — Trust and clarity",
+          "source": ".work-items/adventure-langgraph/epics/E2-trust-and-clarity.md",
+          "status": "todo",
+          "phase": "Foundation",
+          "projectStatus": "Todo",
+          "parentWorkKey": "V3-EPIC",
+          "children": [
+            "US-2-1"
+          ]
+        },
+        {
+          "workKey": "E3",
+          "type": "epic",
+          "title": "Epic E3 — Optional automation (honest labeling)",
+          "source": ".work-items/adventure-langgraph/epics/E3-automation.md",
+          "status": "todo",
+          "phase": "Foundation",
+          "projectStatus": "Todo",
+          "parentWorkKey": "V3-EPIC",
+          "children": [
+            "US-3-1"
+          ]
+        },
+        {
+          "workKey": "E4",
+          "type": "epic",
+          "title": "Epic E4 — Session awareness and honest agent surfacing",
+          "source": ".work-items/adventure-langgraph/epics/E4-session-awareness-and-agent-surfacing.md",
+          "status": "deferred",
+          "phase": "Foundation",
+          "projectStatus": "Todo",
+          "parentWorkKey": "V3-EPIC",
+          "children": [
+            "US-4-1",
+            "US-4-2",
+            "US-4-3"
+          ]
+        },
+        {
+          "workKey": "E5",
+          "type": "epic",
+          "title": "Epic E5 — Draft world picture from play (map assist)",
+          "source": ".work-items/adventure-langgraph/epics/E5-draft-world-picture-map-assist.md",
+          "status": "todo",
+          "phase": "Foundation",
+          "projectStatus": "Todo",
+          "parentWorkKey": "V3-EPIC",
+          "children": [
+            "US-5-1"
+          ]
+        },
+        {
+          "workKey": "US-1-1",
+          "type": "story",
+          "title": "CRT hero layout",
+          "source": ".work-items/adventure-langgraph/stories/US-1-1-crt-hero-layout.md",
+          "status": "deferred",
+          "phase": "Implementation",
+          "projectStatus": "Todo",
+          "parentWorkKey": "E1"
+        },
+        {
+          "workKey": "US-1-2",
+          "type": "story",
+          "title": "Real game output or clear failure",
+          "source": ".work-items/adventure-langgraph/stories/US-1-2-real-game-or-clear-failure.md",
+          "status": "done",
+          "phase": "Done",
+          "projectStatus": "Done",
+          "parentWorkKey": "E1",
+          "dependsOn": [
+            "US-1-1"
+          ]
+        },
+        {
+          "workKey": "US-2-1",
+          "type": "story",
+          "title": "Connection / game readiness visible",
+          "source": ".work-items/adventure-langgraph/stories/US-2-1-connection-status-visible.md",
+          "status": "done",
+          "phase": "Done",
+          "projectStatus": "Done",
+          "parentWorkKey": "E2"
+        },
+        {
+          "workKey": "US-3-1",
+          "type": "story",
+          "title": "Honest scripted multi-turn control",
+          "source": ".work-items/adventure-langgraph/stories/US-3-1-honest-scripted-autoplay.md",
+          "status": "done",
+          "phase": "Done",
+          "projectStatus": "Done",
+          "parentWorkKey": "E3"
+        },
+        {
+          "workKey": "US-5-1",
+          "type": "story",
+          "title": "Draft location diagram reviewable",
+          "source": ".work-items/adventure-langgraph/stories/US-5-1-draft-location-diagram-reviewable.md",
+          "status": "todo",
+          "phase": "Implementation",
+          "projectStatus": "Todo",
+          "parentWorkKey": "E5",
+          "dependsOn": [
+            "US-3-1"
+          ]
+        },
+        {
+          "workKey": "US-4-1",
+          "type": "story",
+          "title": "Session signals visible",
+          "source": ".work-items/adventure-langgraph/stories/US-4-1-session-signals-visible.md",
+          "status": "deferred",
+          "phase": "Implementation",
+          "projectStatus": "Todo",
+          "parentWorkKey": "E4"
+        },
+        {
+          "workKey": "US-4-2",
+          "type": "story",
+          "title": "Operating posture visible",
+          "source": ".work-items/adventure-langgraph/stories/US-4-2-operating-posture-visible.md",
+          "status": "deferred",
+          "phase": "Implementation",
+          "projectStatus": "Todo",
+          "parentWorkKey": "E4"
+        },
+        {
+          "workKey": "US-4-3",
+          "type": "story",
+          "title": "User chooses assistance posture",
+          "source": ".work-items/adventure-langgraph/stories/US-4-3-user-chooses-assistance-posture.md",
+          "status": "deferred",
+          "phase": "Implementation",
+          "projectStatus": "Todo",
+          "parentWorkKey": "E4"
+        }
+      ]
+    },
+    {
+      "id": "adventure-webclient",
+      "label": "Webclient",
+      "epic": {
+        "workKey": "WEB-EPIC",
+        "title": "adventure-webclient: unified frontend migration"
+      },
+      "items": [
+        {
+          "workKey": "Phase-0",
+          "type": "phase",
+          "title": "adventure-webclient Phase 0: foundation",
+          "source": ".work-items/adventure-webclient/task.md",
+          "status": "done",
+          "phase": "Done",
+          "projectStatus": "Done",
+          "parentWorkKey": "WEB-EPIC"
+        },
+        {
+          "workKey": "Phase-1",
+          "type": "phase",
+          "title": "adventure-webclient Phase 1: CRT + game adapter",
+          "source": ".work-items/adventure-webclient/task.md",
+          "status": "todo",
+          "phase": "Implementation",
+          "projectStatus": "Todo",
+          "parentWorkKey": "WEB-EPIC",
+          "dependsOn": [
+            "Phase-0"
+          ]
+        },
+        {
+          "workKey": "Phase-2",
+          "type": "phase",
+          "title": "adventure-webclient Phase 2: Mermaid exploration map",
+          "source": ".work-items/adventure-webclient/task.md",
+          "status": "todo",
+          "phase": "Implementation",
+          "projectStatus": "Todo",
+          "parentWorkKey": "WEB-EPIC",
+          "dependsOn": [
+            "Phase-1"
+          ]
+        },
+        {
+          "workKey": "Phase-3",
+          "type": "phase",
+          "title": "adventure-webclient Phase 3: Status strip + health",
+          "source": ".work-items/adventure-webclient/task.md",
+          "status": "todo",
+          "phase": "Implementation",
+          "projectStatus": "Todo",
+          "parentWorkKey": "WEB-EPIC",
+          "dependsOn": [
+            "Phase-2"
+          ]
+        },
+        {
+          "workKey": "Phase-4",
+          "type": "phase",
+          "title": "adventure-webclient Phase 4: Legacy assist panels",
+          "source": ".work-items/adventure-webclient/task.md",
+          "status": "todo",
+          "phase": "Implementation",
+          "projectStatus": "Todo",
+          "parentWorkKey": "WEB-EPIC",
+          "dependsOn": [
+            "Phase-3"
+          ]
+        },
+        {
+          "workKey": "Phase-5",
+          "type": "phase",
+          "title": "adventure-webclient Phase 5: NL research panels",
+          "source": ".work-items/adventure-webclient/task.md",
+          "status": "todo",
+          "phase": "Implementation",
+          "projectStatus": "Todo",
+          "parentWorkKey": "WEB-EPIC",
+          "dependsOn": [
+            "Phase-4"
+          ]
+        },
+        {
+          "workKey": "Phase-6",
+          "type": "phase",
+          "title": "adventure-webclient Phase 6: AG2 assist backend wiring",
+          "source": ".work-items/adventure-webclient/task.md",
+          "status": "todo",
+          "phase": "Implementation",
+          "projectStatus": "Todo",
+          "parentWorkKey": "WEB-EPIC",
+          "dependsOn": [
+            "Phase-5"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "nl-backend-nl-deprecation",
+      "label": "NL deprecation",
+      "epic": {
+        "workKey": "NL-DEP-EPIC",
+        "title": "Deprecate server-forward NL (phased)"
+      },
+      "items": [
+        {
+          "workKey": "Phase-A",
+          "type": "phase",
+          "title": "NL deprecation Phase A: Intent locked in docs",
+          "source": ".work-items/nl-backend-nl-deprecation/task.md",
+          "status": "done",
+          "phase": "Done",
+          "projectStatus": "Done",
+          "parentWorkKey": "NL-DEP-EPIC"
+        },
+        {
+          "workKey": "Phase-B",
+          "type": "phase",
+          "title": "NL deprecation Phase B: TDD guardrails",
+          "source": ".work-items/nl-backend-nl-deprecation/task.md",
+          "status": "todo",
+          "phase": "Implementation",
+          "projectStatus": "Todo",
+          "parentWorkKey": "NL-DEP-EPIC"
+        },
+        {
+          "workKey": "Phase-C",
+          "type": "phase",
+          "title": "NL deprecation Phase C: Deprecation signal on legacy HTTP handlers",
+          "source": ".work-items/nl-backend-nl-deprecation/task.md",
+          "status": "todo",
+          "phase": "Implementation",
+          "projectStatus": "Todo",
+          "parentWorkKey": "NL-DEP-EPIC"
+        },
+        {
+          "workKey": "Phase-D",
+          "type": "phase",
+          "title": "NL deprecation Phase D: Browser interpret",
+          "source": ".work-items/nl-backend-nl-deprecation/task.md",
+          "status": "todo",
+          "phase": "Implementation",
+          "projectStatus": "Todo",
+          "parentWorkKey": "NL-DEP-EPIC"
+        },
+        {
+          "workKey": "Phase-E",
+          "type": "phase",
+          "title": "NL deprecation Phase E: Optional removal",
+          "source": ".work-items/nl-backend-nl-deprecation/task.md",
+          "status": "todo",
+          "phase": "Implementation",
+          "projectStatus": "Todo",
+          "parentWorkKey": "NL-DEP-EPIC"
+        }
+      ]
+    },
+    {
+      "id": "agent-project-authoring",
+      "label": "Agent authoring",
+      "epic": {
+        "workKey": "AP-EPIC",
+        "title": "Agent project authoring"
+      },
+      "items": [
+        {
+          "workKey": "AP1",
+          "type": "epic",
+          "title": "Epic AP1 — Your configuration is clear",
+          "source": ".work-items/agent-project-authoring/epics/AP1-your-configuration-is-clear.md",
+          "status": "todo",
+          "phase": "Foundation",
+          "projectStatus": "Todo",
+          "parentWorkKey": "AP-EPIC",
+          "children": [
+            "AP-1-1"
+          ]
+        },
+        {
+          "workKey": "AP2",
+          "type": "epic",
+          "title": "Epic AP2 — Run and learn loop",
+          "source": ".work-items/agent-project-authoring/epics/AP2-run-and-learn-loop.md",
+          "status": "todo",
+          "phase": "Foundation",
+          "projectStatus": "Todo",
+          "parentWorkKey": "AP-EPIC",
+          "children": [
+            "AP-2-1"
+          ]
+        },
+        {
+          "workKey": "AP3",
+          "type": "epic",
+          "title": "Epic AP3 — Trust and honest labels",
+          "source": ".work-items/agent-project-authoring/epics/AP3-trust-and-honest-labels.md",
+          "status": "todo",
+          "phase": "Foundation",
+          "projectStatus": "Todo",
+          "parentWorkKey": "AP-EPIC",
+          "children": [
+            "AP-3-1",
+            "AP-3-2"
+          ]
+        },
+        {
+          "workKey": "AP-1-1",
+          "type": "story",
+          "title": "What you defined is clear",
+          "source": ".work-items/agent-project-authoring/stories/AP-1-1-what-you-defined-is-clear.md",
+          "status": "todo",
+          "phase": "Implementation",
+          "projectStatus": "Todo",
+          "parentWorkKey": "AP1"
+        },
+        {
+          "workKey": "AP-2-1",
+          "type": "story",
+          "title": "Configure, run, see, learn",
+          "source": ".work-items/agent-project-authoring/stories/AP-2-1-configure-run-see-learn.md",
+          "status": "todo",
+          "phase": "Implementation",
+          "projectStatus": "Todo",
+          "parentWorkKey": "AP2"
+        },
+        {
+          "workKey": "AP-3-1",
+          "type": "story",
+          "title": "Honest run labels",
+          "source": ".work-items/agent-project-authoring/stories/AP-3-1-honest-run-labels.md",
+          "status": "todo",
+          "phase": "Implementation",
+          "projectStatus": "Todo",
+          "parentWorkKey": "AP3"
+        },
+        {
+          "workKey": "AP-3-2",
+          "type": "story",
+          "title": "Tell hint from game world",
+          "source": ".work-items/agent-project-authoring/stories/AP-3-2-hint-vs-game-world.md",
+          "status": "todo",
+          "phase": "Implementation",
+          "projectStatus": "Todo",
+          "parentWorkKey": "AP3"
+        }
+      ]
+    },
+    {
+      "id": "adventure-v2",
+      "label": "v2 maintenance",
+      "epic": {
+        "workKey": "V2-EPIC",
+        "title": "Adventure v2 maintenance"
+      },
+      "items": [
+        {
+          "workKey": "U0",
+          "type": "task",
+          "title": "adventure-v2 U0: Prep artifacts complete",
+          "source": ".work-items/adventure-v2/ux-multidisciplinary-review-prep.md",
+          "status": "done",
+          "phase": "Archive",
+          "projectStatus": "Done",
+          "parentWorkKey": "V2-EPIC"
+        },
+        {
+          "workKey": "U1",
+          "type": "task",
+          "title": "adventure-v2 U1: Run multidisciplinary review session",
+          "source": ".work-items/adventure-v2/ux-multidisciplinary-review-prep.md",
+          "status": "done",
+          "phase": "Archive",
+          "projectStatus": "Done",
+          "parentWorkKey": "V2-EPIC"
+        },
+        {
+          "workKey": "U2",
+          "type": "task",
+          "title": "adventure-v2 U2: Record outcomes",
+          "source": ".work-items/adventure-v2/ux-multidisciplinary-review-prep.md",
+          "status": "done",
+          "phase": "Archive",
+          "projectStatus": "Done",
+          "parentWorkKey": "V2-EPIC"
+        },
+        {
+          "workKey": "U3",
+          "type": "task",
+          "title": "adventure-v2 U3: UX copy: oracle mode + stub autoplay",
+          "source": ".work-items/adventure-v2/ux-multidisciplinary-review-prep.md",
+          "status": "done",
+          "phase": "Archive",
+          "projectStatus": "Done",
+          "parentWorkKey": "V2-EPIC"
+        },
+        {
+          "workKey": "U4",
+          "type": "task",
+          "title": "adventure-v2 U4: Default **raw SSE** off for first-time shell",
+          "source": ".work-items/adventure-v2/ux-multidisciplinary-review-prep.md",
+          "status": "done",
+          "phase": "Archive",
+          "projectStatus": "Done",
+          "parentWorkKey": "V2-EPIC"
+        },
+        {
+          "workKey": "U5",
+          "type": "task",
+          "title": "adventure-v2 U5: Empty / loading states for game lane",
+          "source": ".work-items/adventure-v2/ux-multidisciplinary-review-prep.md",
+          "status": "done",
+          "phase": "Archive",
+          "projectStatus": "Done",
+          "parentWorkKey": "V2-EPIC"
+        },
+        {
+          "workKey": "U6",
+          "type": "task",
+          "title": "adventure-v2 U6: Run configuration UI (`modelCategory`, `modelName`)",
+          "source": ".work-items/adventure-v2/ux-multidisciplinary-review-prep.md",
+          "status": "todo",
+          "phase": "Implementation",
+          "projectStatus": "Todo",
+          "parentWorkKey": "V2-EPIC"
+        },
+        {
+          "workKey": "U7",
+          "type": "task",
+          "title": "adventure-v2 U7: Explored map / world viz",
+          "source": ".work-items/adventure-v2/ux-multidisciplinary-review-prep.md",
+          "status": "todo",
+          "phase": "Implementation",
+          "projectStatus": "Todo",
+          "parentWorkKey": "V2-EPIC"
+        }
+      ]
+    },
+    {
+      "id": "adventure-nl",
+      "label": "Archive",
+      "epic": {
+        "workKey": "NL-ARCH-EPIC",
+        "title": "adventure-nl (archive)"
+      },
+      "items": [
+        {
+          "workKey": "Step-01",
+          "type": "task",
+          "title": "Step 01 — Documentation and architecture",
+          "source": ".work-items/adventure-nl/01_documentation_and_architecture.md",
+          "status": "done",
+          "phase": "Archive",
+          "projectStatus": "Done",
+          "parentWorkKey": "NL-ARCH-EPIC"
+        },
+        {
+          "workKey": "Step-02",
+          "type": "task",
+          "title": "Step 02 — TypeScript scaffold",
+          "source": ".work-items/adventure-nl/02_typescript_scaffold.md",
+          "status": "done",
+          "phase": "Archive",
+          "projectStatus": "Done",
+          "parentWorkKey": "NL-ARCH-EPIC"
+        },
+        {
+          "workKey": "Step-03",
+          "type": "task",
+          "title": "Step 03 — `.dat` loader tests",
+          "source": ".work-items/adventure-nl/03_dat_loader_tests.md",
+          "status": "done",
+          "phase": "Archive",
+          "projectStatus": "Done",
+          "parentWorkKey": "NL-ARCH-EPIC"
+        },
+        {
+          "workKey": "Step-04",
+          "type": "task",
+          "title": "Step 04 — Vocabulary helpers",
+          "source": ".work-items/adventure-nl/04_vocab_travel.md",
+          "status": "done",
+          "phase": "Archive",
+          "projectStatus": "Done",
+          "parentWorkKey": "NL-ARCH-EPIC"
+        },
+        {
+          "workKey": "Step-05",
+          "type": "task",
+          "title": "Step 05 — Fortran oracle harness",
+          "source": ".work-items/adventure-nl/05_e2e_fortran_oracle.md",
+          "status": "done",
+          "phase": "Archive",
+          "projectStatus": "Done",
+          "parentWorkKey": "NL-ARCH-EPIC"
+        },
+        {
+          "workKey": "Step-06",
+          "type": "task",
+          "title": "Step 06 — Engine façade (parity)",
+          "source": ".work-items/adventure-nl/06_engine_facade.md",
+          "status": "done",
+          "phase": "Archive",
+          "projectStatus": "Done",
+          "parentWorkKey": "NL-ARCH-EPIC"
+        },
+        {
+          "workKey": "Step-07",
+          "type": "task",
+          "title": "Step 07 — Gemini structured NL",
+          "source": ".work-items/adventure-nl/07_gemini_nl.md",
+          "status": "done",
+          "phase": "Archive",
+          "projectStatus": "Done",
+          "parentWorkKey": "NL-ARCH-EPIC"
+        },
+        {
+          "workKey": "Step-08",
+          "type": "task",
+          "title": "Step 08 — Optional location images",
+          "source": ".work-items/adventure-nl/08_optional_images.md",
+          "status": "done",
+          "phase": "Archive",
+          "projectStatus": "Done",
+          "parentWorkKey": "NL-ARCH-EPIC"
+        }
+      ]
+    }
+  ]
+}

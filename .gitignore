@@ -67,3 +67,6 @@
 
 sample-code/
 .specstory/
+
+# Cursor — ephemeral session plans (canonical work lives in .work-items/)
+.cursor/plans/

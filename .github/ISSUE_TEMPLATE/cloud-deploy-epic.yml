@@ -1,0 +1,52 @@
+name: Cloud deploy MVP — epic
+description: Parent epic for hosted backend, webclient, inference relay, and desktop SLM bridge
+title: "cloud-deploy-mvp: hosted backend + webclient + desktop SLM bridge (epic)"
+labels:
+  - cloud-deploy-mvp
+  - epic
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template once per program milestone. Child tasks use **Cloud deploy MVP — task**.
+
+        Architecture: [overview](https://github.com/betsalel-williamson/adventure/blob/main/docs/architecture/cloud-deploy-mvp/overview.md) · [work graph](https://github.com/betsalel-williamson/adventure/blob/main/docs/architecture/cloud-deploy-mvp/work-graph.md) · [ADR0017](https://github.com/betsalel-williamson/adventure/blob/main/docs/decisions/ADR0017-cloud-deploy-and-desktop-inference-bridge.md)
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: One paragraph on scope and outcome
+      value: |
+        Epic for the **cloud deploy MVP**: hosted adventure-v2 + assist-server + static webclient, session security, unified stateless inference (`system` + `user`), optional **desktop inference agent** for local Ollama.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: MVP acceptance
+      description: Link or paste acceptance from mvp-scope.md
+      value: |
+        See [mvp-scope.md](https://github.com/betsalel-williamson/adventure/blob/main/docs/architecture/cloud-deploy-mvp/mvp-scope.md).
+    validations:
+      required: true
+  - type: textarea
+    id: child_keys
+    attributes:
+      label: Child work graph keys
+      description: Track sub-issues by key (D0, I1, S1, …)
+      value: |
+        | Key | Area |
+        | --- | --- |
+        | D0 | Documentation |
+        | I1 | Inference OpenAPI contract |
+        | S1 | Session auth + pairing |
+        | C1 | Container image |
+        | C2 | Reverse proxy + webclient |
+        | I4 | Inference relay |
+        | I5 | Desktop agent |
+        | I6 | Hosted cloud LLM |
+        | I7 | Assist via relay |
+        | I8 | Pairing flow |
+        | E1 | E2E smoke |
+    validations:
+      required: false

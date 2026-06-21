@@ -10,7 +10,7 @@ How to run epic [#3](https://github.com/betsalel-williamson/adventure/issues/3) 
 | **Work graph** | DAG keys (D0, I1, …), doc links | [work-graph.md](../../architecture/cloud-deploy-mvp/work-graph.md) |
 | **Milestone** | Release slice / filter | [Cloud deploy MVP](https://github.com/betsalel-williamson/adventure/milestone/1) |
 | **Labels** | `cloud-deploy-mvp`, `epic` | Issue list filter |
-| **GitHub Project** | Board / table / priority | [Cloud deploy MVP — project #3](https://github.com/users/betsalel-williamson/projects/3) |
+| **GitHub Project** | Board / table / priority | [Adventure (project #3)](../work-registry/github-project.md) — filter **Program = Cloud deploy MVP** |
 | **Issue templates** | Consistent new tasks | [`.github/ISSUE_TEMPLATE/`](../../../.github/ISSUE_TEMPLATE/config.yml) |
 
 ## Milestone (configured)
@@ -21,7 +21,9 @@ Use the milestone on the [Issues](https://github.com/betsalel-williamson/adventu
 
 ## GitHub Project
 
-**Live board:** [Cloud deploy MVP — project #3](https://github.com/users/betsalel-williamson/projects/3)
+**Live board:** [Adventure — project #3](https://github.com/users/betsalel-williamson/projects/3) (filter **Program → Cloud deploy MVP**)
+
+The project is shared across all programs; see [work registry](../work-registry/index.md). Cloud deploy items use **Work key**, **Phase**, and **Status** fields plus **Program = Cloud deploy MVP**.
 
 If fields or issues are missing on the board, use **Option A** or **Option B** below.
 
@@ -36,16 +38,16 @@ If fields or issues are missing on the board, use **Option A** or **Option B** b
 4. Set **D0 (#4)** → Status **Done**, Phase **Done**; epic **#3** → Work key **EPIC**; rest → **Todo** and phases from [work graph](../../architecture/cloud-deploy-mvp/work-graph.md).
 5. Add views: **Board** grouped by Status; **Table** sorted by Work key.
 
-### Option B — CLI sync script
+### Option B — CLI (work registry sync)
 
-After [`scripts/setup-cloud-deploy-project.sh`](../../../scripts/setup-cloud-deploy-project.sh) lands in the repo:
+See [work registry](../work-registry/index.md) for full migration docs. Cloud deploy only:
 
 ```bash
 gh auth refresh -h github.com -s project,read:project
 ./scripts/setup-cloud-deploy-project.sh
 ```
 
-The script adds issues **#3–#14** to the project and sets **Work key**, **Phase**, and **Status** fields.
+The script syncs issues #3–#14 via [`sync-github-project.sh`](../../../scripts/work-registry/sync-github-project.sh) with GraphQL rate-limit handling and resume support.
 
 After setup, add these views in the project:
 
