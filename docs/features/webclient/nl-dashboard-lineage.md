@@ -21,7 +21,7 @@ The webclient preserves this lineage behind research feature flags rather than r
 cd adventure-nl && npm run build && npm run web
 ```
 
-Dashboard at `https://127.0.0.1:8787` — see [adventure-nl README](../../../adventure-nl/README.md).
+Dashboard at `<https://127.0.0.1:8787>` — [adventure-nl README](../../adventure-nl/README.md).
 
 ## Migration approach
 

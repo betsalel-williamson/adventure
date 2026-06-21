@@ -1,13 +1,19 @@
-# adventure-v2 cognition package
+# cognition — package README
 
 ## Responsibility
 
-- **LangGraph** turn brain ([`src/brain/runTurnBrainGraph.ts`](src/brain/runTurnBrainGraph.ts)): `perceive` → `plan` → `act`; stub prompts in [`src/prompts/`](src/prompts/) with **`promptDigest`** on **`plan`** traces.
-- Consume **`OracleObservation`** via server orchestration; classify reconcile ([`src/reconcile/classifyReconcile.ts`](src/reconcile/classifyReconcile.ts)).
-- Optional future: checkpoint-bound LangGraph state aligned with **`CheckpointRef`**.
+- **LangGraph** turn brain ([`runTurnBrainGraph.ts`](../../adventure-v2/packages/cognition/src/brain/runTurnBrainGraph.ts)): `perceive` → `plan` → `act`
+- Stub prompts in [`src/prompts/`](../../adventure-v2/packages/cognition/src/prompts/) with **`promptDigest`** on **`plan`** traces
+- Reconcile classification ([`classifyReconcile.ts`](../../adventure-v2/packages/cognition/src/reconcile/classifyReconcile.ts))
+
+`plan` still uses stub prompts until a real **ModelAdapter** is wired.
 
 ## Layout
 
-- `src/brain/` — LangGraph graph + reconcile trace helper.
-- `src/reconcile/` — drift classification.
-- `src/prompts/` — stub agent prompts for deterministic CI.
+| Path | Role |
+| --- | --- |
+| `src/brain/` | LangGraph graph + reconcile trace helper |
+| `src/reconcile/` | Drift classification |
+| `src/prompts/` | Stub agent prompts for deterministic CI |
+
+Regenerate LangGraph Mermaid for the web shell: `npm run codegen:brain-mermaid` from adventure-v2 root.

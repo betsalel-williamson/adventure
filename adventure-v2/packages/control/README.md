@@ -1,10 +1,15 @@
-# adventure-v2 control package
+# control — package README
 
 ## Responsibility
 
-- **`xstate`** ([`src/machine/controlMachine.ts`](src/machine/controlMachine.ts)): loop policy and operational telemetry over **`act`**, **`think`**, **`test`**, **`chaos`**, **`disorder`**, plus **`invalidRouting`** for invalid-action escalation.
-- Transition events match **`PhaseTransitionWire`** on SSE (`packages/contracts`).
+**XState** loop policy ([`controlMachine.ts`](../../adventure-v2/packages/control/src/machine/controlMachine.ts)) over phases **`act`**, **`think`**, **`test`**, **`chaos`**, **`disorder`**, plus **`invalidRouting`** for invalid-action escalation (R5).
+
+Transition events match **`PhaseTransitionWire`** on SSE (`packages/contracts`).
 
 ## Layout
 
-- `src/machine/` — `createMachine` / `createActor` wiring consumed by **`RunCoordinator`**.
+| Path | Role |
+| --- | --- |
+| `src/machine/` | `createMachine` / `createActor` consumed by **`RunCoordinator`** |
+
+Diagram topology guarded by [`tests/agentDiagrams.test.ts`](../../adventure-v2/tests/agentDiagrams.test.ts).

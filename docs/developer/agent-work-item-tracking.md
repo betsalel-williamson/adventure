@@ -23,7 +23,8 @@ Agents load issue body and acceptance criteria via:
 
 - **One WORK_ITEM per branch** — branch from updated `main` before editing
 - Shards describe **current behavior**; breaking changes belong in the PR/changeset, not feature/client guides
-- Planning context may still live in `.work-items/` until migrated to mdcp shards
+- New work uses **GitHub Issues** for scope; legacy `.work-items/` files are historical only
+- Package `README.md` files are compiled from `docs/client/readme-adventure-*/` and `docs/developer/readme-adventure-*/` shards — see [mdcp workflow](mdcp-workflow.md)
 
 ## mdcp task prompts
 

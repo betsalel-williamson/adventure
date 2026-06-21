@@ -1,0 +1,459 @@
+openapi: 3.1.0
+info:
+  title: adventure-v2 HTTP API
+  version: 0.1.0
+  description: Game run lifecycle, turns, SSE fanout, checkpoints, and replay. Generated from Zod contracts in packages/contracts.
+servers:
+  - url: http://127.0.0.1:8787
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - ok
+        service:
+          type: string
+          enum:
+            - adventure-v2
+        oracleMode:
+          type: string
+          enum:
+            - synthetic
+            - process
+        processOracleScript:
+          type: string
+          nullable: true
+      required:
+        - status
+        - service
+        - oracleMode
+        - processOracleScript
+    PayloadTooLarge:
+      type: object
+      properties:
+        error:
+          type: string
+          enum:
+            - payload_too_large
+      required:
+        - error
+  parameters: {}
+paths:
+  /health:
+    get:
+      summary: Liveness and oracle mode
+      responses:
+        "200":
+          description: Service health with oracle wiring summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+  /runs:
+    post:
+      summary: Start a run
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                config:
+                  type: object
+                  properties:
+                    scenarioId:
+                      type: string
+                      minLength: 1
+                    modelCategory:
+                      type: string
+                      enum: &a1
+                        - SLM
+                        - LLM
+                        - API
+                        - MLX
+                    modelName:
+                      type: string
+                      minLength: 1
+                    seed:
+                      type: integer
+                      minimum: 0
+                    cognitionProfile:
+                      type: string
+                      minLength: 1
+                      maxLength: 128
+                  required:
+                    - scenarioId
+                    - modelCategory
+                    - modelName
+                    - seed
+              required:
+                - config
+      responses:
+        "201":
+          description: Run created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  runId:
+                    type: string
+                    minLength: 1
+                  config:
+                    type: object
+                    properties:
+                      scenarioId:
+                        type: string
+                        minLength: 1
+                      modelCategory:
+                        type: string
+                        enum: *a1
+                      modelName:
+                        type: string
+                        minLength: 1
+                      seed:
+                        type: integer
+                        minimum: 0
+                      cognitionProfile:
+                        type: string
+                        minLength: 1
+                        maxLength: 128
+                    required:
+                      - scenarioId
+                      - modelCategory
+                      - modelName
+                      - seed
+                required:
+                  - runId
+                  - config
+        "413":
+          description: JSON body exceeds 256 KiB
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PayloadTooLarge"
+  /runs/{runId}/turns:
+    post:
+      summary: Submit a parser command
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+          required: true
+          name: runId
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                input:
+                  type: string
+                forceReject:
+                  type: boolean
+              required:
+                - input
+      responses:
+        "204":
+          description: Turn accepted
+        "413":
+          description: JSON body exceeds 256 KiB
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PayloadTooLarge"
+  /runs/{runId}/events:
+    get:
+      summary: Subscribe to run events (SSE)
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+          required: true
+          name: runId
+          in: path
+      responses:
+        "200":
+          description: Server-Sent Events stream. Each event is JSON in `data:` with `event` turn | phase | trace. See SseWireEvent schema.
+          content:
+            text/event-stream:
+              schema:
+                oneOf:
+                  - type: object
+                    properties:
+                      event:
+                        type: string
+                        enum:
+                          - turn
+                      envelope:
+                        type: object
+                        properties:
+                          runId:
+                            type: string
+                            minLength: 1
+                          turnId:
+                            type: string
+                            minLength: 1
+                          sequence:
+                            type: integer
+                            minimum: 0
+                          source:
+                            type: string
+                            enum:
+                              - client
+                              - cognition
+                              - oracle
+                              - control
+                          kind:
+                            type: string
+                            enum:
+                              - perceive
+                              - proposal
+                              - oracle_observation
+                              - reconcile
+                              - checkpoint
+                              - recovery
+                          ts:
+                            type: string
+                            minLength: 1
+                          payload:
+                            type: object
+                            additionalProperties:
+                              nullable: true
+                        required:
+                          - runId
+                          - turnId
+                          - sequence
+                          - source
+                          - kind
+                          - ts
+                          - payload
+                    required:
+                      - event
+                      - envelope
+                  - type: object
+                    properties:
+                      event:
+                        type: string
+                        enum:
+                          - phase
+                      transition:
+                        type: object
+                        properties:
+                          from:
+                            type: string
+                            enum: &a2
+                              - act
+                              - think
+                              - test
+                              - chaos
+                              - disorder
+                          to:
+                            type: string
+                            enum: *a2
+                          reason:
+                            type: string
+                          sequence:
+                            type: integer
+                            minimum: 0
+                          ts:
+                            type: string
+                            minLength: 1
+                        required:
+                          - from
+                          - to
+                          - reason
+                          - sequence
+                          - ts
+                    required:
+                      - event
+                      - transition
+                  - type: object
+                    properties:
+                      event:
+                        type: string
+                        enum:
+                          - trace
+                      trace:
+                        type: object
+                        properties:
+                          runId:
+                            type: string
+                            minLength: 1
+                          turnId:
+                            type: string
+                            minLength: 1
+                          sequence:
+                            type: integer
+                            minimum: 0
+                          nodeId:
+                            type: string
+                            minLength: 1
+                          graphNodeId:
+                            type: string
+                            minLength: 1
+                          stepIndex:
+                            type: integer
+                            minimum: 0
+                          label:
+                            type: string
+                            minLength: 1
+                          ts:
+                            type: string
+                            minLength: 1
+                          promptDigest:
+                            type: string
+                          promptSummary:
+                            type: string
+                          promptRole:
+                            type: string
+                            enum:
+                              - system
+                              - user
+                              - assistant
+                          promptSystem:
+                            type: string
+                            maxLength: 16384
+                          promptUser:
+                            type: string
+                            maxLength: 16384
+                          payload:
+                            type: object
+                            additionalProperties:
+                              nullable: true
+                        required:
+                          - runId
+                          - turnId
+                          - sequence
+                          - nodeId
+                          - label
+                          - ts
+                          - payload
+                    required:
+                      - event
+                      - trace
+  /runs/{runId}/checkpoints:
+    get:
+      summary: List checkpoints for a run
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+          required: true
+          name: runId
+          in: path
+      responses:
+        "200":
+          description: Checkpoint references
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    checkpointId:
+                      type: string
+                      minLength: 1
+                    runId:
+                      type: string
+                      minLength: 1
+                    threadId:
+                      type: string
+                      minLength: 1
+                    turnId:
+                      type: string
+                      minLength: 1
+                    sequence:
+                      type: integer
+                      minimum: 0
+                    replayInputRef:
+                      type: string
+                      minLength: 1
+                    createdAt:
+                      type: string
+                      minLength: 1
+                  required:
+                    - checkpointId
+                    - runId
+                    - threadId
+                    - turnId
+                    - sequence
+                    - replayInputRef
+                    - createdAt
+  /runs/{runId}/replay:
+    post:
+      summary: Restore from a checkpoint
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+          required: true
+          name: runId
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                checkpointId:
+                  type: string
+                  minLength: 1
+              required:
+                - checkpointId
+      responses:
+        "200":
+          description: Replay payload
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  checkpointId:
+                    type: string
+                    minLength: 1
+                  runId:
+                    type: string
+                    minLength: 1
+                  sequence:
+                    type: integer
+                    minimum: 0
+                  replayInputRef:
+                    type: string
+                    minLength: 1
+                  controlPhase:
+                    type: string
+                    enum:
+                      - act
+                      - think
+                      - test
+                      - chaos
+                      - disorder
+                  pendingOracleSequence:
+                    type: integer
+                    nullable: true
+                    minimum: 0
+                  restoredAt:
+                    type: string
+                    minLength: 1
+                required:
+                  - checkpointId
+                  - runId
+                  - sequence
+                  - replayInputRef
+                  - controlPhase
+                  - pendingOracleSequence
+                  - restoredAt
+        "404":
+          description: Unknown run or checkpoint
+        "413":
+          description: JSON body exceeds 256 KiB
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PayloadTooLarge"

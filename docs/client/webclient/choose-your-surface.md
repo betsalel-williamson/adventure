@@ -23,7 +23,7 @@ Keep exploration map and research panels off if they distract from reading room 
 | Mermaid directed graph beside CRT | `explorationMapMermaid` |
 | 3D grid view (NL lineage, when migrated) | `explorationMapGrid` |
 
-WHEN you read the map THEN treat it as **draft assistance** — the [Fortran oracle](../../glossary/oracle.md) remains truth for room state.
+Treat the map as **draft assistance** — the [Fortran oracle](../../glossary/oracle.md) remains truth for room state.
 
 ## Agent researcher
 
@@ -37,7 +37,7 @@ WHEN you read the map THEN treat it as **draft assistance** — the [Fortran ora
 | Session FSM or cognition traces | `sessionFsmMermaid`, `cognitionOrchestration`, `statelyInspect` |
 | Benchmark leaderboard | `leaderboard` |
 
-WHEN you publish results THEN label whether output came from **oracle text**, **draft map/hints**, or **scripted probe** — see [Evaluating agent behavior](evaluating-agent-behavior.md).
+When you publish results, label whether output came from **oracle text**, **draft map/hints**, or **scripted probe** — see [Evaluating agent behavior](evaluating-agent-behavior.md).
 
 ## Maintainer / operator
 

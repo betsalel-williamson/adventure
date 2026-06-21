@@ -11,17 +11,9 @@ import {
 } from "@adventure-langgraph/map-core";
 import { z } from "zod";
 import { buildAssistGraph, runAssistStep } from "./assistGraph.js";
+import { assistIngestBodySchema, assistStepBodySchema } from "./schemas.js";
 import { createHeuristicSlmAdapter } from "./slm/heuristicSlmAdapter.js";
 import { createOllamaSlmAdapter } from "./slm/ollamaSlmAdapter.js";
-
-const assistStepBodySchema = z.object({
-  runId: z.string(),
-  transcript: z.string(),
-  assistancePosture: z.enum(["quickAssist", "studyFirst"]).optional(),
-  studyFirstConfirmed: z.boolean().optional(),
-  /** When false, merge transcript into graph only (no LangGraph navigator / SLM move). */
-  advance: z.boolean().optional(),
-});
 
 const PORT = Number(process.env.ASSIST_SERVER_PORT ?? "8790");
 const OLLAMA_URL = process.env.OLLAMA_URL;
@@ -48,19 +40,6 @@ const ASSIST_PROBE_ENABLED = parseEnvTruthy(
   process.env.ASSIST_PROBE_ENABLED,
   false,
 );
-
-const assistIngestBodySchema = z.object({
-  runId: z.string(),
-  transcript: z.string(),
-  line: z.string().optional(),
-  context: z
-    .object({
-      priorLines: z.array(z.string()).optional(),
-      currentPlaceId: z.string().nullable().optional(),
-    })
-    .optional(),
-  patch: z.unknown().optional(),
-});
 
 /** Per adventure-v2 run — draft map is hypothetical assist state only. */
 const graphsByRunId = new Map<string, DirectedMapGraph>();

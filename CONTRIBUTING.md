@@ -53,9 +53,11 @@ never in commits.
 
 ## Documentation
 
+- **Start here:** [`docs/index.md`](docs/index.md) — play paths, tiers, and doc checks
+- **Community:** [`docs/community.md`](docs/community.md) — bugs, doc edits, contribution checks
 - Root overview: [`README.md`](README.md)
 - Natural-language / dashboard tooling: [`adventure-nl/README.md`](adventure-nl/README.md)
 - adventure-langgraph sharded guides: [`docs/client/`](docs/client/index.md) (researcher), [`docs/features/`](docs/features/index.md), [`docs/developer/`](docs/developer/index.md)
-- HTTP API (dashboard): [`API_DOCUMENTATION.md`](API_DOCUMENTATION.md)
+- HTTP API (dashboard): [`adventure-nl/openapi.yaml`](adventure-nl/openapi.yaml) · overview [`API_DOCUMENTATION.md`](API_DOCUMENTATION.md)
 - Judge / demo walkthrough: [`DEMO.md`](DEMO.md)
 - mdcp maintainer workflow: [`docs/developer/mdcp-workflow.md`](docs/developer/mdcp-workflow.md)

@@ -27,7 +27,7 @@ Automated probe steps require:
 - Client flags: `VITE_LANGGRAPH_MAP_PROBE=true` (and related Assist panels if using legacy UI)
 - **Study first** confirmation when that posture is enabled
 
-Probe sends assist-backed moves — label runs as **scripted probe**, not autonomous LLM play (aligned with user story US-3-1 in `.work-items/adventure-langgraph/`).
+Probe sends assist-backed moves — label runs as **scripted probe**, not autonomous LLM play.
 
 ## Agent framework roadmap
 
@@ -41,4 +41,4 @@ For UI experiments decoupled from a specific backend, use [`adventure-webclient/
 
 ## Work items for agents
 
-When driving doc or code tasks from issues, set `WORK_ITEM_LOOKUP` to `docs/developer/agent-work-item-tracking.md`.
+When driving doc or code tasks from issues, see [Agent work-item tracking](../developer/agent-work-item-tracking.md).

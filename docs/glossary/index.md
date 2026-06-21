@@ -1,6 +1,6 @@
 # Glossary
 
-Shared definitions for adventure-langgraph documentation. Use these terms consistently across feature, developer, and client guides.
+Shared definitions for adventure documentation. Use these terms consistently across feature, developer, client, and compiled package README guides (`docs/client/readme-adventure-*/`, `docs/developer/readme-adventure-*/`).
 
 Browse by group: [Product terms (v3)](index-product.md).
 

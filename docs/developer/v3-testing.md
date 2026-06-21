@@ -37,6 +37,8 @@ When adding hooks or acceptance tests that start a persistent oracle, always rel
 
 ## Full verify gate
 
+Lint and format details: [adventure-langgraph lint and tests](readme-adventure-langgraph/lint-and-tests.md).
+
 Before merge from `adventure-langgraph/`:
 
 ```bash

@@ -1,14 +1,21 @@
-# adventure-v2 server app (planned)
+# server — package README
 
 ## Responsibility
 
-- Own session/run lifecycle APIs.
-- Bridge commands and observations to/from external adventure oracle.
-- Emit ordered turn events for web clients and benchmark storage.
+- Session/run lifecycle HTTP API
+- Bridge commands and observations to/from the adventure oracle
+- LangGraph pre-oracle cognition + XState loop policy via `RunCoordinator`
+- Ordered SSE fanout of turn, phase, and cognition trace events
 
-## Initial scaffold targets
+Oracle selection: persistent Fortran when `./adventure` exists, synthetic default, or explicit process bridge script — see the **Oracle modes** section in the [adventure-v2 README](../../README.md).
 
-- `src/http/` routes and SSE handlers.
-- `src/run/` run coordinator and sequence assignment.
-- `src/oracle/` synthetic default, `createProcessOracleBridge` (subprocess JSON line protocol — see `docs/architecture/adventure-v2/oracle-subprocess-ipc.md`).
-- `src/replay/` checkpoint registry and replay entrypoints.
+## Layout
+
+| Path | Contents |
+| --- | --- |
+| `src/http/` | Routes, SSE handlers, CORS, body size limits |
+| `src/run/` | `RunCoordinator`, sequence assignment |
+| `src/oracle/` | Synthetic default, persistent Fortran, process bridge |
+| `src/replay/` | Checkpoint registry and replay entrypoints |
+
+Architecture: [`docs/architecture/adventure-v2/oracle-subprocess-ipc.md`](../../../docs/architecture/adventure-v2/oracle-subprocess-ipc.md).

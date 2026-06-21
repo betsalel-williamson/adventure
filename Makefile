@@ -161,3 +161,5 @@ docs-check:
 
 docs-compile:
 	cd docs && npm ci && npm run docs:compile
+
+docs-publish-readmes: docs-compile

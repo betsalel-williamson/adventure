@@ -12,9 +12,9 @@ The hero panel stays primary — side panels must not hide readable game text.
 
 ## What you do
 
-WHEN you type a parser command and press Enter THEN you SHALL see your echo and the oracle response in the transcript.
+Type a parser command and press Enter — your echo and the oracle response appear in the transcript.
 
-WHEN the game API is unreachable THEN you SHALL see a clear status message — not a blank screen.
+If the game API is unreachable, you see a clear status message instead of a blank screen.
 
 ## Authority
 
@@ -27,6 +27,6 @@ Shared term: [CRT transcript](../../glossary/crt-transcript.md) · [Oracle](../.
 Until the webclient CRT is fully migrated, play on:
 
 - **adventure-langgraph** — [Quick start (langgraph)](../quick-start.md)
-- **adventure-nl dashboard** — autoplay layout with richer research chrome
+- **adventure-nl dashboard** — [NL quick start](../nl/quick-start.md)
 
 Product detail: [Features — CRT transcript](../../features/webclient/crt-transcript.md)
