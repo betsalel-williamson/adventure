@@ -1,9 +1,5 @@
-# adventure-v2 docs
+# adventure-v2 package docs
 
-Package-local notes and diagrams for v2 implementation.
+Architecture and ADRs live at repo root: [`docs/architecture/adventure-v2/`](../../docs/architecture/adventure-v2/overview.md).
 
-Primary architecture source of truth remains in:
-
-- `docs/architecture/adventure-v2/`
-- `docs/decisions/` (for v2 ADRs)
-- `.work-items/adventure-v2/`
+Package README (compiled from mdcp): [`../README.md`](../README.md).

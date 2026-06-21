@@ -1,6 +1,4 @@
-# web — package README
-
-## Responsibility
+# Responsibility
 
 Vite dev shell for adventure-v2:
 
@@ -11,21 +9,3 @@ Vite dev shell for adventure-v2:
 - **Persisted shell snapshot** in `localStorage` with reconnect on refresh when run still exists
 
 Requires the HTTP API (`npm run dev:server` from adventure-v2 root, or `npm run dev` for both).
-
-## Run
-
-From `adventure-v2/`:
-
-```bash
-npm run dev:web
-```
-
-Override API origin (default `http://127.0.0.1:8787`):
-
-```bash
-VITE_API_URL=http://localhost:8787 npm run dev:web
-```
-
-Stack: Vite, TypeScript, vanilla DOM. Root config: [`vite.config.ts`](../../vite.config.ts).
-
-Key modules: [`wireDisplay.ts`](src/wireDisplay.ts), [`gameTerminalBuffer.ts`](src/gameTerminalBuffer.ts), [`stubAutoplayPlanner.ts`](src/stubAutoplayPlanner.ts).

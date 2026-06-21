@@ -1,22 +1,25 @@
-# adventure-v2 contracts package (planned)
+# contracts — package README
 
 ## Responsibility
 
-Define shared runtime schemas and type-safe contracts for:
+Shared runtime schemas and type-safe contracts for:
 
-- turn events,
-- reconcile outcomes,
-- checkpoints/replay,
-- run/session APIs,
-- HTTP/SSE wire envelopes (`src/http/wire.ts`: `CreateRunRequest`, `SseWireEvent`, …).
+- Turn events and reconcile outcomes
+- Checkpoints and replay payloads
+- Run/session API shapes
+- HTTP/SSE wire envelopes (`CreateRunRequest`, `SseWireEvent`, …)
 
-## Initial scaffold targets
+Contract tests guard wire shape before adapters and orchestration change.
 
-- `src/events/`
-- `src/reconcile/`
-- `src/checkpoints/`
-- `src/api/`
-- `src/http/` (REST + SSE payload shapes)
-- `src/index.ts` export map
+## Layout
 
-Contract tests are written before adapters and orchestration wiring.
+| Path | Contents |
+| --- | --- |
+| `src/events/` | Turn and observation event types |
+| `src/reconcile/` | Reconcile outcome schemas |
+| `src/checkpoints/` | Checkpoint and replay refs |
+| `src/api/` | Run config and session types |
+| `src/http/wire.ts` | REST + SSE payload shapes |
+| `src/index.ts` | Public export map |
+
+Tests: [`tests/contracts.test.ts`](../../tests/contracts.test.ts).
