@@ -30,7 +30,7 @@ git checkout -b cloud-deploy/i1-inference-openapi   # or your topic branch
 
 - **Pull requests** target **`feature/adventure-llm`** — fill [`.github/pull_request_template.md`](../../.github/pull_request_template.md) (GitHub pre-populates it on new PRs).
 - **CI** merges the repository default branch into PR heads (see [`.github/workflows/adventure.yml`](../../.github/workflows/adventure.yml)).
-- **Merges are blocked** until the **`ci`** job passes (branch protection on `feature/adventure-llm`). The `ci` job aggregates package tests, docs-check, and changeset-check (PRs only). **`cloud-deploy-c1`** (Docker build + smoke) runs on **push to the default branch only** — release tags and OCIR deploy happen after merge, not on topic-branch PRs.
+- **Merges are blocked** until the **`ci`** job passes (branch protection on `feature/adventure-llm`). The `ci` job aggregates package tests, docs-check, and changeset-check (PRs only). **`cloud-deploy-c1`** (Docker build + smoke) runs on **push to the default branch only** — git tags, OCIR semver deploy, and production smoke run after a **Version Packages** merge (`changesets.yml` → `oci-deploy`); feature-branch merges alone do not publish semver to OCIR.
 - **Doc links** in issues and scripts use `blob/feature/adventure-llm/…`, not `blob/main/…`.
 
 ## Branch protection
