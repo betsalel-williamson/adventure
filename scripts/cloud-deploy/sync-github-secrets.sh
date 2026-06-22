@@ -138,6 +138,14 @@ else
 fi
 
 if [ -n "${OCIR_NAMESPACE:-}" ] && [ -n "$OCIR_AUTH_TOKEN" ]; then
+  if [ -n "${OCIR_USERNAME:-}" ]; then
+    USER_NS="${OCIR_USERNAME%%/*}"
+    if [ "$USER_NS" != "$OCIR_NAMESPACE" ]; then
+      echo "Error: OCIR_USERNAME must start with OCIR_NAMESPACE ($OCIR_NAMESPACE), got prefix '$USER_NS'" >&2
+      echo "  Use <object-storage-namespace>/<oci-email>, not <tenancy-name>/<email>" >&2
+      exit 1
+    fi
+  fi
   gh secret set OCIR_NAMESPACE --body "$OCIR_NAMESPACE"
   gh secret set OCIR_AUTH_TOKEN --body "$OCIR_AUTH_TOKEN"
   if [ -n "${OCIR_USERNAME:-}" ]; then
