@@ -68,5 +68,5 @@ jobs:
     with:
       semver: ${{ needs.resolve-release.outputs.semver }}
       git_sha: ${{ github.sha }}
-      push_latest: true
+      push_latest: false
     secrets: inherit
