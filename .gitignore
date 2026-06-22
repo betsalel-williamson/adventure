@@ -24,6 +24,8 @@
 
 **/generated/
 **/reports/
+test-results/
+playwright-report/
 
 # =============================================================================
 # Secrets and local environment
