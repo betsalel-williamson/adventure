@@ -32,6 +32,9 @@ Play and evaluate: `docs/client/`. Product capabilities: `docs/features/`.
 ### Cloud deploy MVP
 
 - [Cloud deploy MVP](cloud-deploy-mvp/index.md) — hosted runtime, inference relay, desktop agent (implementation: GitHub work graph)
+- [GitHub Actions setup](cloud-deploy-mvp/github-actions-setup.md) — OCI secrets, deploy workflow, smoke test
+- [Oracle Cloud setup](cloud-deploy-mvp/oracle-cloud-setup.md) — OCI Always Free VM + Docker deploy (operator)
+- [Infrastructure as code](cloud-deploy-mvp/infrastructure-as-code.md) — OpenTofu + GitHub Actions
 
 ### Other packages
 

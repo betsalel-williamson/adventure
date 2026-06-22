@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - feature/adventure-llm
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -207,6 +208,67 @@ jobs:
         working-directory: adventure-webclient
         run: npm run build
 
+  cloud-deploy-c1:
+    needs: merge-check
+    if: always() && (github.event_name == 'push' || needs.merge-check.result == 'success')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Merge default branch into PR
+        if: github.event_name == 'pull_request'
+        uses: ./.github/actions/merge-default-branch
+
+      - name: Build C1 container image
+        run: |
+          BUILD_ARGS=$(./scripts/cloud-deploy/docker-build-args.sh "${{ github.sha }}")
+          # shellcheck disable=SC2086
+          docker build $BUILD_ARGS -t adventure-cloud:c1 .
+
+      - name: Run container smoke test
+        env:
+          ADV_EXPECTED_IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker run -d --name adventure-c1 \
+            -p 8787:8787 -p 8790:8790 \
+            adventure-cloud:c1
+          ./scripts/cloud-deploy/container-smoke.sh
+          docker logs adventure-c1
+          docker stop adventure-c1
+
+  changeset-check:
+    needs: merge-check
+    if: github.event_name == 'pull_request' && needs.merge-check.result == 'success'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Merge default branch into PR
+        uses: ./.github/actions/merge-default-branch
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install Changesets CLI
+        run: npm ci --ignore-scripts
+
+      - name: Require changeset when packages change
+        run: npx changeset status --since=origin/feature/adventure-llm
+
   docs-check:
     needs: merge-check
     if: always() && (github.event_name == 'push' || needs.merge-check.result == 'success')
@@ -237,3 +299,54 @@ jobs:
       - name: mdcp documentation check
         working-directory: docs
         run: npm run docs:check
+
+  ci:
+    name: ci
+    needs:
+      - merge-check
+      - adventure-v2
+      - adventure-langgraph
+      - adventure-ag2
+      - adventure-webclient
+      - cloud-deploy-c1
+      - changeset-check
+      - docs-check
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require all CI jobs to pass
+        env:
+          EVENT: ${{ github.event_name }}
+          MERGE_CHECK: ${{ needs.merge-check.result }}
+          ADVENTURE_V2: ${{ needs.adventure-v2.result }}
+          ADVENTURE_LANGGRAPH: ${{ needs.adventure-langgraph.result }}
+          ADVENTURE_AG2: ${{ needs.adventure-ag2.result }}
+          ADVENTURE_WEBCLIENT: ${{ needs.adventure-webclient.result }}
+          CLOUD_DEPLOY_C1: ${{ needs.cloud-deploy-c1.result }}
+          CHANGESET_CHECK: ${{ needs.changeset-check.result }}
+          DOCS_CHECK: ${{ needs.docs-check.result }}
+        run: |
+          set -euo pipefail
+          fail=0
+          require_success() {
+            local label="$1"
+            local result="$2"
+            if [ "$result" != "success" ]; then
+              echo "Required job $label: $result" >&2
+              fail=1
+            fi
+          }
+          for pair in \
+            "adventure-v2:$ADVENTURE_V2" \
+            "adventure-langgraph:$ADVENTURE_LANGGRAPH" \
+            "adventure-ag2:$ADVENTURE_AG2" \
+            "adventure-webclient:$ADVENTURE_WEBCLIENT" \
+            "cloud-deploy-c1:$CLOUD_DEPLOY_C1" \
+            "docs-check:$DOCS_CHECK"; do
+            require_success "${pair%%:*}" "${pair#*:}"
+          done
+          if [ "$EVENT" = "pull_request" ]; then
+            require_success "merge-check" "$MERGE_CHECK"
+            require_success "changeset-check" "$CHANGESET_CHECK"
+          fi
+          exit "$fail"

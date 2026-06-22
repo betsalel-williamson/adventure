@@ -47,7 +47,9 @@ NPM_RUN := $(NPM) --prefix $(NL_DIR) run
 	run-nl run-autoplay run-autoplay-web run-autoplay-web-insecure \
 	adventure-v2-dev \
 	smoke smoke-build qa \
-	dependency-check dependency-check-quick
+	dependency-check dependency-check-quick \
+	install-hooks pre-commit \
+	changeset changeset-status
 
 # =============================================================================
 # Default & Fortran build
@@ -163,3 +165,29 @@ docs-compile:
 	cd docs && npm ci && npm run docs:compile
 
 docs-publish-readmes: docs-compile
+
+# =============================================================================
+# Git hooks — pre-commit framework (see .pre-commit-config.yaml)
+# =============================================================================
+
+install-hooks:
+	@command -v pre-commit >/dev/null 2>&1 || { echo "Install pre-commit: https://pre-commit.com/#install" >&2; exit 1; }
+	git config --unset-all core.hooksPath 2>/dev/null || true
+	pre-commit install
+	pre-commit install --hook-type commit-msg
+
+pre-commit:
+	@command -v pre-commit >/dev/null 2>&1 || { echo "Install pre-commit: https://pre-commit.com/#install" >&2; exit 1; }
+	pre-commit run --all-files
+
+# =============================================================================
+# Versioning — Changesets (see .changeset/config.json)
+# =============================================================================
+
+changeset:
+	@command -v npm >/dev/null 2>&1 || { echo "Install Node.js 24+ (see .nvmrc)" >&2; exit 1; }
+	npm run changeset
+
+changeset-status:
+	@command -v npm >/dev/null 2>&1 || { echo "Install Node.js 24+ (see .nvmrc)" >&2; exit 1; }
+	npm run changeset:status

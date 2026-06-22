@@ -21,6 +21,7 @@ import {
   type SseWireEvent
 } from "../../../../packages/contracts/src/index.js";
 import { healthOracleWireFields } from "../oracle/oracleStartupConfig.js";
+import { buildMetadataWireFields } from "../build/buildMetadata.js";
 import type { RunCoordinator } from "../run/runCoordinator.js";
 import {
   SessionStore,
@@ -222,6 +223,7 @@ const handleHttp = async (
       sendJson(req, res, 200, {
         status: "ok",
         service: "adventure-v2",
+        ...buildMetadataWireFields(),
         ...healthOracleWireFields()
       });
       return;

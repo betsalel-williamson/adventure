@@ -27,5 +27,6 @@ Full NL research dashboard on cloud, adventure-ag2, MLX on Linux servers — see
 | [Work graph](../architecture/cloud-deploy-mvp/work-graph.md) | Implementation order |
 | [GitHub issue templates](../architecture/cloud-deploy-mvp/github-issues.md) | Create linked issues when repo Issues enabled |
 | [Developer index](../developer/cloud-deploy-mvp/index.md) | Operators |
+| [Oracle Cloud setup](../developer/cloud-deploy-mvp/oracle-cloud-setup.md) | OCI Always Free deploy |
 
 Decision: [ADR0017](../decisions/ADR0017-cloud-deploy-and-desktop-inference-bridge.md)

@@ -1,5 +1,6 @@
 import { fileURLToPath } from "node:url";
 import express from "express";
+import { buildMetadataWireFields } from "./buildMetadata.js";
 import {
   createEmptyGraph,
   mergeGraphFromTranscript,
@@ -185,6 +186,8 @@ export const createAssistApp = (): express.Application => {
   app.get("/assist/health", (_req, res) => {
     res.json({
       status: "ok",
+      service: "assist-server",
+      ...buildMetadataWireFields(),
       adapter: OLLAMA_URL ? `ollama:${OLLAMA_MODEL}` : "heuristic",
       probeEnabled: ASSIST_PROBE_ENABLED,
     });

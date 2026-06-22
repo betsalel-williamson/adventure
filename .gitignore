@@ -9,7 +9,7 @@
 # =============================================================================
 
 **/node_modules/
-/package-lock.json
+# Root package-lock.json tracks @changesets/cli only (see package.json).
 
 # =============================================================================
 # Build / compile output
@@ -53,6 +53,8 @@
 # =============================================================================
 
 .DS_Store
+.vscode/
+.cursorindexingignore
 
 # =============================================================================
 # docs — mdcp generated output
@@ -60,6 +62,21 @@
 
 /docs/_build/
 /docs/mdcp.v*.llms.txt
+
+# =============================================================================
+# OpenTofu / Terraform (infra/oci)
+# =============================================================================
+
+**/.terraform/
+**/.terraform.lock.hcl
+**/terraform.tfstate
+**/terraform.tfstate.*
+**/terraform.tfvars
+**/terraform.tfvars.json
+infra/oci/secrets/
+!infra/oci/secrets.example/
+**/*.tfplan
+**/crash.log
 
 # =============================================================================
 # Local / tooling (not part of the product)

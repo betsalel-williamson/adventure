@@ -27,19 +27,27 @@ Local dev today: `adventure-langgraph` `npm start` (5174 + 8787 + 8790). Cloud M
 
 Do **not** use `browserPlanner` or `OLLAMA_URL=127.0.0.1` in production web builds — see [desktop inference bridge](../../architecture/cloud-deploy-mvp/desktop-inference-bridge.md).
 
+**Target operator platform:** [Oracle Cloud Always Free](./oracle-cloud-setup.md) (single VM + Docker). Automate with [OpenTofu + GitHub Actions](./infrastructure-as-code.md) (`infra/oci/`). C2 adds HTTPS and the static webclient on the same instance.
+
 ## Implementation status
 
 | Area | Status |
 | --- | --- |
 | Architecture + ADR | Documented |
-| Docker / compose | Not started — [#7](https://github.com/betsalel-williamson/adventure/issues/7) C1 |
-| Inference OpenAPI | Not started — [#5](https://github.com/betsalel-williamson/adventure/issues/5) I1 |
+| OCI infra (OpenTofu) | **Validated** — `us-phoenix-1` · [IaC guide](./infrastructure-as-code.md) · [`infra/oci/`](../../../infra/oci/) |
+| Docker / C1 image | [#7](https://github.com/betsalel-williamson/adventure/issues/7) · [container guide](./container.md) |
+| Inference OpenAPI | Done — [#5](https://github.com/betsalel-williamson/adventure/issues/5) I1 (PR #69) |
+| Session auth | Done — [#6](https://github.com/betsalel-williamson/adventure/issues/6) S1 (PR #70) |
 | Relay + desktop agent | Not started — [#9](https://github.com/betsalel-williamson/adventure/issues/9) I4, [#10](https://github.com/betsalel-williamson/adventure/issues/10) I5 |
 | Pairing | Not started — [#13](https://github.com/betsalel-williamson/adventure/issues/13) I8 |
 | E2E smoke | Not started — [#14](https://github.com/betsalel-williamson/adventure/issues/14) E1 |
 
 ## Related maintainer docs
 
+- [Container image (C1)](./container.md)
+- [Oracle Cloud setup](./oracle-cloud-setup.md) — OCI Always Free operator guide
+- [Infrastructure as code](./infrastructure-as-code.md) — OpenTofu + GitHub Actions
+- [GitHub Actions setup](./github-actions-setup.md) — secrets, deploy workflow, smoke test
 - [Webclient dev setup](../webclient-dev-setup.md)
 - [v3 dev setup](../v3-dev-setup.md)
 - [TDD + GitHub workflow](../tdd-and-github-workflow.md)

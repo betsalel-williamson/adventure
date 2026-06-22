@@ -51,6 +51,97 @@ Describe the change in the PR body using [`.github/pull_request_template.md`](.g
 Secrets belong in environment variables or a local `.env` file (gitignored),
 never in commits.
 
+### Git hooks (pre-commit)
+
+This repo uses the [pre-commit](https://pre-commit.com/) Python framework for
+all git hooks — secret scanning, commit message lint, docs checks, and
+package-scoped lint/tests on changed paths. Config:
+[`.pre-commit-config.yaml`](.pre-commit-config.yaml).
+
+**One-time setup:**
+
+```bash
+brew install pre-commit          # or: pip install pre-commit
+cd adventure-nl && npm install   # installs Husky → delegates to pre-commit
+```
+
+Install dependencies for packages you work in (as needed):
+
+```bash
+npm ci --prefix docs              # docs shard checks
+npm ci --prefix adventure-nl      # NL lint-staged
+npm ci --prefix adventure-langgraph
+npm ci --prefix adventure-v2
+```
+
+**What runs on commit:**
+
+| Hook | When |
+| --- | --- |
+| Trailing whitespace, YAML/JSON, merge conflicts | Always |
+| gitleaks secret scan | Always |
+| commitlint (conventional commits) | Every commit message |
+| `docs-check` (mdcp) | `docs/` changes |
+| adventure-nl lint-staged | `adventure-nl/` changes |
+| adventure-langgraph lint-staged | `adventure-langgraph/` changes |
+| adventure-v2 unit tests | `adventure-v2/` changes |
+
+Run manually:
+
+```bash
+pre-commit run --all-files                    # everything
+pre-commit run docs-check --all-files         # one hook
+pre-commit run commitlint --hook-stage commit-msg --commit-msg-filename /path/to/msg
+```
+
+Skip hooks in an emergency: `SKIP=gitleaks,docs-check git commit …`
+
+Alternative without Husky (e.g. Fortran-only work):
+
+```bash
+pre-commit install
+pre-commit install --hook-type commit-msg
+```
+
+### Versioning (Changesets)
+
+We use [Changesets](https://github.com/changesets/changesets) for semver bumps
+and per-package changelogs. Config: [`.changeset/config.json`](.changeset/config.json).
+
+**When to add a changeset:** user-facing fixes, features, or breaking API changes
+in a TypeScript package. Skip for docs-only, refactors, tests, or CI-only edits.
+
+```bash
+npm install          # once — installs @changesets/cli at repo root
+npm run changeset    # or: make changeset
+```
+
+Pick the affected package(s) and bump type. Commit the generated
+`.changeset/*.md` file with your PR. If the PR does not need a release (docs,
+refactors, CI-only), run:
+
+```bash
+npm run changeset -- --empty
+```
+
+`adventure-ag2` is not in the Changesets workspace yet (local `file:` deps).
+
+`adventure-v2` and `adventure-langgraph` are **fixed** — they version together
+(C1 cloud container). Other packages version independently.
+
+CI opens a **Version Packages** PR when changesets merge to
+`feature/adventure-llm` ([`changesets.yml`](.github/workflows/changesets.yml)).
+Packages are private; we do not publish to npm.
+
+Check pending changesets:
+
+```bash
+npm run changeset:status   # or: make changeset-status
+```
+
+Deployed C1 images expose package `version` in `/health` (see
+[container docs](docs/developer/cloud-deploy-mvp/container.md)).
+
 ## Documentation
 
 - **Start here:** [`docs/index.md`](docs/index.md) — play paths, tiers, and doc checks

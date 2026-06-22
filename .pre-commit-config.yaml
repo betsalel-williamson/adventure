@@ -1,0 +1,86 @@
+# Repo-wide git hooks via https://pre-commit.com/
+# Install CLI: brew install pre-commit  (or: pip install pre-commit)
+# Hooks activate via Husky when you npm install in adventure-nl/
+#
+# Run all hooks:        pre-commit run --all-files
+# Run one hook:         pre-commit run docs-check --all-files
+# Skip a hook:          SKIP=gitleaks git commit …
+
+default_install_hook_types:
+  - pre-commit
+  - commit-msg
+
+repos:
+  # ---------------------------------------------------------------------------
+  # General hygiene
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: ^docs/_build/
+      - id: end-of-file-fixer
+        exclude: ^docs/_build/
+      - id: check-merge-conflict
+      - id: check-yaml
+        exclude: ^docs/_build/
+      - id: check-json
+      - id: check-added-large-files
+        args: [--maxkb=1000]
+      - id: detect-private-key
+
+  # ---------------------------------------------------------------------------
+  # Secret scanning
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+
+  # ---------------------------------------------------------------------------
+  # Conventional commit messages (commit-msg stage)
+  # ---------------------------------------------------------------------------
+  - repo: local
+    hooks:
+      - id: commitlint
+        name: commitlint
+        entry: commitlint --edit
+        language: node
+        additional_dependencies:
+          - "@commitlint/cli"
+          - "@commitlint/config-conventional"
+        stages: [commit-msg]
+        pass_filenames: true
+
+  # ---------------------------------------------------------------------------
+  # Package-scoped checks (mirror lightweight CI on changed paths)
+  # ---------------------------------------------------------------------------
+  - repo: local
+    hooks:
+      - id: docs-check
+        name: mdcp documentation check
+        entry: scripts/pre-commit/docs-check.sh
+        language: system
+        files: ^docs/
+        pass_filenames: false
+
+      - id: adventure-nl-lint-staged
+        name: adventure-nl lint-staged
+        entry: scripts/pre-commit/adventure-nl-lint-staged.sh
+        language: system
+        files: ^adventure-nl/
+        pass_filenames: false
+
+      - id: adventure-langgraph-lint-staged
+        name: adventure-langgraph lint-staged
+        entry: scripts/pre-commit/adventure-langgraph-lint-staged.sh
+        language: system
+        files: ^adventure-langgraph/
+        pass_filenames: false
+
+      - id: adventure-v2-test
+        name: adventure-v2 unit tests
+        entry: scripts/pre-commit/adventure-v2-test.sh
+        language: system
+        files: ^adventure-v2/
+        pass_filenames: false

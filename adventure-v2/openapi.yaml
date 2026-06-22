@@ -18,6 +18,15 @@ components:
           type: string
           enum:
             - adventure-v2
+        version:
+          type: string
+        gitSha:
+          type: string
+        imageTag:
+          type: string
+        builtAt:
+          type: string
+          nullable: true
         oracleMode:
           type: string
           enum:
@@ -29,6 +38,10 @@ components:
       required:
         - status
         - service
+        - version
+        - gitSha
+        - imageTag
+        - builtAt
         - oracleMode
         - processOracleScript
     PayloadTooLarge:

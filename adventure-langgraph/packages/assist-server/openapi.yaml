@@ -24,12 +24,30 @@ paths:
                     type: string
                     enum:
                       - ok
+                  service:
+                    type: string
+                    enum:
+                      - assist-server
+                  version:
+                    type: string
+                  gitSha:
+                    type: string
+                  imageTag:
+                    type: string
+                  builtAt:
+                    type: string
+                    nullable: true
                   adapter:
                     type: string
                   probeEnabled:
                     type: boolean
                 required:
                   - status
+                  - service
+                  - version
+                  - gitSha
+                  - imageTag
+                  - builtAt
                   - adapter
                   - probeEnabled
   /assist/ingest:

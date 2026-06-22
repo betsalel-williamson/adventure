@@ -1,0 +1,34 @@
+# Copy to terraform.tfvars and fill in. Never commit terraform.tfvars.
+#
+# Proven on us-phoenix-1 (2026-06): VM.Standard.E2.1.Micro + auto_select_availability_domain
+# selects PHX-AD-2 when AD-1 has no free-tier quota. See infrastructure-as-code.md.
+
+tenancy_ocid        = "ocid1.tenancy.oc1..aaaa..."
+user_ocid           = "ocid1.user.oc1..aaaa..."
+api_key_fingerprint = "aa:bb:cc:..."
+private_key_path    = "~/.oci/oci_api_key.pem"
+region              = "us-phoenix-1"
+compartment_ocid    = "ocid1.compartment.oc1..aaaa..."
+
+# Your public IP — curl -s ifconfig.me → append /32
+# Update after ISP change or apply will lock SSH/API to the old CIDR.
+admin_cidr = "203.0.113.10/32"
+
+ssh_public_key = "ssh-ed25519 AAAA... you@laptop"
+# Private key path for deploy/GitHub (not in tfvars): e.g. ~/.ssh/oci_key
+
+# Always Free — pick one shape (do not set flex_* when using E2.Micro)
+
+# Default for first successful deploy (x86; 1 GB RAM — enough for C1 smoke)
+shape = "VM.Standard.E2.1.Micro"
+
+# ARM — prefer when capacity exists (faster Docker builds; matches linux/arm64 image)
+# shape           = "VM.Standard.A1.Flex"
+# flex_ocpus      = 2
+# flex_memory_gbs = 12
+# If A1 fails with "Out of host capacity", retry flex_ocpus = 1 / flex_memory_gbs = 6
+# or switch to E2.Micro above.
+
+# AD selection — leave true unless you know your free-tier AD from OCI Limits console
+auto_select_availability_domain = true
+availability_domain_index       = 0   # only used when auto_select_availability_domain = false

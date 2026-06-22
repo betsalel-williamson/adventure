@@ -1,13 +1,12 @@
 #!/usr/bin/env sh
 set -e
 
-# Resolve repo root without relying on hook path ($0 can be relative when Husky invokes).
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 
 cd "$REPO_ROOT" || exit 1
 
 if command -v pre-commit >/dev/null 2>&1; then
-  pre-commit run
+  pre-commit run commitlint --hook-stage commit-msg --commit-msg-filename "$1"
 else
   echo "pre-commit is required. Install: https://pre-commit.com/#install" >&2
   exit 1
