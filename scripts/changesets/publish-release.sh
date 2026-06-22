@@ -7,16 +7,19 @@ VERSION="$(node -p "require('$ROOT/adventure-v2/package.json').version")"
 TAG="v${VERSION}"
 CHANGELOG="$ROOT/adventure-v2/CHANGELOG.md"
 
-if git rev-parse "$TAG" >/dev/null 2>&1; then
-  echo "Tag $TAG already exists — skipping tag and release"
-  exit 0
-fi
-
 git config user.name "github-actions[bot]"
 git config user.email "github-actions[bot]@users.noreply.github.com"
 
-git tag -a "$TAG" -m "Release $TAG"
-git push origin "$TAG"
+if git rev-parse "$TAG" >/dev/null 2>&1; then
+  if gh release view "$TAG" >/dev/null 2>&1; then
+    echo "Tag and release $TAG already exist — skipping tag and release"
+    exit 0
+  fi
+  echo "Tag $TAG exists but GitHub Release missing — creating release only"
+else
+  git tag -a "$TAG" -m "Release $TAG"
+  git push origin "$TAG"
+fi
 
 NOTES_FILE="$(mktemp)"
 trap 'rm -f "$NOTES_FILE"' EXIT
