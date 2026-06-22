@@ -237,7 +237,11 @@ jobs:
 
   changeset-check:
     needs: merge-check
-    if: github.event_name == 'pull_request' && needs.merge-check.result == 'success'
+    if: |
+      github.event_name == 'pull_request' &&
+      needs.merge-check.result == 'success' &&
+      !startsWith(github.head_ref, 'changeset-release/') &&
+      github.event.pull_request.title != 'chore(release): version packages'
     runs-on: ubuntu-latest
 
     steps:
@@ -340,7 +344,9 @@ jobs:
           done
           if [ "$EVENT" = "pull_request" ]; then
             require_success "merge-check" "$MERGE_CHECK"
-            require_success "changeset-check" "$CHANGESET_CHECK"
+            if [ "$CHANGESET_CHECK" != "skipped" ]; then
+              require_success "changeset-check" "$CHANGESET_CHECK"
+            fi
           fi
           if [ "$EVENT" = "push" ] || [ "$EVENT" = "workflow_dispatch" ]; then
             if [ "$CLOUD_DEPLOY_C1" != "success" ] && [ "$CLOUD_DEPLOY_C1" != "skipped" ]; then
