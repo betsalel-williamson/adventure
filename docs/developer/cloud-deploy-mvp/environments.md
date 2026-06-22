@@ -13,7 +13,7 @@ Single hosted environment today (no dev/staging/prod split). Values come from Op
 | Game health | `GET /health` → `version`, `imageTag`, `gitSha`, `oracleMode` |
 | Assist API | `http://141.148.173.150:8790` |
 | Assist health | `GET /assist/health` |
-| OCIR image | `{region}.ocir.io/<namespace>/adventure-cloud:<semver>` |
+| OCIR image | `{region}.ocir.io/<namespace>/adventure-cloud:<semver>` (OCIR only — not GHCR) |
 | Deploy trigger | Merge **Version Packages** PR → `changesets.yml` → `oci-deploy` |
 | Player HTTPS URL | Pending [#8 C2](https://github.com/betsalel-williamson/adventure/issues/8) |
 
@@ -51,6 +51,27 @@ export ADV_EXPECTED_IMAGE_TAG=0.2.0   # optional — assert /health imageTag
 CI runs the same suite in [`.github/workflows/oci-deploy.yml`](../../../.github/workflows/oci-deploy.yml) after each release deploy.
 
 Manual hotfix deploy: **Actions → oci-deploy → Run workflow** (optional `image_tag` or `semver` inputs).
+
+## What runs when
+
+| Stage | Trigger | CI / CD |
+| --- | --- | --- |
+| Feature PR | Open PR to `feature/adventure-llm` | Package tests, docs-check, changeset-check — no OCIR push |
+| Default push | Merge feature PR | `cloud-deploy-c1` builds image locally (SHA tag) + smoke |
+| Release | Merge **Version Packages** PR | `changesets.yml` → git tag + GitHub Release → `oci-deploy` → OCIR `:semver` + VM restart + full smoke |
+| Hotfix | Manual **oci-deploy** dispatch | Operator-chosen semver or SHA tag |
+
+Release merge skips `cloud-deploy-c1` (commit message `chore(release): …`) because `oci-deploy` builds and validates the production image.
+
+## Rollback
+
+To redeploy a previous known-good semver without reverting git history:
+
+1. **Actions → oci-deploy → Run workflow**
+2. Set **semver** to the last good version (e.g. `0.2.0`)
+3. Confirm `/health` shows matching `imageTag` and post-deploy smoke is green
+
+OCIR retains prior semver tags until you delete them in the console.
 
 ## Related
 
