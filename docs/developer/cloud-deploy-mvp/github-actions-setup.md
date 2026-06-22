@@ -140,7 +140,7 @@ Re-run the sync script whenever you rotate keys, change IP (`admin_cidr` + re-ap
 **Default production deploy:** merge the **Version Packages** PR (Changesets) on `feature/adventure-llm`. That triggers:
 
 1. [`changesets.yml`](../../../.github/workflows/changesets.yml) — git tag `v{semver}`, GitHub Release
-2. [`oci-deploy.yml`](../../../.github/workflows/oci-deploy.yml) — build, push `region.ocir.io/<namespace>/adventure-cloud:{semver}` (+ `:latest`), SSH restart on VM, post-deploy smoke (health + API E2E + headless Playwright)
+2. [`oci-deploy.yml`](../../../.github/workflows/oci-deploy.yml) — build, push **OCIR** `region.ocir.io/<namespace>/adventure-cloud:{semver}` (not GHCR), SSH restart on VM, post-deploy smoke (health + API E2E + headless Playwright)
 
 See [environments](./environments.md) for live URLs.
 
@@ -184,8 +184,8 @@ export OCI_DEPLOY_HOST="$HOST"
 
 ### oci-deploy
 
-- **Automatic:** invoked by [`changesets.yml`](../../../.github/workflows/changesets.yml) after a Version Packages merge (semver OCIR tag + `:latest`)
-- **Manual:** **Actions → oci-deploy → Run workflow** (optional `semver` or `image_tag`)
+- **Automatic:** invoked by [`changesets.yml`](../../../.github/workflows/changesets.yml) after a Version Packages merge (semver OCIR tag only; VM never pulls `:latest`)
+- **Manual:** **Actions → oci-deploy → Run workflow** (optional `semver`, `image_tag`, or `push_latest` for `:latest`)
 
 ---
 

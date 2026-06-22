@@ -66,9 +66,9 @@ Session and inference env from S1 apply to v2 as documented in [security and ses
 | --- | --- | --- |
 | **`cloud-deploy-c1`** ([`adventure.yml`](../../../.github/workflows/adventure.yml)) | **Push to `feature/adventure-llm` only** | Build image + local `container-smoke.sh` (SHA tags) — not on PR branches |
 | **`changesets.yml`** ([`changesets.yml`](../../../.github/workflows/changesets.yml)) | Version Packages PR merge | Git tag + GitHub Release → calls **`oci-deploy`** |
-| **`oci-deploy`** ([`oci-deploy.yml`](../../../.github/workflows/oci-deploy.yml)) | Release (auto) or manual dispatch | Build, push OCIR (`:semver` + `:latest`), SSH deploy, full smoke suite |
+| **`oci-deploy`** ([`oci-deploy.yml`](../../../.github/workflows/oci-deploy.yml)) | Release (auto) or manual dispatch | Build, push **OCIR** (`:semver`; optional `:latest` on manual dispatch only), SSH deploy, full smoke suite |
 
-Release deploy runs only when the **Version Packages** PR merges (not every feature PR). Manual hotfix: **Actions → oci-deploy**. See [environments](./environments.md) and [GitHub Actions setup](./github-actions-setup.md).
+Release deploy runs only when the **Version Packages** PR merges (not every feature PR). Images publish to **Oracle Cloud Infrastructure Registry (OCIR)** — not GitHub Container Registry (GHCR). Automated release deploy pushes `:semver` only; the VM pulls that semver tag (never `:latest`). Manual hotfix: **Actions → oci-deploy**. See [environments](./environments.md) and [GitHub Actions setup](./github-actions-setup.md).
 
 Docker build context excludes secrets via [`.dockerignore`](../../../.dockerignore) (`terraform.tfvars`, `.env`, `*.pem`, etc.).
 
