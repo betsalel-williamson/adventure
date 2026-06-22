@@ -23,6 +23,7 @@ Labels: `cloud-deploy-mvp`, `epic` (epic only).
 | EPIC | [#3](https://github.com/betsalel-williamson/adventure/issues/3) |
 | D0 | [#4](https://github.com/betsalel-williamson/adventure/issues/4) |
 | I1–E1 | [#5](https://github.com/betsalel-williamson/adventure/issues/5)–[#14](https://github.com/betsalel-williamson/adventure/issues/14) |
+| CD-D1 | [#83](https://github.com/betsalel-williamson/adventure/issues/83) |
 
 Full table: [work-graph.md](./work-graph.md). Sub-issues linked under epic #3.
 

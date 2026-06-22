@@ -25,6 +25,7 @@ Tracker host: [betsalel-williamson/adventure](https://github.com/betsalel-willia
 | I7 | Assist navigator via inference relay | I1, I4 | E1 |
 | I8 | Pairing flow (API + web + desktop UX) | S1, I4, I5 | E1 |
 | E1 | E2E smoke — cloud play + paired or hosted SLM | C2, I4, I8 | — |
+| CD-D1 | OCI Run Command deploy (replace SSH) + rollback | C1, semver CD | automated production deploy |
 
 ## Mermaid (dependency graph)
 
@@ -125,6 +126,7 @@ GitHub issue templates: [`.github/ISSUE_TEMPLATE/`](../../../.github/ISSUE_TEMPL
 | I7 | [#12](https://github.com/betsalel-williamson/adventure/issues/12) |
 | I8 | [#13](https://github.com/betsalel-williamson/adventure/issues/13) |
 | E1 | [#14](https://github.com/betsalel-williamson/adventure/issues/14) |
+| CD-D1 | [#83](https://github.com/betsalel-williamson/adventure/issues/83) |
 
 Issue bodies and dependency comments: [github-issues.md](./github-issues.md)
 
