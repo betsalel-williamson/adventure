@@ -4,10 +4,29 @@ name: oci-deploy
 # Requires: oci-infra applied, GitHub secrets configured (see infrastructure-as-code.md).
 
 on:
+  workflow_call:
+    inputs:
+      semver:
+        description: "Semver OCIR tag (release deploy)"
+        required: false
+        type: string
+      git_sha:
+        description: "Git commit baked into /health metadata"
+        required: false
+        type: string
+      push_latest:
+        description: "Also push adventure-cloud:latest"
+        required: false
+        type: boolean
+        default: true
   workflow_dispatch:
     inputs:
       image_tag:
         description: "OCIR tag (default git SHA)"
+        required: false
+        type: string
+      semver:
+        description: "Semver tag (optional; uses git_sha for build metadata when set)"
         required: false
         type: string
 
@@ -24,9 +43,35 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v6
 
-      - name: Resolve image tag
-        id: tag
-        run: echo "value=${{ inputs.image_tag || github.sha }}" >> "$GITHUB_OUTPUT"
+      - name: Resolve image tag and git SHA
+        id: meta
+        env:
+          INPUT_SEMVER: ${{ inputs.semver }}
+          INPUT_GIT_SHA: ${{ inputs.git_sha }}
+          DISPATCH_TAG: ${{ inputs.image_tag }}
+          PUSH_LATEST_INPUT: ${{ inputs.push_latest }}
+        run: |
+          set -euo pipefail
+          if [ -n "$INPUT_SEMVER" ]; then
+            TAG="$INPUT_SEMVER"
+            SHA="${INPUT_GIT_SHA:-$GITHUB_SHA}"
+            if [ "$PUSH_LATEST_INPUT" = "false" ]; then
+              PUSH_LATEST=false
+            else
+              PUSH_LATEST=true
+            fi
+          elif [ -n "$DISPATCH_TAG" ]; then
+            TAG="$DISPATCH_TAG"
+            SHA="$DISPATCH_TAG"
+            PUSH_LATEST=false
+          else
+            TAG="$GITHUB_SHA"
+            SHA="$GITHUB_SHA"
+            PUSH_LATEST=false
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "git_sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "push_latest=$PUSH_LATEST" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -42,38 +87,76 @@ jobs:
         env:
           REGISTRY: ${{ secrets.OCI_REGION }}.ocir.io
           NAMESPACE: ${{ secrets.OCIR_NAMESPACE }}
-          TAG: ${{ steps.tag.outputs.value }}
+          TAG: ${{ steps.meta.outputs.tag }}
+          GIT_SHA: ${{ steps.meta.outputs.git_sha }}
+          PUSH_LATEST: ${{ steps.meta.outputs.push_latest }}
         run: |
           IMAGE="$REGISTRY/$NAMESPACE/adventure-cloud:$TAG"
-          BUILD_ARGS=$(./scripts/cloud-deploy/docker-build-args.sh "$TAG" "$TAG")
+          BUILD_ARGS=$(./scripts/cloud-deploy/docker-build-args.sh "$GIT_SHA" "$TAG")
           # shellcheck disable=SC2086
           docker build $BUILD_ARGS -t "$IMAGE" .
           docker push "$IMAGE"
+          if [ "$PUSH_LATEST" = "true" ]; then
+            docker tag "$IMAGE" "$REGISTRY/$NAMESPACE/adventure-cloud:latest"
+            docker push "$REGISTRY/$NAMESPACE/adventure-cloud:latest"
+          fi
           echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
           echo "IMAGE_TAG=$TAG" >> "$GITHUB_ENV"
+          echo "GIT_SHA=$GIT_SHA" >> "$GITHUB_ENV"
 
       - name: Deploy on VM via SSH
         env:
           SSH_HOST: ${{ secrets.OCI_DEPLOY_HOST }}
           SSH_USER: ubuntu
           SSH_KEY: ${{ secrets.OCI_SSH_PRIVATE_KEY }}
+          OCI_REGION: ${{ secrets.OCI_REGION }}
+          OCIR_USERNAME: ${{ secrets.OCIR_USERNAME }}
+          OCIR_AUTH_TOKEN: ${{ secrets.OCIR_AUTH_TOKEN }}
         run: |
           install -m 600 /dev/stdin ~/.ssh/deploy_key <<< "$SSH_KEY"
-          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key "$SSH_USER@$SSH_HOST" \
-            "docker login ${{ secrets.OCI_REGION }}.ocir.io -u '${{ secrets.OCIR_USERNAME }}' -p '${{ secrets.OCIR_AUTH_TOKEN }}' && \
+          printf '%s' "$OCIR_AUTH_TOKEN" | ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key "$SSH_USER@$SSH_HOST" \
+            "docker login ${OCI_REGION}.ocir.io -u '${OCIR_USERNAME}' --password-stdin && \
              docker pull '$IMAGE' && \
              docker rm -f adventure 2>/dev/null || true && \
              docker run -d --name adventure --restart unless-stopped \
                -p 8787:8787 -p 8790:8790 '$IMAGE'"
 
-      - name: Smoke test (remote)
+      - name: Health smoke
         env:
           SSH_HOST: ${{ secrets.OCI_DEPLOY_HOST }}
-          IMAGE_TAG: ${{ steps.tag.outputs.value }}
+          IMAGE_TAG: ${{ steps.meta.outputs.tag }}
         run: |
-          curl -sf "http://$SSH_HOST:8787/health" | jq -e --arg tag "$IMAGE_TAG" '
-            .oracleMode == "process" and .imageTag == $tag and .gitSha == $tag
-          '
-          curl -sf "http://$SSH_HOST:8790/assist/health" | jq -e --arg tag "$IMAGE_TAG" '
-            .status == "ok" and .imageTag == $tag and .gitSha == $tag
-          '
+          ./scripts/cloud-deploy/container-smoke.sh \
+            "http://$SSH_HOST:8787" \
+            "http://$SSH_HOST:8790" \
+            "$IMAGE_TAG"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            adventure-langgraph/package-lock.json
+
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Functional API smoke
+        env:
+          OCI_DEPLOY_HOST: ${{ secrets.OCI_DEPLOY_HOST }}
+          ADV_V2_BASE: http://${{ secrets.OCI_DEPLOY_HOST }}:8787
+          ADV_ASSIST_BASE: http://${{ secrets.OCI_DEPLOY_HOST }}:8790
+          ADV_EXPECTED_IMAGE_TAG: ${{ steps.meta.outputs.tag }}
+        run: npm run smoke:remote-api
+
+      - name: Install Playwright browser
+        run: npx playwright install chromium
+
+      - name: Headless Playwright smoke
+        env:
+          OCI_DEPLOY_HOST: ${{ secrets.OCI_DEPLOY_HOST }}
+          VITE_API_URL: http://${{ secrets.OCI_DEPLOY_HOST }}:8787
+          VITE_ASSIST_URL: http://${{ secrets.OCI_DEPLOY_HOST }}:8790
+        run: npm run smoke:playwright

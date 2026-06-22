@@ -11,9 +11,14 @@
     "changeset": "changeset",
     "changeset:status": "changeset status",
     "version-packages": "changeset version",
-    "release": "changeset publish"
+    "release": "changeset publish",
+    "smoke:remote-api": "node --import tsx scripts/cloud-deploy/remote-api-smoke.mts",
+    "smoke:playwright": "./scripts/cloud-deploy/run-playwright-smoke.sh",
+    "smoke:post-deploy": "./scripts/cloud-deploy/run-post-deploy-smoke.sh"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.29.8"
+    "@changesets/cli": "^2.29.8",
+    "@playwright/test": "^1.52.0",
+    "tsx": "^4.19.0"
   }
 }

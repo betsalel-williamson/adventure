@@ -19,6 +19,7 @@ node --version   # expect v24.x
 | Client guides | [`docs/client/`](../docs/client/index.md) | Play and evaluate surfaces |
 | Features | [`docs/features/`](../docs/features/index.md) | Product capabilities |
 | Developer | [`docs/developer/`](../docs/developer/index.md) | Maintainer setup and mdcp workflow |
+| Environments | [`docs/developer/cloud-deploy-mvp/environments.md`](../docs/_build/developer.md#cloud-deploy-mvp--environments) | Hosted production URLs and smoke |
 | Glossary | [`docs/glossary/`](../docs/_build/client-v3.md#glossary) | Shared terms |
 | Architecture | [`docs/architecture/`](../docs/architecture/overview.md) | Legacy flat design views |
 | ADRs | [`docs/decisions/`](../docs/decisions/adventure-nl-cognition-adr-index.md) | Decision history |

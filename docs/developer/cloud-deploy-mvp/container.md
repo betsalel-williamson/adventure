@@ -25,16 +25,19 @@ docker run --rm -p 8787:8787 -p 8790:8790 adventure-cloud
 docker buildx build $(./scripts/cloud-deploy/docker-build-args.sh) --platform linux/amd64,linux/arm64 -t adventure-cloud .
 ```
 
-`GET /health` and `GET /assist/health` include build metadata: `version`, `gitSha`, `imageTag`, and `builtAt`. CI and deploy smoke tests assert `imageTag` matches the git SHA used to build the image.
+`GET /health` and `GET /assist/health` include build metadata: `version`, `gitSha`, `imageTag`, and `builtAt`.
+
+- **CI / local builds** — `imageTag` and `gitSha` both use the git commit SHA.
+- **Release deploy** — `imageTag` is the semver (e.g. `0.2.0`); `gitSha` is the release commit SHA.
 
 Smoke test against a running container:
 
 ```bash
 ./scripts/cloud-deploy/container-smoke.sh
-# verify deployed tag matches a known SHA:
+# CI / SHA-tagged local build:
 ADV_EXPECTED_IMAGE_TAG="$(git rev-parse HEAD)" ./scripts/cloud-deploy/container-smoke.sh
-# or custom bases + expected tag:
-./scripts/cloud-deploy/container-smoke.sh http://127.0.0.1:8787 http://127.0.0.1:8790 "$(git rev-parse HEAD)"
+# Release / semver on production VM:
+./scripts/cloud-deploy/container-smoke.sh http://141.148.173.150:8787 http://141.148.173.150:8790 0.2.0
 ```
 
 ## Environment variables
@@ -61,16 +64,18 @@ Session and inference env from S1 apply to v2 as documented in [security and ses
 
 | Workflow | When | What |
 | --- | --- | --- |
-| **`cloud-deploy-c1`** ([`adventure.yml`](../../../.github/workflows/adventure.yml)) | Every PR / push | Build image + `container-smoke.sh` |
-| **`oci-deploy`** ([`oci-deploy.yml`](../../../.github/workflows/oci-deploy.yml)) | Manual dispatch | Build, push OCIR, SSH `docker pull` on VM |
+| **`cloud-deploy-c1`** ([`adventure.yml`](../../../.github/workflows/adventure.yml)) | **Push to `feature/adventure-llm` only** | Build image + local `container-smoke.sh` (SHA tags) — not on PR branches |
+| **`changesets.yml`** ([`changesets.yml`](../../../.github/workflows/changesets.yml)) | Version Packages PR merge | Git tag + GitHub Release → calls **`oci-deploy`** |
+| **`oci-deploy`** ([`oci-deploy.yml`](../../../.github/workflows/oci-deploy.yml)) | Release (auto) or manual dispatch | Build, push **OCIR** (`:semver`; optional `:latest` on manual dispatch only), SSH deploy, full smoke suite |
 
-Use **`oci-deploy`** for all deploys to the OCI VM after infra is up. See [GitHub Actions setup](./github-actions-setup.md).
+Release deploy runs only when the **Version Packages** PR merges (not every feature PR). Images publish to **Oracle Cloud Infrastructure Registry (OCIR)** — not GitHub Container Registry (GHCR). Automated release deploy pushes `:semver` only; the VM pulls that semver tag (never `:latest`). Manual hotfix: **Actions → oci-deploy**. See [environments](./environments.md) and [GitHub Actions setup](./github-actions-setup.md).
 
 Docker build context excludes secrets via [`.dockerignore`](../../../.dockerignore) (`terraform.tfvars`, `.env`, `*.pem`, etc.).
 
 ## Related
 
 - [Cloud deploy maintainer index](./index.md)
+- [Environments (production)](./environments.md)
 - [Oracle Cloud setup](./oracle-cloud-setup.md)
 - [Work graph — C1](../../architecture/cloud-deploy-mvp/work-graph.md)
 - [assist-server maintainer docs](../readme-adventure-langgraph-assist-server/index.md)

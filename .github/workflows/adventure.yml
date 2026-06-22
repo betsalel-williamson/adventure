@@ -209,20 +209,14 @@ jobs:
         run: npm run build
 
   cloud-deploy-c1:
-    needs: merge-check
-    if: always() && (github.event_name == 'push' || needs.merge-check.result == 'success')
+    if: |
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      !startsWith(github.event.head_commit.message, 'chore(release):')
     runs-on: ubuntu-latest
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
-          fetch-depth: 0
-
-      - name: Merge default branch into PR
-        if: github.event_name == 'pull_request'
-        uses: ./.github/actions/merge-default-branch
 
       - name: Build C1 container image
         run: |
@@ -341,12 +335,16 @@ jobs:
             "adventure-langgraph:$ADVENTURE_LANGGRAPH" \
             "adventure-ag2:$ADVENTURE_AG2" \
             "adventure-webclient:$ADVENTURE_WEBCLIENT" \
-            "cloud-deploy-c1:$CLOUD_DEPLOY_C1" \
             "docs-check:$DOCS_CHECK"; do
             require_success "${pair%%:*}" "${pair#*:}"
           done
           if [ "$EVENT" = "pull_request" ]; then
             require_success "merge-check" "$MERGE_CHECK"
             require_success "changeset-check" "$CHANGESET_CHECK"
+          fi
+          if [ "$EVENT" = "push" ] || [ "$EVENT" = "workflow_dispatch" ]; then
+            if [ "$CLOUD_DEPLOY_C1" != "success" ] && [ "$CLOUD_DEPLOY_C1" != "skipped" ]; then
+              require_success "cloud-deploy-c1" "$CLOUD_DEPLOY_C1"
+            fi
           fi
           exit "$fail"
