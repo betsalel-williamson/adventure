@@ -209,7 +209,9 @@ jobs:
         run: npm run build
 
   cloud-deploy-c1:
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    if: |
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      !startsWith(github.event.head_commit.message, 'chore(release):')
     runs-on: ubuntu-latest
 
     steps:
@@ -341,6 +343,8 @@ jobs:
             require_success "changeset-check" "$CHANGESET_CHECK"
           fi
           if [ "$EVENT" = "push" ] || [ "$EVENT" = "workflow_dispatch" ]; then
-            require_success "cloud-deploy-c1" "$CLOUD_DEPLOY_C1"
+            if [ "$CLOUD_DEPLOY_C1" != "success" ] && [ "$CLOUD_DEPLOY_C1" != "skipped" ]; then
+              require_success "cloud-deploy-c1" "$CLOUD_DEPLOY_C1"
+            fi
           fi
           exit "$fail"
