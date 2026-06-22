@@ -1,6 +1,6 @@
 # Cloud deploy MVP — environments
 
-Single hosted environment today (no dev/staging/prod split). Values come from OpenTofu outputs and GitHub secrets — update when the VM is recreated.
+Single hosted environment today (no dev/staging/prod split). Values come from OpenTofu outputs and GitHub secrets — **refresh IP from `tofu output -raw instance_public_ip` after VM recreate**; values below may be stale.
 
 ## Production
 

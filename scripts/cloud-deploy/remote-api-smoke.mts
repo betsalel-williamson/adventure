@@ -3,7 +3,7 @@
  * Post-deploy functional API smoke against a live C1 container (public VM URLs).
  *
  * Env:
- *   ADV_V2_BASE / ADV_ASSIST_BASE — e.g. http://141.148.173.150:8787 and :8790
+ *   ADV_V2_BASE / ADV_ASSIST_BASE — e.g. http://${OCI_DEPLOY_HOST}:8787 and :8790
  *   OCI_DEPLOY_HOST — host only; ports 8787/8790 appended when bases unset
  *   ADV_EXPECTED_IMAGE_TAG — optional semver tag asserted on /health
  */

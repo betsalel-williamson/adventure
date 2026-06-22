@@ -74,16 +74,14 @@ Use langgraph or NL for full play today; the webclient shell is migrating panels
 
 ### Hosted environment (preview)
 
-Single **production** VM on Oracle Cloud (C1 — game + assist APIs only; player HTTPS URL comes with C2):
+Single **production** VM on Oracle Cloud (C1 — game + assist APIs only; player HTTPS URL comes with C2). Canonical URLs and smoke commands: [`docs/developer/cloud-deploy-mvp/environments.md`](docs/developer/cloud-deploy-mvp/environments.md).
 
-- Health: `http://141.148.173.150:8787/health`
-- Full link table and smoke commands: [`docs/developer/cloud-deploy-mvp/environments.md`](docs/developer/cloud-deploy-mvp/environments.md)
-
-Point the langgraph shell at the hosted APIs:
+Point the langgraph shell at the hosted APIs (set host from `tofu output -raw instance_public_ip` or `$OCI_DEPLOY_HOST`):
 
 ```sh
 cd adventure-langgraph
-VITE_API_URL=http://141.148.173.150:8787 VITE_ASSIST_URL=http://141.148.173.150:8790 npm start
+export OCI_DEPLOY_HOST="$(tofu -chdir=infra/oci output -raw instance_public_ip)"
+VITE_API_URL="http://${OCI_DEPLOY_HOST}:8787" VITE_ASSIST_URL="http://${OCI_DEPLOY_HOST}:8790" npm start
 ```
 
 ## Docs & community
