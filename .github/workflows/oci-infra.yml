@@ -17,7 +17,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  tofu:
+  plan:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -59,7 +59,61 @@ jobs:
       - name: tofu plan
         run: tofu plan -input=false -no-color -out=tfplan
 
-      - name: tofu apply
+      - name: Upload plan
         if: github.event_name == 'workflow_dispatch' && inputs.apply
-        environment: production
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          path: infra/oci/tfplan
+          retention-days: 1
+
+  apply:
+    needs: plan
+    if: github.event_name == 'workflow_dispatch' && inputs.apply
+    runs-on: ubuntu-latest
+    environment: production
+    defaults:
+      run:
+        working-directory: infra/oci
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: 1.9.0
+
+      - name: Write OCI API key
+        env:
+          OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
+        run: |
+          mkdir -p "$HOME/.oci"
+          printf '%s' "$OCI_PRIVATE_KEY" > "$HOME/.oci/oci_api_key.pem"
+          chmod 600 "$HOME/.oci/oci_api_key.pem"
+
+      - name: Write terraform.tfvars
+        run: |
+          cat > terraform.tfvars <<EOF
+          tenancy_ocid        = "${{ secrets.OCI_TENANCY_OCID }}"
+          user_ocid           = "${{ secrets.OCI_USER_OCID }}"
+          api_key_fingerprint = "${{ secrets.OCI_FINGERPRINT }}"
+          private_key_path    = "${HOME}/.oci/oci_api_key.pem"
+          region              = "${{ secrets.OCI_REGION }}"
+          compartment_ocid    = "${{ secrets.OCI_COMPARTMENT_OCID }}"
+          admin_cidr          = "${{ secrets.OCI_ADMIN_CIDR }}"
+          ssh_public_key      = "${{ secrets.OCI_SSH_PUBLIC_KEY }}"
+          EOF
+
+      - name: tofu init
+        run: tofu init -input=false
+
+      - name: Download plan
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan
+          path: infra/oci
+
+      - name: tofu apply
         run: tofu apply -input=false -auto-approve tfplan
