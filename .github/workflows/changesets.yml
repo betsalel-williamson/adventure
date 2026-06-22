@@ -18,6 +18,8 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+    outputs:
+      published: ${{ steps.changesets.outputs.published }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
@@ -35,11 +37,36 @@ jobs:
         run: npm ci --ignore-scripts
 
       - name: Create version PR or push tags
+        id: changesets
         uses: changesets/action@v1
         with:
           version: npm run version-packages
           commit: "chore(release): version packages"
           title: "chore(release): version packages"
-          publish: echo "Private monorepo — skip npm publish"
+          publish: ./scripts/changesets/publish-release.sh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  resolve-release:
+    needs: version
+    if: needs.version.outputs.published == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      semver: ${{ steps.pkg.outputs.semver }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Read package version
+        id: pkg
+        run: echo "semver=$(node -p "require('./adventure-v2/package.json').version")" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    needs: [version, resolve-release]
+    if: needs.version.outputs.published == 'true'
+    uses: ./.github/workflows/oci-deploy.yml
+    with:
+      semver: ${{ needs.resolve-release.outputs.semver }}
+      git_sha: ${{ github.sha }}
+      push_latest: true
+    secrets: inherit
