@@ -113,6 +113,7 @@ jobs:
           OCIR_USERNAME: ${{ secrets.OCIR_USERNAME }}
           OCIR_AUTH_TOKEN: ${{ secrets.OCIR_AUTH_TOKEN }}
         run: |
+          mkdir -p ~/.ssh
           install -m 600 /dev/stdin ~/.ssh/deploy_key <<< "$SSH_KEY"
           printf '%s' "$OCIR_AUTH_TOKEN" | ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key "$SSH_USER@$SSH_HOST" \
             "docker login ${OCI_REGION}.ocir.io -u '${OCIR_USERNAME}' --password-stdin && \
