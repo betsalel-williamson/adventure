@@ -64,6 +64,13 @@ repos:
         files: ^docs/
         pass_filenames: false
 
+      - id: changeset-check
+        name: changeset check
+        entry: scripts/pre-commit/changeset-check.sh
+        language: system
+        files: ^(\.changeset/|adventure-v2/|adventure-langgraph/|adventure-ag2/|adventure-webclient/)
+        pass_filenames: false
+
       - id: adventure-nl-lint-staged
         name: adventure-nl lint-staged
         entry: scripts/pre-commit/adventure-nl-lint-staged.sh
