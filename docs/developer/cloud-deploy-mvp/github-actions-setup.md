@@ -135,15 +135,23 @@ Re-run the sync script whenever you rotate keys, change IP (`admin_cidr` + re-ap
 
 ---
 
-## 4. Deploy C1 (CI — default)
+## 4. Deploy C1
 
-**All production deploys:** **Actions → oci-deploy** (build on GitHub, push OCIR, SSH `docker pull` on VM).
+**Default production deploy:** merge the **Version Packages** PR (Changesets) on `feature/adventure-llm`. That triggers:
 
-After §3 completes:
+1. [`changesets.yml`](../../../.github/workflows/changesets.yml) — git tag `v{semver}`, GitHub Release
+2. [`oci-deploy.yml`](../../../.github/workflows/oci-deploy.yml) — build, push `region.ocir.io/<namespace>/adventure-cloud:{semver}` (+ `:latest`), SSH restart on VM, post-deploy smoke (health + API E2E + headless Playwright)
 
-- **Actions → oci-deploy → Run workflow**
+See [environments](./environments.md) for live URLs.
 
-Image: `region.ocir.io/<namespace>/adventure-cloud:<git-sha>`
+**Manual hotfix / bootstrap:** **Actions → oci-deploy → Run workflow** (optional `semver` or `image_tag` input).
+
+Image tags:
+
+| Trigger | OCIR tag | `/health` `imageTag` | `/health` `gitSha` |
+| --- | --- | --- | --- |
+| Release (auto) | `{semver}` e.g. `0.2.0` | semver | release commit SHA |
+| Manual dispatch (default) | `{git-sha}` | SHA | SHA |
 
 ### Bootstrap only (one-time, before OCIR)
 
@@ -159,6 +167,10 @@ Smoke test:
 ```bash
 HOST=$(cd infra/oci && tofu output -raw instance_public_ip)
 ./scripts/cloud-deploy/container-smoke.sh "http://${HOST}:8787" "http://${HOST}:8790"
+
+# Full post-deploy suite (health + API + Playwright)
+export OCI_DEPLOY_HOST="$HOST"
+./scripts/cloud-deploy/run-post-deploy-smoke.sh
 ```
 
 ---
@@ -172,7 +184,8 @@ HOST=$(cd infra/oci && tofu output -raw instance_public_ip)
 
 ### oci-deploy
 
-- **Actions → oci-deploy → Run workflow**
+- **Automatic:** invoked by [`changesets.yml`](../../../.github/workflows/changesets.yml) after a Version Packages merge (semver OCIR tag + `:latest`)
+- **Manual:** **Actions → oci-deploy → Run workflow** (optional `semver` or `image_tag`)
 
 ---
 

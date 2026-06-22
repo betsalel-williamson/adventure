@@ -11,6 +11,7 @@ Sharded guides for playing, evaluating, and maintaining Colossal Cave Adventure 
 | **LangGraph CRT shell** | Ready today | `cd adventure-langgraph && npm install && npm start` | [Client quick start](client/quick-start.md) → port **5174** |
 | **NL autoplay dashboard** | Ready today | `make install-nl && make run-autoplay-web` | [NL quick start](client/nl/quick-start.md) → port **8787** |
 | **Unified webclient** | Stub / migrating | `cd adventure-webclient && npm install && npm start` | [Webclient guide](client/webclient/index.md) → port **5175** — use langgraph or NL for full play today |
+| **Hosted APIs (preview)** | C1 smoke / operator | `curl -sf http://141.148.173.150:8787/health` | [Environments](developer/cloud-deploy-mvp/environments.md) — CRT via langgraph + `VITE_API_URL` |
 
 **Classic Fortran only** (no Node): `make && ./adventure` from the repo root.
 

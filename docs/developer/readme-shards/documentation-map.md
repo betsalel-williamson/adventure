@@ -5,6 +5,7 @@
 | Client guides | [`docs/client/`](../../client/index.md) | Play and evaluate surfaces |
 | Features | [`docs/features/`](../../features/index.md) | Product capabilities |
 | Developer | [`docs/developer/`](../../developer/index.md) | Maintainer setup and mdcp workflow |
+| Environments | [`docs/developer/cloud-deploy-mvp/environments.md`](../../developer/cloud-deploy-mvp/environments.md) | Hosted production URLs and smoke |
 | Glossary | [`docs/glossary/`](../../glossary/index.md) | Shared terms |
 | Architecture | [`docs/architecture/`](../../architecture/overview.md) | Legacy flat design views |
 | ADRs | [`docs/decisions/`](../../decisions/adventure-nl-cognition-adr-index.md) | Decision history |

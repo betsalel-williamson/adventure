@@ -72,6 +72,20 @@ Full map: [`docs/index.md`](docs/index.md).
 
 Use langgraph or NL for full play today; the webclient shell is migrating panels from those packages.
 
+### Hosted environment (preview)
+
+Single **production** VM on Oracle Cloud (C1 — game + assist APIs only; player HTTPS URL comes with C2):
+
+- Health: `http://141.148.173.150:8787/health`
+- Full link table and smoke commands: [`docs/developer/cloud-deploy-mvp/environments.md`](docs/developer/cloud-deploy-mvp/environments.md)
+
+Point the langgraph shell at the hosted APIs:
+
+```sh
+cd adventure-langgraph
+VITE_API_URL=http://141.148.173.150:8787 VITE_ASSIST_URL=http://141.148.173.150:8790 npm start
+```
+
 ## Docs & community
 
 | Doc | Purpose |

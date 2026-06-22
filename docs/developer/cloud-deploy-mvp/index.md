@@ -40,10 +40,12 @@ Do **not** use `browserPlanner` or `OLLAMA_URL=127.0.0.1` in production web buil
 | Session auth | Done — [#6](https://github.com/betsalel-williamson/adventure/issues/6) S1 (PR #70) |
 | Relay + desktop agent | Not started — [#9](https://github.com/betsalel-williamson/adventure/issues/9) I4, [#10](https://github.com/betsalel-williamson/adventure/issues/10) I5 |
 | Pairing | Not started — [#13](https://github.com/betsalel-williamson/adventure/issues/13) I8 |
-| E2E smoke | Not started — [#14](https://github.com/betsalel-williamson/adventure/issues/14) E1 |
+| Release CD + deploy | **Done** — Version Packages merge → OCIR semver tag + VM restart · [environments](./environments.md) |
+| E2E smoke | Partial — post-deploy health + API + Playwright in `oci-deploy` · [#14](https://github.com/betsalel-williamson/adventure/issues/14) E1 (HTTPS play pending C2) |
 
 ## Related maintainer docs
 
+- [Environments (production)](./environments.md)
 - [Container image (C1)](./container.md)
 - [Oracle Cloud setup](./oracle-cloud-setup.md) — OCI Always Free operator guide
 - [Infrastructure as code](./infrastructure-as-code.md) — OpenTofu + GitHub Actions

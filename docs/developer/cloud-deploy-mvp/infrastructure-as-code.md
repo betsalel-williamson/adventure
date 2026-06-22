@@ -197,7 +197,7 @@ Optional **GitHub Environment** `production` with required reviewers before `tof
 
 ### 6. OCIR repository
 
-Console → **Developer → Container registry → Create repository** (`adventure-cloud`). Deploy workflow pushes `region.ocir.io/<namespace>/adventure-cloud:<git-sha>`.
+Console → **Developer → Container registry → Create repository** (`adventure-cloud`). Deploy workflow pushes `region.ocir.io/<namespace>/adventure-cloud:{semver}` on release (and `:latest`); manual dispatch defaults to `{git-sha}`.
 
 ## Workflows
 
@@ -206,10 +206,15 @@ Console → **Developer → Container registry → Create repository** (`adventu
 - **Pull request** (paths `infra/oci/**`): `tofu init` + `tofu plan` — validates HCL; apply does not run.
 - **`workflow_dispatch`** with input `apply=true`: runs `tofu apply -auto-approve` after manual approval in GitHub.
 
+### `changesets.yml`
+
+- **Push** to `feature/adventure-llm`: opens Version Packages PR when pending changesets exist.
+- **Version Packages merge**: `publish-release.sh` creates git tag + GitHub Release, then calls **`oci-deploy`** with semver tag.
+
 ### `oci-deploy.yml`
 
-- **`workflow_dispatch`** or push to `feature/adventure-llm` after C1 merge (optional).
-- Steps: build image → login OCIR → push → SSH to `instance_public_ip` → `docker pull` + restart container.
+- **`workflow_call`** from `changesets.yml` (release deploy) or **`workflow_dispatch`** (manual).
+- Steps: build image → login OCIR → push (`:semver` + optional `:latest`) → SSH to `instance_public_ip` → `docker pull` + restart container → health + API + Playwright smoke.
 - Requires infra applied once and SSH key on the instance matching `OCI_SSH_PRIVATE_KEY`.
 
 Until C2, deploy exposes ports **8787/8790** only (same as manual guide).
