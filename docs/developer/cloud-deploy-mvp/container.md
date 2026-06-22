@@ -64,7 +64,7 @@ Session and inference env from S1 apply to v2 as documented in [security and ses
 
 | Workflow | When | What |
 | --- | --- | --- |
-| **`cloud-deploy-c1`** ([`adventure.yml`](../../../.github/workflows/adventure.yml)) | Every PR / push | Build image + local `container-smoke.sh` (SHA tags) |
+| **`cloud-deploy-c1`** ([`adventure.yml`](../../../.github/workflows/adventure.yml)) | **Push to `feature/adventure-llm` only** | Build image + local `container-smoke.sh` (SHA tags) — not on PR branches |
 | **`changesets.yml`** ([`changesets.yml`](../../../.github/workflows/changesets.yml)) | Version Packages PR merge | Git tag + GitHub Release → calls **`oci-deploy`** |
 | **`oci-deploy`** ([`oci-deploy.yml`](../../../.github/workflows/oci-deploy.yml)) | Release (auto) or manual dispatch | Build, push OCIR (`:semver` + `:latest`), SSH deploy, full smoke suite |
 
