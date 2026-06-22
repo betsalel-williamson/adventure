@@ -109,10 +109,13 @@ jobs:
           SSH_HOST: ${{ secrets.OCI_DEPLOY_HOST }}
           SSH_USER: ubuntu
           SSH_KEY: ${{ secrets.OCI_SSH_PRIVATE_KEY }}
+          OCI_REGION: ${{ secrets.OCI_REGION }}
+          OCIR_USERNAME: ${{ secrets.OCIR_USERNAME }}
+          OCIR_AUTH_TOKEN: ${{ secrets.OCIR_AUTH_TOKEN }}
         run: |
           install -m 600 /dev/stdin ~/.ssh/deploy_key <<< "$SSH_KEY"
-          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key "$SSH_USER@$SSH_HOST" \
-            "docker login ${{ secrets.OCI_REGION }}.ocir.io -u '${{ secrets.OCIR_USERNAME }}' -p '${{ secrets.OCIR_AUTH_TOKEN }}' && \
+          printf '%s' "$OCIR_AUTH_TOKEN" | ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key "$SSH_USER@$SSH_HOST" \
+            "docker login ${OCI_REGION}.ocir.io -u '${OCIR_USERNAME}' --password-stdin && \
              docker pull '$IMAGE' && \
              docker rm -f adventure 2>/dev/null || true && \
              docker run -d --name adventure --restart unless-stopped \
